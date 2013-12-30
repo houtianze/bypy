@@ -71,7 +71,7 @@ Btw, hash caching is also implemented.
 
 上手：
 
-你需要安装[Python Requests 库](http://www.python-requests.org/). 在n Debian / Ubuntu / Raspbian 环境下，只需执行如下命令一次：
+你需要安装[Python Requests 库](http://www.python-requests.org/). 在 Debian / Ubuntu / Raspbian 环境下，只需执行如下命令一次：
 ```
 sudo pip install requests
 ```
