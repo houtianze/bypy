@@ -12,6 +12,12 @@ This is a Python client for Baidu Yun (a.k.a PCS - Personal Cloud Storage), an o
 This program uses the REST APIs to access the files at Baidu PCS. You can list, download, upload, compare, sync-up/down, etc.
 
 Quick start:
+
+To use this program, you need to install the [Python Requests library](http://www.python-requests.org/). In Debian / Ubuntu / Raspbian, you just run the following command:
+```
+sudo pip install requests
+```
+
 To get help and a list of available commands:
 ```
 bypy.py
@@ -64,6 +70,11 @@ Btw, hash caching is also implemented.
 第一次运行的时候要通过百度的网页进行授权（一次就好）
 
 上手：
+
+你需要安装[Python Requests 库](http://www.python-requests.org/). 在n Debian / Ubuntu / Raspbian 环境下，只需执行如下命令一次：
+```
+sudo pip install requests
+```
 
 显示使用帮助和所有命令（英文）:
 ```
