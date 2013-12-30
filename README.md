@@ -10,20 +10,21 @@ This is a Python client for Baidu Yun (a.k.a PCS - Personal Cloud Storage), an o
 This program uses the REST APIs to access the files at Baidu PCS. You can list, download, upload, compare, sync-up/down, etc.
 
 Quick start:
+To get help and a list of available commands:
 ```
 bypy.py
 ```
-to get help and a list of available commands
+
+To get more details about certain command:
 
 ```
 bypy.py help <command>
 ```
-to get more details about certain command
 
+List files at (App's) root directory at Baidu PCS:
 ```
 bypy.py list
 ```
-will give you the list of files at (App's) root directory at Baidu PCS
 
 To sync up to the cloud (from the current directory):
 ```
@@ -61,22 +62,23 @@ Btw, hash caching is also implemented.
 第一次运行的时候要通过百度的网页进行授权（一次就好）
 
 上手：
+
+显示使用帮助和所有命令（英文）:
 ```
 bypy.py
 ```
-会显示使用帮助和所有命令（英文）
 
+更详细的了解某一个命令：
 ```
 bypy.py help <command>
 ```
-可以让你更详细的了解某一个命令
 
+显示在云盘（程序的）根目录下文件列表：
 ```
 bypy.py list
 ```
-显示在云盘（程序的）根目录下文件列表
 
-把当前目录同步到云盘:
+把当前目录同步到云盘：
 ```
 bypy.py syncup
 ```
@@ -94,7 +96,7 @@ or
 bypy.py downdir /
 ```
 
-比较本地当前目录和云盘（程序的）根目录:
+比较本地当前目录和云盘（程序的）根目录：
 ```
 bypy.py compare
 ```
