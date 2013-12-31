@@ -117,3 +117,6 @@ bypy.py compare
 还有一些其他命令 ...
 
 顺道，哈希值的计算加入了缓存处理，使得第一次以后的计算速度有所提高。
+
+====
+Unicode file names now supported。 支持Unicode文件名。
