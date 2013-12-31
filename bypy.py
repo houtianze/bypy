@@ -1,5 +1,8 @@
 #!/usr/bin/python
 # encoding: utf-8
+# ===  IMPORTANT  ====
+# NOTE: In order to support no-ASCII file names,
+# your system's locale MUST be set to 'utf-8'
 # CAVEAT: DOESN'T work with proxy, the underlying reason being
 # the 'requests' package used for http communication doesn't seem
 # to work properly with proxies, reason unclear.
@@ -37,7 +40,16 @@ and then, change 'ServerAuth' to 'False'
 @deffield    updated: Updated
 '''
 
+# file name encoding fixer
+# just to fix you ...
+# http://stackoverflow.com/questions/11741574/how-to-set-the-default-encoding-to-utf-8-in-python
+# http://stackoverflow.com/questions/2276200/changing-default-encoding-of-python
+import locale
+SystemLanguageCode, SystemEncoding = locale.getdefaultlocale()
 import sys
+reload(sys)
+sys.setdefaultencoding(SystemEncoding)
+
 import os
 import signal
 import time
@@ -631,9 +643,9 @@ class ByPy(object):
 		self.__slice_md5s = []
 		self.__try = 0 # this try has to be class-level because __request is a recursive call
 
-		# only if user specifies '-d -vv' or more 'v's, the following
+		# only if user specifies '-ddd' or more 'd's, the following
 		# debugging information will be shown, as it's very talkative.
-		if self.Debug and self.Verbose > 1:
+		if self.Debug >= 3:
 			# these two lines enable debugging at httplib level (requests->urllib3->httplib)
 			# you will see the REQUEST, including HEADERS and DATA, and RESPONSE with HEADERS but without DATA.
 			# the only thing missing will be the response.body which is not logged.
@@ -647,8 +659,8 @@ class ByPy(object):
 		if self.Verbose:
 			pr(msg)
 
-	def pd(self, msg, **kwargs):
-		if self.Debug:
+	def pd(self, msg, level = 1, **kwargs):
+		if self.Debug >= level:
 			pdbg(msg, kwargs)
 
 	def __print_error_json(self, r):
@@ -680,7 +692,6 @@ class ByPy(object):
 		try:
 			if method.upper() == 'GET':
 				self.pd("GET " + url)
-				self.pd("Params: {}".format(pars))
 				r = requests.get(url,
 					headers = {'User-Agent': UserAgent },
 					params = pars, timeout = self.__timeout, **kwargs)
@@ -691,8 +702,13 @@ class ByPy(object):
 					headers = {'User-Agent': UserAgent },
 					params = pars, timeout = self.__timeout, **kwargs)
 
+			self.pd("Params: {}".format(pars))
+			self.pd("Request Headers: {}".format(
+				pprint.pformat(r.request.headers)), 2)
 			sc = r.status_code
 			self.pd("HTTP Status Code: {}".format(sc))
+			self.pd("Header returned: {}".format(pprint.pformat(r.headers)), 2)
+			self.pd("Website returned: {}".format(rb(r.text)), 2)
 			if sc == requests.codes.ok:
 				self.pd("Request OK, processing action")
 				result = act(r, actargs)
@@ -1944,7 +1960,7 @@ right after the '# PCS configuration constants' comment.
 		#parser.add_argument(dest="paths", help="paths to folder(s) with source file(s) [default: %(default)s]", metavar="path", nargs='+')
 
 		# debug, logging
-		parser.add_argument("-d", "--debug", dest="debug", action="store_true", default=False, help="enable debugging & logging [default: %(default)s]")
+		parser.add_argument("-d", "--debug", dest="debug", action="count", default=0, help="enable debugging & logging [default: %(default)s]")
 		parser.add_argument("-v", "--verbose", dest="verbose", default=0, action="count", help="set verbosity level [default: %(default)s]")
 
 		# program tunning, configration (those will be passed to class ByPy)
