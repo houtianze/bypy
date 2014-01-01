@@ -1119,8 +1119,18 @@ get information of the given path (dir / file) at Baidu Yun.
 		with open(localpath, "rb") as f:
 			return self.__post(CPcsUrl + 'file',
 				pars, self.__upload_one_file_act, remotepath,
-				files = { 'file' : (os.path.basename(localpath), f) })
-				#files = { 'file' : ('', f) })
+				# wants to be proper? properness doesn't work
+				# there seems to be a bug at Baidu's handling of http text:
+				# Content-Disposition: ...  filename=utf-8''yourfile.ext
+				# when you specify a unicode file name, which will be encoded
+				# using the utf-8'' syntax
+				# so, we put a work-around here: we always call our file 'file'
+				# NOTE: an empty file name '' doesn't seem to work, so we
+				# need to give it a name at will, but empty one.
+				# apperantly, Baidu PCS doesn't use this file name for
+				# checking / verification, so we are probably safe here.
+				#files = { 'file' : (os.path.basename(localpath), f) })
+				files = { 'file' : ('file', f) })
 
 	def __walk_upload(self, arg, dirname, names):
 		localpath, remotepath, ondup = arg
