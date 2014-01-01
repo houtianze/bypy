@@ -41,14 +41,15 @@ and then, change 'ServerAuth' to 'False'
 '''
 
 # file name encoding fixer
+from __future__ import unicode_literals
 # just to fix you ...
 # http://stackoverflow.com/questions/11741574/how-to-set-the-default-encoding-to-utf-8-in-python
 # http://stackoverflow.com/questions/2276200/changing-default-encoding-of-python
 import locale
 SystemLanguageCode, SystemEncoding = locale.getdefaultlocale()
 import sys
-reload(sys)
-sys.setdefaultencoding(SystemEncoding)
+#reload(sys)
+#sys.setdefaultencoding(SystemEncoding)
 
 import os
 import signal
@@ -149,7 +150,7 @@ AppPcsPathLen = len(AppPcsPath)
 HomeDir = expanduser('~')
 TokenFilePath = HomeDir + os.sep + '.bypy.json'
 HashCachePath = HomeDir + os.sep + '.bypy.pickle'
-UserAgent = 'Mozilla/5.0'
+#UserAgent = 'Mozilla/5.0'
 
 # Baidu PCS URLs etc.
 OpenApiUrl = "https://openapi.baidu.com"
@@ -693,13 +694,13 @@ class ByPy(object):
 			if method.upper() == 'GET':
 				self.pd("GET " + url)
 				r = requests.get(url,
-					headers = {'User-Agent': UserAgent },
+					#headers = {'User-Agent': UserAgent },
 					params = pars, timeout = self.__timeout, **kwargs)
 			elif method.upper() == 'POST':
 				if self.Debug:
 					self.pd("POST " + url)
 				r = requests.post(url,
-					headers = {'User-Agent': UserAgent },
+					#headers = {'User-Agent': UserAgent },
 					params = pars, timeout = self.__timeout, **kwargs)
 
 			self.pd("Params: {}".format(pars))
@@ -1119,6 +1120,7 @@ get information of the given path (dir / file) at Baidu Yun.
 			return self.__post(CPcsUrl + 'file',
 				pars, self.__upload_one_file_act, remotepath,
 				files = { 'file' : (os.path.basename(localpath), f) })
+				#files = { 'file' : ('', f) })
 
 	def __walk_upload(self, arg, dirname, names):
 		localpath, remotepath, ondup = arg
@@ -1234,7 +1236,7 @@ upload a file or directory (recursively)
 			if len(lj) > 0:
 				self.__remote_json = lj[0] # TODO: ugly patch
 				# patch for inconsistency between 'list' and 'meta' json
-				self.__remote_json[u'md5'] = self.__remote_json['block_list'].strip('[]"')
+				self.__remote_json['md5'] = self.__remote_json['block_list'].strip('[]"')
 				self.pd("self.__remote_json: {}".format(self.__remote_json))
 				parse_ok = True
 				return ENoError
@@ -2039,7 +2041,10 @@ right after the '# PCS configuration constants' comment.
 					verify = not args.skipv, secure = not args.insecure,
 					retry = int(args.retry), timeout = timeout,
 					verbose = args.verbose, debug = args.debug)
-			result = getattr(by, args.command[0])(*args.command[1:])
+			uargs = []
+			for arg in args.command[1:]:
+				uargs.append(unicode(arg, SystemEncoding))
+			result = getattr(by, args.command[0])(*uargs)
 			doexitwork()
 			return result
 		else:
