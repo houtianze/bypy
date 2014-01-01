@@ -1,6 +1,12 @@
 bypy
 ====
 
+Finally, Unicode / Chinese file names are properly supported. 终于全面支持Unicode / 中文了。
+
+**Important** You need to set you system locale encoding to UTF-8 for this to work
+
+**重要** 想要支持中文，你要把系统的区域编码设置为UTF-8。
+
 Python client for Baidu Yun 百度云盘的Python客户端
 
 Copyright 2013 Hou Tianze (GitHub: houtianze, Twitter: @ibic, G+: +TianzeHou)
