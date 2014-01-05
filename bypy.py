@@ -40,18 +40,27 @@ and then, change 'ServerAuth' to 'False'
 @deffield    updated: Updated
 '''
 
-# file name encoding fixer
-from __future__ import unicode_literals
-# just to fix you ...
+# it takes days just to fix you, unicode ...
+# some references
+# https://stackoverflow.com/questions/4374455/how-to-set-sys-stdout-encoding-in-python-3
+# https://stackoverflow.com/questions/492483/setting-the-correct-encoding-when-piping-stdout-in-python
+# http://drj11.wordpress.com/2007/05/14/python-how-is-sysstdoutencoding-chosen/
 # http://stackoverflow.com/questions/11741574/how-to-set-the-default-encoding-to-utf-8-in-python
 # http://stackoverflow.com/questions/2276200/changing-default-encoding-of-python
-import locale
-SystemLanguageCode, SystemEncoding = locale.getdefaultlocale()
+from __future__ import unicode_literals
+import os
 import sys
 #reload(sys)
 #sys.setdefaultencoding(SystemEncoding)
-
-import os
+import locale
+SystemLanguageCode, SystemEncoding = locale.getdefaultlocale()
+if SystemEncoding.upper() != 'UTF-8':
+	err = "You MUST set system locale to 'UTF-8' to support unicode file names."
+	ex = Exception(err)
+	print(err)
+	raise ex
+import codecs
+sys.stdout = codecs.getwriter("utf-8")(sys.stdout)
 import signal
 import time
 import shutil
@@ -79,6 +88,7 @@ except:
 	print "Fail to import the 'requests' library\n" \
 		"You need to install the 'requests' python library\n" \
 		"You can install it by running 'pip install requests'"
+	raise
 # non-standard python library, needs 'pip install requesocks'
 #import requesocks as requests # if you need socks proxy
 
@@ -730,6 +740,15 @@ class ByPy(object):
 				elif ec == 31079 and sc == 404:
 					self.pd("MD5 not found, rapidupload failed")
 					result = IEMD5NotFound
+				# errors that make retrying meaningless
+				elif ((ec == 31061 and sc == 400) or # file already exists
+					(ec == 31062 and sc == 400) or # file name is invalid
+					(ec == 31063 and sc == 400) or # file parent path does not exist
+					(ec == 31064 and sc == 403) or # file is not authorized
+					(ec == 31065 and sc == 400) or # directory is full 
+					(ec == 31066 and sc == 403)): # file does not exist
+					result = sc
+					dump_exception(self, None, url, pars, r, act)
 				else:
 					result = EOperationFailed
 					dump_exception(self, None, url, pars, r, act)
@@ -751,6 +770,9 @@ class ByPy(object):
 			else:
 				perr("Maximum number ({}) of retries failed.".format(self.__retry))
 				return result
+		else:
+			# bugfix: we need to reset it as long as there won't any retry per call
+			self.__try == 0
 
 		return result
 
@@ -1122,6 +1144,7 @@ get information of the given path (dir / file) at Baidu Yun.
 				# wants to be proper? properness doesn't work
 				# there seems to be a bug at Baidu's handling of http text:
 				# Content-Disposition: ...  filename=utf-8''yourfile.ext
+				# (pass '-ddd' to this program to verify this)
 				# when you specify a unicode file name, which will be encoded
 				# using the utf-8'' syntax
 				# so, we put a work-around here: we always call our file 'file'
