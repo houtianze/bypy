@@ -6,6 +6,8 @@
 # CAVEAT: DOESN'T work with proxy, the underlying reason being
 # the 'requests' package used for http communication doesn't seem
 # to work properly with proxies, reason unclear.
+# NOTE: It seems Baidu doesn't handle MD5 quite right after combining files,
+# so it may return erroneous MD5s. Perform a rapidupload again may fix the problem. That's why I changed default behavior to no-verification.
 # TODO: syncup / upload, syncdown / downdir are partially duplicates
 #       the difference: syncup/down compare and perform actions
 #       while down/up just proceed to download / upload (but still compare during actions)
@@ -13,6 +15,7 @@
 # TODO: Use batch functions for better performance
 # TODO: Use posixpath for path handling
 # TODO: Dry run?
+# TODO: Insecure (http) operations for better performance?
 '''
 bypy -- Python client for Baidu Yun
 ---
@@ -60,10 +63,15 @@ if SystemEncoding.upper() != 'UTF-8':
 	print(err)
 	raise ex
 import codecs
-sys.stdout = codecs.getwriter("utf-8")(sys.stdout)
+# no idea who is the asshole that screws the sys.stdout.encoding
+# the locale is 'UTF-8', sys.stdin.encoding is 'UTF-8',
+# BUT, sys.stdout.encoding is 'None' ...
+if not (sys.stdout.encoding and sys.stdout.encoding.lower() == 'utf-8'):
+	sys.stdout = codecs.getwriter("utf-8")(sys.stdout)
 import signal
 import time
 import shutil
+import posixpath
 #import types
 import traceback
 import inspect
@@ -173,6 +181,20 @@ PcsUrl = 'https://pcs.baidu.com/rest/2.0/pcs/'
 CPcsUrl = 'https://c.pcs.baidu.com/rest/2.0/pcs/'
 DPcsUrl = 'https://d.pcs.baidu.com/rest/2.0/pcs/'
 
+# when was your last time flushing a toilet?
+__last_flush = time.time()
+#__last_flush = 0
+PrintFlushPeriodInSec = 5.0
+
+def pr(msg):
+	print msg
+	# we need to flush the output periodically to see the latest status
+	now = time.time()
+	global __last_flush
+	if now - __last_flush >= PrintFlushPeriodInSec:
+		sys.stdout.flush()
+		__last_flush = now
+
 def plog(tag, msg, showtime = True, showdate = False, prefix = '', suffix = ''):
 	if showtime or showdate:
 		now = time.localtime()
@@ -182,10 +204,10 @@ def plog(tag, msg, showtime = True, showdate = False, prefix = '', suffix = ''):
 			tag += time.strftime("[%Y-%m-%d] ", now)
 
 	if prefix:
-		print "{}{}".format(tag, prefix)
-	print "{}{}".format(tag, msg)
+		pr("{}{}".format(tag, prefix))
+	pr("{}{}".format(tag, msg))
 	if suffix:
-		print "{}{}".format(tag, suffix)
+		pr("{}{}".format(tag, suffix))
 
 def perr(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
 	return plog('<E> ', msg, showtime, showdate, prefix, suffix)
@@ -198,9 +220,6 @@ def pinfo(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
 
 def pdbg(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
 	return plog('<D> ', msg, showtime, showdate, prefix, suffix)
-
-def pr(msg):
-	print msg
 
 def si_size(num, precision = 3):
 	''' DocTests:
@@ -330,7 +349,7 @@ def getfilesize(path):
 		size = os.path.getsize(path)
 	except os.error:
 		perr("Exception occured while getting size of '{}'. Exception:\n{}".format(path, traceback.format_exc()))
-	
+
 	return size
 
 # guarantee no-exception
@@ -340,7 +359,7 @@ def getfilemtime(path):
 		mtime = os.path.getmtime(path)
 	except os.error:
 		perr("Exception occured while getting modification time of '{}'. Exception:\n{}".format(path, traceback.format_exc()))
-	
+
 	return mtime
 
 # there is room for more space optimization (like using the tree structure),
@@ -360,7 +379,7 @@ class cached(object):
 	# it's a bit complex, and i thus don't have the confidence to do it in ctor/dtor
 	def __init__(self, f):
 		self.f = f
-	
+
 	def __call__(self, *args):
 		assert len(args) > 0
 		result = None
@@ -451,7 +470,7 @@ class cached(object):
 				saved = True
 			except Exception:
 				perr("Failed to save Hash Cache. Exception:\n".format(traceback.format_exc()))
-		
+
 		else:
 			if cached.verbose:
 				pr("Not saving Hash Cache since 'cachehash' is '{}' and 'dirty' is '{}'".format(
@@ -564,10 +583,10 @@ class PathDictTree(dict):
 		for k, v in kwargs.items():
 			self.extra[k] = v
 		super(PathDictTree, self).__init__()
-	
+
 	def __str__(self):
 		return self.__str('')
-	
+
 	def __str(self, prefix):
 		result = ''
 		for k, v in self.iteritems():
@@ -641,6 +660,7 @@ class ByPy(object):
 		slice_size = DefaultSliceSize, dl_chunk_size = DefaultDlChunkSize,
 		verify = True, secure = True,
 		retry = 5, timeout = None,
+		listfile = None,
 		verbose = 0, debug = False):
 		self.__slice_size = slice_size
 		self.__dl_chunk_size = dl_chunk_size
@@ -648,8 +668,15 @@ class ByPy(object):
 		self.__retry = retry
 		self.__timeout = timeout
 		self.__secure = secure
+		self.__listfile = listfile
 		self.Verbose = verbose
 		self.Debug = debug
+
+		if self.__listfile and os.path.exists(self.__listfile):
+			with open(self.__listfile, 'r') as f:
+				self.__list_file_contents = f.read()
+		else:
+			self.__list_file_contents = None
 
 		self.__slice_md5s = []
 		self.__try = 0 # this try has to be class-level because __request is a recursive call
@@ -690,7 +717,7 @@ class ByPy(object):
 				perr("Error accessing '{}'".format(url))
 				if ex and isinstance(ex, Exception) and self.Debug:
 					perr("Exception: {}".format(ex))
-					traceback.print_exc()
+				pr(traceback.format_exc())
 				perr("Function: {}".format(act.__name__))
 				perr("Website parameters: {}".format(pars))
 				if r:
@@ -704,22 +731,23 @@ class ByPy(object):
 			if method.upper() == 'GET':
 				self.pd("GET " + url)
 				r = requests.get(url,
-					#headers = {'User-Agent': UserAgent },
+					#headers = { 'User-Agent': UserAgent },
 					params = pars, timeout = self.__timeout, **kwargs)
 			elif method.upper() == 'POST':
 				if self.Debug:
 					self.pd("POST " + url)
 				r = requests.post(url,
-					#headers = {'User-Agent': UserAgent },
+					#headers = { 'User-Agent': UserAgent },
 					params = pars, timeout = self.__timeout, **kwargs)
 
+			self.pd("actargs: {}".format(actargs))
 			self.pd("Params: {}".format(pars))
 			self.pd("Request Headers: {}".format(
 				pprint.pformat(r.request.headers)), 2)
 			sc = r.status_code
 			self.pd("HTTP Status Code: {}".format(sc))
 			self.pd("Header returned: {}".format(pprint.pformat(r.headers)), 2)
-			self.pd("Website returned: {}".format(rb(r.text)), 2)
+			self.pd("Website returned: {}".format(rb(r.text)), 3)
 			if sc == requests.codes.ok:
 				self.pd("Request OK, processing action")
 				result = act(r, actargs)
@@ -742,11 +770,11 @@ class ByPy(object):
 					result = IEMD5NotFound
 				# errors that make retrying meaningless
 				elif ((ec == 31061 and sc == 400) or # file already exists
-					(ec == 31062 and sc == 400) or # file name is invalid
-					(ec == 31063 and sc == 400) or # file parent path does not exist
-					(ec == 31064 and sc == 403) or # file is not authorized
-					(ec == 31065 and sc == 400) or # directory is full 
-					(ec == 31066 and sc == 403)): # file does not exist
+					(ec == 31062) or # sc == 400 file name is invalid
+					(ec == 31063) or # sc == 400 file parent path does not exist
+					(ec == 31064) or # sc == 403 file is not authorized
+					(ec == 31065) or # sc == 400 directory is full
+					(ec == 31066)): # sc == 403 (indeed 404) file does not exist
 					result = sc
 					dump_exception(self, None, url, pars, r, act)
 				else:
@@ -765,10 +793,13 @@ class ByPy(object):
 			if retry and self.__try < self.__retry:
 				perr("Waiting {} seconds before retrying...".format(RetryDelayInSec))
 				time.sleep(RetryDelayInSec)
-				perr("Request retry #{}".format(self.__try))
-				return self.__request(url, pars, act, method, retry, **kwargs)
+				perr("Request retry #{} / {}".format(self.__try, self.__retry))
+				return self.__request(url, pars, act, method, actargs, retry, **kwargs)
 			else:
-				perr("Maximum number ({}) of retries failed.".format(self.__retry))
+				if retry:
+					perr("Maximum number ({}) of retries failed.".format(self.__retry))
+				else:
+					perr("No retry, returning")
 				return result
 		else:
 			# bugfix: we need to reset it as long as there won't any retry per call
@@ -843,7 +874,7 @@ class ByPy(object):
 			'code' : auth_code,
 			'redirect_uri' : 'oob' }
 		return self.__get(RedirectUrl, pars, self.__server_auth_act)
- 
+
 	def __device_auth_act(self, r, args):
 		dj = r.json()
 		return self.__get_token(dj)
@@ -902,7 +933,7 @@ class ByPy(object):
 				pos = help.find(ByPy.HelpMarker)
 				if pos != -1:
 					pr("Usage: " + help[pos + len(ByPy.HelpMarker):].strip())
-	
+
 	def refreshtoken(self):
 		''' Usage: refreshtoken - refresh the access token '''
 		return self.__refresh_token()
@@ -920,10 +951,29 @@ class ByPy(object):
 
 	def __verify_current_file(self, j, gotlmd5):
 		if self.__verify:
-			rsize = j['size']
+			rsize = 0
+			rmd5 = 0
+			if 'size' in j:
+				rsize = j['size']
+			else:
+				perr("Unable to verify JSON: '{}', as no 'size' entry found".format(j))
+				return EHashMismatch
+
+			if 'md5' in j:
+				rmd5 = binascii.unhexlify(j['md5'])
+			#elif 'block_list' in j and len(j['block_list']) > 0:
+			#	rmd5 = j['block_list'][0]
+			#else:
+			#	# quick hack for meta's 'block_list' field
+			#	pwarn("No 'md5' nor 'block_list' found in json:\n{}".format(j))
+			#	pwarn("Assuming MD5s match, checking size ONLY.")
+			#	rmd5 = self.__current_file_md5
+			else:
+				perr("Unable to verify JSON: '{}', as no 'md5' entry found".format(j))
+				return EHashMismatch
+
 			if not gotlmd5:
 				self.__current_file_md5 = md5(self.__current_file)
-			rmd5 = binascii.unhexlify(j['md5'])
 
 			self.pd("Comparing local file '{}' and remote file '{}'".format(
 				self.__current_file, j['path']))
@@ -940,6 +990,36 @@ class ByPy(object):
 				return EHashMismatch
 		else:
 			return ENoError
+
+	def __get_file_info_act(self, r, args):
+		remotefile, out_json = args
+		j = r.json()
+		self.pd("List json: {}".format(j))
+		l = j['list']
+		for f in l:
+			if f['path'] == remotefile: # case-sensitive
+				out_json = f
+				self.pd("File info json: {}".format(out_json))
+				return ENoError;
+
+		return EFileNotFound
+
+	# the 'meta' command sucks, since it doesn't supply MD5 ...
+	def __get_file_info(self, remotefile, out_json):
+		rdir, rfile = posixpath.split(remotefile)
+		self.pd("__get_file_info(): rdir : {} | rfile: {}".format(rdir, rfile))
+		if rdir and rfile:
+			pars = {
+				'method' : 'list',
+				'access_token' : self.__access_token,
+				'path' : rdir,
+				'by' : 'name', # sort in case we can use binary-search, etc in the futrue.
+				'order' : 'asc' }
+
+			return self.__get(PcsUrl + 'file', pars, self.__get_file_info_act, (remotefile, out_json))
+		else:
+			perr("Invalid remotefile '{}' specified.".format(remotefile))
+			return EArgument
 
 	def __list_act(self, r, args):
 		(remotedir, fmt) = args
@@ -978,6 +1058,7 @@ class ByPy(object):
 			'order' : order }
 
 		return self.__get(PcsUrl + 'file', pars, self.__list_act, (rpath, fmt))
+
 	def __meta_act(self, r, args):
 		return self.__list_act(r, args)
 
@@ -1003,32 +1084,32 @@ get information of the given path (dir / file) at Baidu Yun.
 	def __combine_file_act(self, r, args):
 		result = self.__verify_current_file(r.json(), False)
 		if result == ENoError:
-			# save the md5 list, in case we add in resume function later to this program
-			self.__last_slice_md5s = self.__slice_md5s
-			self.__slice_md5s = []
 			self.pv("'{}' >>==> '{}' OK.".format(self.__current_file, args))
 		else:
 			perr("'{}' >>==> '{}' FAILED.".format(self.__current_file, args))
+		# save the md5 list, in case we add in resume function later to this program
+		self.__last_slice_md5s = self.__slice_md5s
+		self.__slice_md5s = []
 
 		return result
 
-	def __combine_file(self, localpath, remotepath, ondup = 'overwrite'):
+	def __combine_file(self, remotepath, ondup = 'overwrite'):
 		pars = {
 			'method' : 'createsuperfile',
 			'access_token' : self.__access_token,
 			'path' : remotepath,
 			'ondup' : ondup }
 
-		self.pd("Combining the following MD5 slices:")
+		# always print this, so that we can use these data to combine file later
+		pr("Combining the following MD5 slices:")
 		for m in self.__slice_md5s:
-			self.pd(m)
+			pr(m)
 
 		param = { 'block_list' : self.__slice_md5s }
 		return self.__post(PcsUrl + 'file',
 				pars, self.__combine_file_act,
 				remotepath,
 				data = { 'param' : json.dumps(param) } )
-
 
 	def __upload_slice_act(self, r, args):
 		j = r.json()
@@ -1037,7 +1118,7 @@ get information of the given path (dir / file) at Baidu Yun.
 		rsmd5 = j['md5']
 		self.pd("Uploaded MD5 slice: " + rsmd5)
 		if self.__current_slice_md5 == binascii.unhexlify(rsmd5):
-			self.__slice_md5s.append(j['md5'])
+			self.__slice_md5s.append(rsmd5)
 			self.pv("'{}' >>==> '{}' OK.".format(self.__current_file, args))
 			return ENoError
 		else:
@@ -1077,28 +1158,39 @@ get information of the given path (dir / file) at Baidu Yun.
 				m = hashlib.md5()
 				m.update(self.__current_slice)
 				self.__current_slice_md5 = m.digest()
-				self.pd("Uploading MD5 slice: " + binascii.hexlify(self.__current_slice_md5))
+				self.pd("Uploading MD5 slice: {}, #{} / {}".format(
+					binascii.hexlify(self.__current_slice_md5),
+					i + 1, pieces))
 				j = 0
 				while True:
 					ec = self.__upload_slice(remotepath)
-					if ec == ENoError and j < self.__retry:
+					if ec == ENoError:
 						self.pd("Slice MD5 match, continuing next slice")
 						break
-					else:
+					elif j < self.__retry:
 						j += 1
 						perr("Slice MD5 mismatch, waiting {} seconds before retrying...".format(RetryDelayInSec))
 						time.sleep(RetryDelayInSec)
-						perr("Retrying #{}".format(j))
+						perr("Retrying #{} / {}".format(j, self.__retry))
+					else:
+						self.__slice_md5s = []
+						break
 				i += 1
 
 		if ec != ENoError:
 			return ec
-
-		return self.__combine_file(localpath, remotepath, ondup = 'overwrite')
+		else:
+			#self.pd("Sleep 2 seconds before combining, just to be safer.")
+			#time.sleep(2)
+			return self.__combine_file(remotepath, ondup = 'overwrite')
 
 	def __rapidupload_file_act(self, r, args):
-		#time.sleep(1) # not strong-consistent, wait 1 second before reading
-		return self.__verify_current_file(r.json(), True)
+		if self.__verify:
+			self.pd("Not strong-consistent, sleep 1 second before verification")
+			time.sleep(1)
+			return self.__verify_current_file(r.json(), True)
+		else:
+			return ENoError
 
 	def __rapidupload_file(self, localpath, remotepath, ondup = 'overwrite'):
 		self.__current_file_md5 = md5(self.__current_file)
@@ -1168,22 +1260,19 @@ get information of the given path (dir / file) at Baidu Yun.
 
 		result = ENoError
 		for name in names:
-			lfile = os.path.normpath(dirname + os.sep + name)
+			lfile = os.path.join(dirname, name)
 			if os.path.isfile(lfile):
 				self.__current_file = lfile
 				rfile = rdir + '/' + name.replace('\\', '/')
 				# if the corresponding file matches at Baidu Yun, then don't upload
-				pars = {
-					'method' : 'meta',
-					'access_token' : self.__access_token,
-					'path' : rfile }
-				subresult = self.__get(PcsUrl + 'file', pars,
-					self.__verify_current_file, False, retry = False) # no retry
-				if subresult == ENoError:
+				fjson = {}
+				subresult = self.__get_file_info(rfile, fjson)
+				if subresult == ENoError and self.__verify_current_file(fjson, False):
 					self.pv("Remote file exists, skip uploading".format(rfile))
-				fileresult = self.__upload_file(lfile, rfile, ondup)
-				if fileresult != ENoError:
-					result = fileresult # we still continue
+				else:
+					fileresult = self.__upload_file(lfile, rfile, ondup)
+					if fileresult != ENoError:
+						result = fileresult # we still continue
 
 		return result
 
@@ -1200,9 +1289,7 @@ get information of the given path (dir / file) at Baidu Yun.
 			self.pd("'{}' is being RapidUploaded.".format(self.__current_file))
 			result = self.__rapidupload_file(localpath, remotepath, ondup)
 			if result == ENoError:
-				if self.__verify:
-					self.pd("Not strong-consistent, sleep 1 second before verification")
-					time.sleep(1) # not strong-consistent, wait 1 sec before verifying
+				self.pd("RapidUpload finished OK.")
 			else:
 				self.pd("'{}' can't be RapidUploaded, now trying normal uploading.".format(
 					self.__current_file))
@@ -1217,12 +1304,12 @@ get information of the given path (dir / file) at Baidu Yun.
 					result = self.__upload_file_slices(localpath, remotepath, ondup)
 				else:
 					result = EFileTooBig
-					perr("Eror: size of file '{}' - {} is too big".format(
+					perr("Error: size of file '{}' - {} is too big".format(
 						self.__current_file,
 						self.__current_file_size))
 
 			return result
-		else: # very small file, must be uploaded manually and no slice is needed
+		else: # very small file, must be uploaded manually and no slicing is needed
 			self.pd("'{}' is small and being non-slicing uploaded.".format(self.__current_file))
 			return self.__upload_one_file(localpath, remotepath, ondup)
 
@@ -1261,6 +1348,40 @@ upload a file or directory (recursively)
 			perr("Error: invalid local path '{}' for uploading specified.".format(localpath))
 			return EParameter
 
+	def combine(self, remotefile, localfile = '', *args):
+		''' Usage: combine <remotefile> [md5s] [localfile] - \
+try to create a file at PCS by combining slices, having MD5s specified
+  remotefile - remote file at Baidu Yun (after app root directory at Baidu Yun)
+  md5s - MD5 digests of the slices, separated by spaces
+    if not specified, you must specify the 'listfile' using the '-l' or '--list-file' switch in command line. the MD5 digests will be read from the (text) file, which can store the MD5 digest seperate by new-line or spaces
+  localfile - local file for verification, if not specified, no verification is done
+		'''
+		self.__slice_md5s = []
+		if args:
+			for arg in args:
+				self.__slice_md5s.append(arg)
+		elif self.__list_file_contents:
+			digests = filter(None, self.__list_file_contents.split())
+			for d in digests:
+				self.__slice_md5s.append(d)
+		else:
+			perr("You MUST either provide the MD5s through the command line, "
+				"or using the '-l' ('--list-file') switch to specify "
+				"the 'listfile' to read MD5s from")
+			return EArgument
+
+		verify = self.__verify
+		if localfile:
+			self.__current_file = localfile
+		else:
+			self.__current_file = 'FAKE'
+			self.__verify = False
+
+		result = self.__combine_file(get_pcs_path(remotefile))
+		self.__verify = verify
+		return result
+
+	# no longer used
 	def __get_meta_act(self, r, args):
 		parse_ok = False
 		j = r.json()
@@ -1269,7 +1390,7 @@ upload a file or directory (recursively)
 			if len(lj) > 0:
 				self.__remote_json = lj[0] # TODO: ugly patch
 				# patch for inconsistency between 'list' and 'meta' json
-				self.__remote_json['md5'] = self.__remote_json['block_list'].strip('[]"')
+				#self.__remote_json['md5'] = self.__remote_json['block_list'].strip('[]"')
 				self.pd("self.__remote_json: {}".format(self.__remote_json))
 				parse_ok = True
 				return ENoError
@@ -1279,6 +1400,7 @@ upload a file or directory (recursively)
 			perr("Invalid JSON: {}\n{}".format(j, traceback.format_exc()))
 			return EInvalidJson
 
+	# no longer used
 	def __get_meta(self, remotefile):
 		pars = {
 			'method' : 'meta',
@@ -1309,8 +1431,9 @@ upload a file or directory (recursively)
 		self.pd("Downloading '{}' as '{}'".format(rfile, localfile))
 		self.__current_file = localfile
 		if self.__verify:
-			self.pd("Getting meta info of remote file '{}' for later verification".format(rfile))
-			result = self.__get_meta(rfile)
+			self.pd("Getting info of remote file '{}' for later verification".format(rfile))
+			self.__remote_json = {}
+			result = self.__get_file_info(rfile, self.__remote_json)
 			if result != ENoError:
 				return result
 
@@ -1354,10 +1477,10 @@ download a remote file.
 		localfile = localpath
 		if not localpath:
 			localfile = os.path.basename(remotefile)
-		elif localpath[-1] == '\\' or localpath[-1] == '/':
-			localfile = os.path.normpath(localpath + os.path.basename(remotefile))
-		elif os.path.isdir(localpath):
-			localfile = os.path.normpath(localpath + os.sep + os.path.basename(remotefile))
+		elif localpath[-1] == '\\' or \
+			localpath[-1] == '/' or \
+			os.path.isdir(localpath):
+			localfile = os.path.join(localpath, os.path.basename(remotefile))
 		else:
 			localfile = localpath
 
@@ -1642,7 +1765,7 @@ restore a file from the recycle bin
 		files = []
 		dirs = []
 		for name in names:
-			fullname = dirname + os.sep + name
+			fullname = os.path.join(dirname, name)
 			if os.path.isfile(fullname):
 				files.append((name, getfilesize(fullname), md5(fullname)))
 			elif os.path.isdir(fullname):
@@ -1665,7 +1788,7 @@ restore a file from the recycle bin
 		self.__local_dir_contents = PathDictTree()
 		os.path.walk(dir, self.__proceed_local_gather, len(dir))
 		self.pd(self.__local_dir_contents)
-	
+
 	def __proceed_remote_gather(self, remotepath, dirjs, filejs, args = None):
 		# NOTE: the '+ 1' is due to the trailing slash '/'
 		# be careful about the trailing '/', it bit me once, bitterly
@@ -1675,7 +1798,7 @@ restore a file from the recycle bin
 		for d in dirjs:
 			self.__remote_dir_contents.get(remotepath[rootlen:]).add(
 				d['path'][dlen:], PathDictTree('D', size = d['size'], md5 = binascii.unhexlify(d['md5'])))
-		
+
 		for f in filejs:
 			self.__remote_dir_contents.get(remotepath[rootlen:]).add(
 				f['path'][dlen:], PathDictTree('F', size = f['size'], md5 = binascii.unhexlify(f['md5'])))
@@ -1872,7 +1995,7 @@ if not specified, it defaults to the root directory
 		else:
 			perr("Cache not loaded.")
 			return EOperationFailed
-	
+
 	def cleancache(self):
 		''' Usage: cleancache - remove invalid entries from hash cache file'''
 		if os.path.exists(HashCachePath):
@@ -1888,9 +2011,15 @@ if not specified, it defaults to the root directory
 OriginalFloatTime = True
 
 def doexitwork():
+	sys.stdout.flush()
 	os.stat_float_times(OriginalFloatTime)
-	#cached.savecache()
-	cached.cleancache()
+	# we save, but don't clean, why?
+	# think about unmount path, moved files,
+	# once we discard the information, they are gone.
+	# so unless the user specifically request a clean,
+	# we don't act too smart.
+	cached.savecache()
+	#cached.cleancache()
 
 def sighandler(signum, frame):
 	pr("Signal {} received, Abort".format(signum))
@@ -1903,7 +2032,7 @@ def main(argv=None): # IGNORE:C0111
 	''' Main Entry '''
 
 	# *** IMPORTANT ***
-	# We must set this in order for cache to work, 
+	# We must set this in order for cache to work,
 	# as we need to get integer file mtime, which is used as the key of Hash Cache
 	global OriginalFloatTime
 	OriginalFloatTime = os.stat_float_times()
@@ -1923,7 +2052,8 @@ def main(argv=None): # IGNORE:C0111
 	else:
 		signal.signal(signal.SIGBUS, sighandler)
 		signal.signal(signal.SIGHUP, sighandler)
-		signal.signal(signal.SIGPIPE, sighandler)
+		# https://stackoverflow.com/questions/108183/how-to-prevent-sigpipes-or-handle-them-properly
+		signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 		signal.signal(signal.SIGQUIT, sighandler)
 		signal.signal(signal.SIGSYS, sighandler)
 
@@ -1973,7 +2103,7 @@ right after the '# PCS configuration constants' comment.
 					helpbody = help[pos_body:]
 					helpline = helpbody.split('\n')[0].strip() + '\n'
 					if helpline.find('help') == 0:
-						summary.insert(0, helpline) 
+						summary.insert(0, helpline)
 					else:
 						summary.append(helpline)
 
@@ -2000,12 +2130,13 @@ right after the '# PCS configuration constants' comment.
 
 		# program tunning, configration (those will be passed to class ByPy)
 		parser.add_argument("-r", "--retry", dest="retry", default=5, help="number of retry attempts on network error [default: %(default)i times]")
-		parser.add_argument("-t", "--timeout", dest="timeout", default=None, help="network time out in seconds [default: %(default)s]")
+		parser.add_argument("-t", "--timeout", dest="timeout", default=60, help="network time out in seconds [default: %(default)s]")
 		parser.add_argument("-s", "--slice", dest="slice", default=DefaultSliceSize, help="size of file upload slice (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultSliceInMB))
 		parser.add_argument("--chunk", dest="chunk", default=DefaultDlChunkSize, help="size of file download chunk (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultDlChunkSize / OneM))
-		parser.add_argument("-k", "--skip-verification", dest="skipv", action="store_true", default=False, help="skip upload / download file verification [default : %(default)s]")
+		parser.add_argument("-e", "--verify", dest="verify", action="store_true", default=False, help="Verify upload / download [default : %(default)s]")
 		parser.add_argument("-I", "--insecure", dest="insecure", action="store_true", default=False, help="use http (INSECURE) instead of https connections [default: %(default)s] - NOT IMPLEMENTED")
 		parser.add_argument("-f", "--force-hash", dest="forcehash", action="store_true", default=False, help="force file MD5 / CRC32 calculation instead of using cached values [default: %(default)s]")
+		parser.add_argument("-l", "--list-file", dest="listfile", default=None, help="input list file (used by some of the commands only [default: %(default)s]")
 
 		# action
 		parser.add_argument("-c", "--clean", dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean both settings and hash cache [default: %(default)s]")
@@ -2030,6 +2161,8 @@ right after the '# PCS configuration constants' comment.
 
 		pr("Token file: '{}'".format(TokenFilePath))
 		pr("App root path at Baidu Yun '{}'".format(AppPcsPath))
+		pr("sys.stdin.encoding = {}".format(sys.stdin.encoding))
+		pr("sys.stdout.encoding = {}".format(sys.stdout.encoding))
 
 		if args.verbose > 0:
 			pr("Verbose level = {}".format(args.verbose))
@@ -2071,8 +2204,9 @@ right after the '# PCS configuration constants' comment.
 			cached.loadcache()
 
 			by = ByPy(slice_size = int(slice_size), dl_chunk_size = int(args.chunk),
-					verify = not args.skipv, secure = not args.insecure,
+					verify = args.verify, secure = not args.insecure,
 					retry = int(args.retry), timeout = timeout,
+					listfile = args.listfile,
 					verbose = args.verbose, debug = args.debug)
 			uargs = []
 			for arg in args.command[1:]:
@@ -2091,7 +2225,7 @@ right after the '# PCS configuration constants' comment.
 		pr("Abort")
 	except Exception:
 		perr("Exception occurred:")
-		traceback.print_exc()
+		pr(traceback.format_exc())
 		pr("Abort")
 		# raise
 
