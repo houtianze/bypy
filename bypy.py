@@ -112,7 +112,7 @@ OneE = OneP * OneK
 __all__ = []
 __version__ = 0.1
 __date__ = '2013-10-25'
-__updated__ = '2013-11-26'
+__updated__ = '2014-01-13'
 
 # ByPy default values
 DefaultSliceInMB = 20
@@ -1667,12 +1667,7 @@ copy a file / dir remotely at Baidu Yun
 			perr("Deletion failed")
 			return EFailToDeleteFile
 
-	def delete(self, remotepath):
-		''' Usage: delete <remotepath> - \
-delete a file / dir remotely at Baidu Yun
-  remotepath - destination path (file / dir)
-		'''
-		rpath = get_pcs_path(remotepath)
+	def __delete(self, rpath):
 		pars = {
 			'method' : 'delete',
 			'access_token' : self.__access_token,
@@ -1680,6 +1675,14 @@ delete a file / dir remotely at Baidu Yun
 
 		self.pd("Remote deleting: '{}'".format(rpath))
 		return self.__post(PcsUrl + 'file', pars, self.__delete_act)
+
+	def delete(self, remotepath):
+		''' Usage: delete <remotepath> - \
+delete a file / dir remotely at Baidu Yun
+  remotepath - destination path (file / dir)
+		'''
+		rpath = get_pcs_path(remotepath)
+		return self.__delete(rpath)
 
 	def __search_act(self, r, args):
 		print_pcs_list(r.json())
@@ -1954,12 +1957,22 @@ if not specified, it defaults to the root directory
 		'''
 		result = ENoError
 		rdir = get_pcs_path(remotedir)
-		rpartialdir = remotedir.rstrip('/ ')
+		#rpartialdir = remotedir.rstrip('/ ')
 		same, diff, local, remote = self.__compare(rdir, localdir)
 		# clear the way
 		for d in diff:
+			t = d[0] # type
+			p = d[1] # path
 			# this path is before get_pcs_path() since delete() expects so.
-			result = self.delete(rpartialdir + '/' + d[1])
+			#result = self.delete(rpartialdir + '/' + p)
+			result = self.__delete(rdir + '/' + p)
+			# don't care about dirs, since we will create them during uploading
+			if t == 'F':
+				subresult = self.__upload_file(
+					os.path.join(localdir, p),
+					rdir + '/' + p)
+				if subresult != ENoError:
+					result = subresult
 
 		for l in local:
 			# don't care about dirs, since we will create them during uploading
@@ -1977,10 +1990,11 @@ if not specified, it defaults to the root directory
 			# children or another set of directories
 			pp = '\\' # previous path, setting to '\\' make sure it won't be found in the first step
 			for r in remote:
-				p = rpartialdir + '/' + r[1]
+				#p = rpartialdir + '/' + r[1]
+				p = get_pcs_path(r[1])
 				if 0 != p.find(pp): # another path
-					self.pd("Deleting remote file '{}'".format(p))
-					subresult = self.delete(p)
+					#subresult = self.delete(p)
+					subresult = self.__delete(p)
 					if subresult != ENoError:
 						result = subresult
 				pp = p
