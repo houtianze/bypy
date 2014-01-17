@@ -185,12 +185,15 @@ DPcsUrl = 'https://d.pcs.baidu.com/rest/2.0/pcs/'
 __last_flush = time.time()
 #__last_flush = 0
 PrintFlushPeriodInSec = 5.0
+# save cache if more than 10 minutes passed
+last_cache_save = time.time()
+CacheSavePeriodInSec = 10 * 60.0
 
 def pr(msg):
 	print msg
 	# we need to flush the output periodically to see the latest status
-	now = time.time()
 	global __last_flush
+	now = time.time()
 	if now - __last_flush >= PrintFlushPeriodInSec:
 		sys.stdout.flush()
 		__last_flush = now
@@ -362,13 +365,33 @@ def getfilemtime(path):
 
 	return mtime
 
+# https://stackoverflow.com/questions/10883399/unable-to-encode-decode-pprint-output
+class MyPrettyPrinter(pprint.PrettyPrinter):
+	def format(self, obj, context, maxlevels, level):
+		if isinstance(obj, unicode):
+			#return (obj.encode('utf8'), True, False)
+			return (obj, True, False)
+		if isinstance(obj, str):
+			convert = False
+			#for c in obj:
+			#	if ord(c) >= 128:
+			#		convert = True
+			#		break
+			try:
+				codecs.decode(obj)
+			except:
+				convert = True
+			if convert:
+				return ("0x{}".format(binascii.hexlify(obj)), True, False)
+		return pprint.PrettyPrinter.format(self, obj, context, maxlevels, level)
+
 # there is room for more space optimization (like using the tree structure),
 # but it's not added at the moment. for now, it's just simple pickle.
 # SQLite might be better for portability
 # NOTE: file names are case-sensitive
 class cached(object):
 	''' simple decorator for hash caching (using pickle) '''
-	cachehash = True
+	usecache = True
 	verbose = False
 	debug = False
 	cache = {}
@@ -393,7 +416,8 @@ class cached(object):
 				if self.f.__name__ in info \
 					and info['size'] == getfilesize(path) \
 					and info['mtime'] == getfilemtime(path) \
-					and self.f.__name__ in info:
+					and self.f.__name__ in info \
+					and cached.usecache:
 					result = info[self.f.__name__]
 					if cached.debug:
 						pdbg("Cache hit for file '{}',\n{}: {}\nsize: {}\nmtime: {}".format(
@@ -424,14 +448,28 @@ class cached(object):
 		info['mtime'] = getfilemtime(path)
 		info[self.f.__name__] = value
 		if cached.debug:
-			pdbg("Cache miss for file '{}',\n{}: {}\nsize: {}\nmtime: {}".format(
+			situation = "Storing cache"
+			if cached.usecache:
+				situation = "Cache miss"
+			pdbg((situation + " for file '{}',\n{}: {}\nsize: {}\nmtime: {}").format(
 				path, self.f.__name__,
 				value if isinstance(value, (int, long, float, complex)) else binascii.hexlify(value),
 				info['size'], info['mtime']))
 
+		# periodically save to prevent loss in case of system crash
+		global last_cache_save
+		now = time.time()
+		if now - last_cache_save >= CacheSavePeriodInSec:
+			cached.savecache()
+			last_cache_save = now
+		if cached.debug:
+			pdbg("Periodically saving Hash Cash")
+
 	@staticmethod
 	def loadcache():
-		if cached.cachehash and not cached.cacheloaded: # no double-loading
+		# load cache even we don't use cached hash values,
+		# because we will save (possibly updated) and hash values
+		if not cached.cacheloaded: # no double-loading
 			if cached.verbose:
 				pr("Loading Hash Cache File '{}'...".format(HashCachePath))
 
@@ -450,15 +488,15 @@ class cached(object):
 					pr("Hash Cache File not found, no caching")
 		else:
 			if cached.verbose:
-				pr("Not loading Hash Cache since 'cachehash' is '{}' and 'cacheloaded' is '{}'".format(
-					cached.cachehash, cached.cacheloaded))
+				pr("Not loading Hash Cache since 'cacheloaded' is '{}'".format( cached.cacheloaded))
 
 		return cached.cacheloaded
 
 	@staticmethod
 	def savecache(force_saving = False):
 		saved = False
-		if (cached.cachehash and cached.dirty) or force_saving: # even if we were unable to load the cache, we still save it.
+		# even if we were unable to load the cache, we still save it.
+		if cached.dirty or force_saving:
 			if cached.verbose:
 				pr("Saving Hash Cache...")
 
@@ -468,13 +506,14 @@ class cached(object):
 				if cached.verbose:
 					pr("Hash Cache saved.")
 				saved = True
+				cached.dirty = False
 			except Exception:
 				perr("Failed to save Hash Cache. Exception:\n".format(traceback.format_exc()))
 
 		else:
 			if cached.verbose:
-				pr("Not saving Hash Cache since 'cachehash' is '{}' and 'dirty' is '{}'".format(
-					cached.cachehash, cached.dirty))
+				pr("Not saving Hash Cache since 'dirty' is '{}' and 'force_saving' is '{}'".format(
+					cached.dirty, force_saving))
 
 		return saved
 
@@ -2001,10 +2040,12 @@ if not specified, it defaults to the root directory
 
 		return result
 
+
 	def dumpcache(self):
 		''' Usage: dumpcache - display file hash cache'''
 		if cached.cacheloaded:
-			pprint.pprint(cached.cache)
+			#pprint.pprint(cached.cache)
+			MyPrettyPrinter().pprint(cached.cache)
 			return ENoError
 		else:
 			perr("Cache not loaded.")
@@ -2014,6 +2055,11 @@ if not specified, it defaults to the root directory
 		''' Usage: cleancache - remove invalid entries from hash cache file'''
 		if os.path.exists(HashCachePath):
 			try:
+				# backup first
+				backup = HashCachePath + '.lastclean'
+				shutil.copy(HashCachePath, backup)
+				self.pd("Hash Cache file '{}' backed up as '{}".format(
+					HashCachePath, backup))
 				cached.cleancache()
 				return ENoError
 			except:
@@ -2212,7 +2258,7 @@ right after the '# PCS configuration constants' comment.
 			if args.timeout:
 				timeout = float(args.timeout)
 
-			cached.cachehash = not args.forcehash
+			cached.usecache = not args.forcehash
 			cached.verbose = args.verbose
 			cached.debug = args.debug
 			cached.loadcache()
