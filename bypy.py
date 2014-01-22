@@ -2215,7 +2215,7 @@ right after the '# PCS configuration constants' comment.
 
 		# program tunning, configration (those will be passed to class ByPy)
 		parser.add_argument("-r", "--retry", dest="retry", default=5, help="number of retry attempts on network error [default: %(default)i times]")
-		parser.add_argument("--continue-on-failure", dest="cont", default=False, help="continue tasks even maximum number of retry failed [default: %(default)]")
+		parser.add_argument("--continue-on-failure", dest="cont", default=False, help="continue tasks even maximum number of retry failed [default: %(default)s]")
 		parser.add_argument("-t", "--timeout", dest="timeout", default=60, help="network time out in seconds [default: %(default)s]")
 		parser.add_argument("-s", "--slice", dest="slice", default=DefaultSliceSize, help="size of file upload slice (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultSliceInMB))
 		parser.add_argument("--chunk", dest="chunk", default=DefaultDlChunkSize, help="size of file download chunk (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultDlChunkSize / OneM))
