@@ -2,12 +2,13 @@
 # encoding: utf-8
 # ===  IMPORTANT  ====
 # NOTE: In order to support no-ASCII file names,
-# your system's locale MUST be set to 'utf-8'
+#       your system's locale MUST be set to 'utf-8'
 # CAVEAT: DOESN'T work with proxy, the underlying reason being
-# the 'requests' package used for http communication doesn't seem
-# to work properly with proxies, reason unclear.
+#         the 'requests' package used for http communication doesn't seem
+#         to work properly with proxies, reason unclear.
 # NOTE: It seems Baidu doesn't handle MD5 quite right after combining files,
-# so it may return erroneous MD5s. Perform a rapidupload again may fix the problem. That's why I changed default behavior to no-verification.
+#       so it may return erroneous MD5s. Perform a rapidupload again may fix the problem.
+#        That's why I changed default behavior to no-verification.
 # TODO: syncup / upload, syncdown / downdir are partially duplicates
 #       the difference: syncup/down compare and perform actions
 #       while down/up just proceed to download / upload (but still compare during actions)
@@ -16,6 +17,7 @@
 # TODO: Use posixpath for path handling
 # TODO: Dry run?
 # TODO: Insecure (http) operations for better performance?
+# TODO: Better logic for __request() with retry (also use decorator maybe?)
 '''
 bypy -- Python client for Baidu Yun
 ---
@@ -48,8 +50,8 @@ and then, change 'ServerAuth' to 'False'
 # https://stackoverflow.com/questions/4374455/how-to-set-sys-stdout-encoding-in-python-3
 # https://stackoverflow.com/questions/492483/setting-the-correct-encoding-when-piping-stdout-in-python
 # http://drj11.wordpress.com/2007/05/14/python-how-is-sysstdoutencoding-chosen/
-# http://stackoverflow.com/questions/11741574/how-to-set-the-default-encoding-to-utf-8-in-python
-# http://stackoverflow.com/questions/2276200/changing-default-encoding-of-python
+# https://stackoverflow.com/questions/11741574/how-to-set-the-default-encoding-to-utf-8-in-python
+# https://stackoverflow.com/questions/2276200/changing-default-encoding-of-python
 from __future__ import unicode_literals
 import os
 import sys
@@ -118,7 +120,7 @@ __updated__ = '2014-01-13'
 DefaultSliceInMB = 20
 DefaultSliceSize = 20 * OneM
 DefaultDlChunkSize = OneM
-RetryDelayInSec = 5
+RetryDelayInSec = 10
 
 # Baidu PCS constants
 MinRapidUploadFileSize = 256 * OneK
@@ -141,6 +143,7 @@ EFailToCreateLocalFile = 100
 EFailToDeleteDir = 110
 EFailToDeleteFile = 120
 EFileNotFound = 130
+EMaxRetry = 140
 EOperationFailed = 10000 # pcs operation failed
 
 # internal errors
@@ -699,12 +702,14 @@ class ByPy(object):
 		slice_size = DefaultSliceSize, dl_chunk_size = DefaultDlChunkSize,
 		verify = True, secure = True,
 		retry = 5, timeout = None,
+		cont = False,
 		listfile = None,
 		verbose = 0, debug = False):
 		self.__slice_size = slice_size
 		self.__dl_chunk_size = dl_chunk_size
 		self.__verify = verify
 		self.__retry = retry
+		self.__cont = cont
 		self.__timeout = timeout
 		self.__secure = secure
 		self.__listfile = listfile
@@ -718,7 +723,6 @@ class ByPy(object):
 			self.__list_file_contents = None
 
 		self.__slice_md5s = []
-		self.__try = 0 # this try has to be class-level because __request is a recursive call
 
 		# only if user specifies '-ddd' or more 'd's, the following
 		# debugging information will be shown, as it's very talkative.
@@ -750,22 +754,23 @@ class ByPy(object):
 			perr('Error parsing JSON Error Code from {}'.format(rb(r.text)))
 			perr('Exception: {}'.format(traceback.format_exc()))
 
-	def __request(self, url, pars, act, method, actargs = None, retry = True, **kwargs):
-		def dump_exception(self, ex, url, pars, r, act):
-			if self.Debug or self.Verbose:
-				perr("Error accessing '{}'".format(url))
-				if ex and isinstance(ex, Exception) and self.Debug:
-					perr("Exception: {}".format(ex))
-				pr(traceback.format_exc())
-				perr("Function: {}".format(act.__name__))
-				perr("Website parameters: {}".format(pars))
-				if r:
-					perr("HTTP Status Code: {}".format(r.status_code))
-					self.__print_error_json(r)
-					perr("Website returned: {}".format(rb(r.text)))
+	def __dump_exception(self, ex, url, pars, r, act):
+		if self.Debug or self.Verbose:
+			perr("Error accessing '{}'".format(url))
+			if ex and isinstance(ex, Exception) and self.Debug:
+				perr("Exception: {}".format(ex))
+			pr(traceback.format_exc())
+			perr("Function: {}".format(act.__name__))
+			perr("Website parameters: {}".format(pars))
+			if r:
+				perr("HTTP Status Code: {}".format(r.status_code))
+				self.__print_error_json(r)
+				perr("Website returned: {}".format(rb(r.text)))
 
+	def __request_work(self, url, pars, act, method, actargs = None, **kwargs):
 		result = ENoError
 		r = None
+
 		try:
 			if method.upper() == 'GET':
 				self.pd("GET " + url)
@@ -792,57 +797,76 @@ class ByPy(object):
 				result = act(r, actargs)
 				if result == ENoError:
 					self.pd("Request all goes fine")
-					self.__try = 0 # reset the retry counter
 			else:
 				j = r.json()
 				ec = j['error_code']
 				self.__print_error_json(r)
 
 				# Access token invalid or no longer valid
-				if ec == 110 and sc == 401:
+				if ec == 110: # and sc == 401:
 					self.pd("Needs to refresh token, refreshing")
-					self.__refresh_token() # refresh the token and re-request
-					self.__request(url, pars, act, method, retry, **kwargs) # TODO: avoid dead loops
+					if ENoError == self.__refresh_token(): # refresh the token and re-request
+						# TODO: avoid dead loops
+						# TODO: properly pass retry
+						result = self.__request(url, pars, act, method, actargs, True, **kwargs)
+					else:
+						result = EOperationFailed
 				# File md5 not found, you should use upload API to upload the whole file.
-				elif ec == 31079 and sc == 404:
+				elif ec == IEMD5NotFound: # and sc == 404:
 					self.pd("MD5 not found, rapidupload failed")
-					result = IEMD5NotFound
-				# errors that make retrying meaningless
-				elif ((ec == 31061 and sc == 400) or # file already exists
-					(ec == 31062) or # sc == 400 file name is invalid
-					(ec == 31063) or # sc == 400 file parent path does not exist
-					(ec == 31064) or # sc == 403 file is not authorized
-					(ec == 31065) or # sc == 400 directory is full
-					(ec == 31066)): # sc == 403 (indeed 404) file does not exist
 					result = sc
-					dump_exception(self, None, url, pars, r, act)
+				# errors that make retrying meaningless
+				elif (
+					ec == 31061 or # sc == 400 file already exists
+					ec == 31062 or # sc == 400 file name is invalid
+					ec == 31063 or # sc == 400 file parent path does not exist
+					ec == 31064 or # sc == 403 file is not authorized
+					ec == 31065 or # sc == 400 directory is full
+					ec == 31066): # sc == 403 (indeed 404) file does not exist
+					result = sc
+					self.__dump_exception(None, url, pars, r, act)
 				else:
 					result = EOperationFailed
-					dump_exception(self, None, url, pars, r, act)
+					self.__dump_exception(None, url, pars, r, act)
 
 		except Exception as ex:
+			self.__dump_exception(ex, url, pars, r, act)
 			result = EOperationFailed
-			dump_exception(self, ex, url, pars, r, act)
 			# we eat the exception, and use return code as the only
 			# error notification method, we don't want to mix them two
 			#raise # must notify the caller about the failure
 
-		if result == EOperationFailed:
-			self.__try += 1
-			if retry and self.__try < self.__retry:
-				perr("Waiting {} seconds before retrying...".format(RetryDelayInSec))
-				time.sleep(RetryDelayInSec)
-				perr("Request retry #{} / {}".format(self.__try, self.__retry))
-				return self.__request(url, pars, act, method, actargs, retry, **kwargs)
+		return result
+
+	def __request(self, url, pars, act, method, actargs = None, retry = True, **kwargs):
+		tries = 1
+		if retry:
+			tries = self.__retry
+
+		i = 0
+		result = EOperationFailed
+		while i < tries:
+			result = self.__request_work(url, pars, act, method, actargs, **kwargs)
+			# only EOperationFailed needs retry, other error still directly return
+			if result == EOperationFailed:
+				i += 1
+				# algo changed: delay more after each failure
+				delay = RetryDelayInSec * i
+				perr("Waiting {} seconds before retrying...".format(delay))
+				time.sleep(delay)
+				perr("Request Try #{} / {}".format(i + 1, tries))
 			else:
-				if retry:
-					perr("Maximum number ({}) of retries failed.".format(self.__retry))
-				else:
-					perr("No retry, returning")
-				return result
+				break
+
+		if retry:
+			if i >= tries:
+				perr("Maximum number ({}) of tries failed.".format(tries))
+				perr("This is SEVERE, Aborting ...")
+				# default abort the program after max retry fails
+				if not self.__cont:
+					onexit(EMaxRetry)
 		else:
-			# bugfix: we need to reset it as long as there won't any retry per call
-			self.__try == 0
+			perr("No retry, returning")
 
 		return result
 
@@ -1208,9 +1232,10 @@ get information of the given path (dir / file) at Baidu Yun.
 						break
 					elif j < self.__retry:
 						j += 1
+						# TODO: Improve or make it TRY with the __requet retry logic
 						perr("Slice MD5 mismatch, waiting {} seconds before retrying...".format(RetryDelayInSec))
 						time.sleep(RetryDelayInSec)
-						perr("Retrying #{} / {}".format(j, self.__retry))
+						perr("Retrying #{} / {}".format(j + 1, self.__retry))
 					else:
 						self.__slice_md5s = []
 						break
@@ -2070,7 +2095,7 @@ if not specified, it defaults to the root directory
 
 OriginalFloatTime = True
 
-def doexitwork():
+def onexit(retcode = ENoError):
 	sys.stdout.flush()
 	os.stat_float_times(OriginalFloatTime)
 	# we save, but don't clean, why?
@@ -2080,13 +2105,12 @@ def doexitwork():
 	# we don't act too smart.
 	cached.savecache()
 	#cached.cleancache()
+	sys.exit(retcode)
 
 def sighandler(signum, frame):
 	pr("Signal {} received, Abort".format(signum))
 	pr("Frame:\n{}".format(frame))
-	doexitwork()
-
-	sys.exit(EAbort)
+	onexit(EAbort)
 
 def main(argv=None): # IGNORE:C0111
 	''' Main Entry '''
@@ -2099,6 +2123,7 @@ def main(argv=None): # IGNORE:C0111
 	os.stat_float_times(False)
 	# --- IMPORTANT ---
 
+	result = ENoError
 	if argv is None:
 		argv = sys.argv
 	else:
@@ -2190,6 +2215,7 @@ right after the '# PCS configuration constants' comment.
 
 		# program tunning, configration (those will be passed to class ByPy)
 		parser.add_argument("-r", "--retry", dest="retry", default=5, help="number of retry attempts on network error [default: %(default)i times]")
+		parser.add_argument("--continue-on-failure", dest="cont", default=False, help="continue tasks even maximum number of retry failed [default: %(default)]")
 		parser.add_argument("-t", "--timeout", dest="timeout", default=60, help="network time out in seconds [default: %(default)s]")
 		parser.add_argument("-s", "--slice", dest="slice", default=DefaultSliceSize, help="size of file upload slice (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultSliceInMB))
 		parser.add_argument("--chunk", dest="chunk", default=DefaultDlChunkSize, help="size of file download chunk (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultDlChunkSize / OneM))
@@ -2266,14 +2292,13 @@ right after the '# PCS configuration constants' comment.
 			by = ByPy(slice_size = int(slice_size), dl_chunk_size = int(args.chunk),
 					verify = args.verify, secure = not args.insecure,
 					retry = int(args.retry), timeout = timeout,
+					cont = args.cont,
 					listfile = args.listfile,
 					verbose = args.verbose, debug = args.debug)
 			uargs = []
 			for arg in args.command[1:]:
 				uargs.append(unicode(arg, SystemEncoding))
 			result = getattr(by, args.command[0])(*uargs)
-			doexitwork()
-			return result
 		else:
 			pr("Error: Command '{}' not available.".format(args.command[0]))
 			parser.print_help()
@@ -2289,7 +2314,7 @@ right after the '# PCS configuration constants' comment.
 		pr("Abort")
 		# raise
 
-	doexitwork()
+	onexit(result)
 
 def TestRun():
 	import doctest
@@ -2313,6 +2338,6 @@ def unused():
 	inspect.stack()
 
 if __name__ == "__main__":
-	sys.exit(main())
+	main()
 
 # vim: tabstop=4 noexpandtab shiftwidth=4 softtabstop=4 ff=unix
