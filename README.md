@@ -26,6 +26,8 @@ Copyright 2013 Hou Tianze (GitHub: houtianze, Twitter: @ibic, G+: +TianzeHou)
 
 This is a Python client for Baidu Yun (a.k.a PCS - Personal Cloud Storage), an online storage website offering 2 TB (fast) free personal storage. This main purpose is to be able to utilize this stoarge service under Linux environment (console), e.g. Raspberry Pi.
 
+**Features: Full Unicode support; Retry on failures; Recursive down/up-load; Directory comparison; Hash caching.**
+
 This program uses the REST APIs to access the files at Baidu PCS. You can list, download, upload, compare, sync-up/down, etc.
 
 Quick start:
@@ -36,7 +38,6 @@ bypy.py
 ```
 
 To get more details about certain command:
-
 ```
 bypy.py help <command>
 ```
@@ -77,6 +78,8 @@ Hash caching is also implemented.
 [中文]
 
 这是一个百度云盘的Python客户端。主要的目的就是在Linux环境下（命令行）使用百度云盘的2TB的巨大空间。比如，你可以用在Raspberry Pi树莓派上。它提供文件列表、下载、上传、比较、向上同步、向下同步，等等。
+
+**功能: 全面支持Unicode / 中文；失败重试；递归上/下载；目录比较; 哈希缓存.**
 
 界面是英文的，主要是因为这个是为了Raspberry Pi树莓派开发的。
 第一次运行的时候要通过百度的网页进行授权（一次就好）
