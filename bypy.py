@@ -748,8 +748,8 @@ class ByPy(object):
 		try:
 			dj = r.json()
 			if 'error_code' in dj and 'error_msg' in dj:
-				perr('JSON Error code: ' + str(dj['error_code']))
-				perr('JSON Error Description:' + dj['error_msg'])
+				perr('Error code: ' + str(dj['error_code']))
+				perr('Error Description: ' + dj['error_msg'])
 		except Exception:
 			perr('Error parsing JSON Error Code from {}'.format(rb(r.text)))
 			perr('Exception: {}'.format(traceback.format_exc()))
@@ -772,20 +772,19 @@ class ByPy(object):
 		r = None
 
 		try:
+			self.pd(method + ' ' + url)
+			self.pd("actargs: {}".format(actargs))
+			self.pd("Params: {}".format(pars))
+
 			if method.upper() == 'GET':
-				self.pd("GET " + url)
 				r = requests.get(url,
 					#headers = { 'User-Agent': UserAgent },
 					params = pars, timeout = self.__timeout, **kwargs)
 			elif method.upper() == 'POST':
-				if self.Debug:
-					self.pd("POST " + url)
 				r = requests.post(url,
 					#headers = { 'User-Agent': UserAgent },
 					params = pars, timeout = self.__timeout, **kwargs)
 
-			self.pd("actargs: {}".format(actargs))
-			self.pd("Params: {}".format(pars))
 			self.pd("Request Headers: {}".format(
 				pprint.pformat(r.request.headers)), 2)
 			sc = r.status_code
@@ -814,7 +813,7 @@ class ByPy(object):
 				# File md5 not found, you should use upload API to upload the whole file.
 				elif ec == IEMD5NotFound: # and sc == 404:
 					self.pd("MD5 not found, rapidupload failed")
-					result = sc
+					result = ec
 				# errors that make retrying meaningless
 				elif (
 					ec == 31061 or # sc == 400 file already exists
@@ -823,7 +822,7 @@ class ByPy(object):
 					ec == 31064 or # sc == 403 file is not authorized
 					ec == 31065 or # sc == 400 directory is full
 					ec == 31066): # sc == 403 (indeed 404) file does not exist
-					result = sc
+					result = ec
 					self.__dump_exception(None, url, pars, r, act)
 				else:
 					result = EOperationFailed
@@ -845,10 +844,10 @@ class ByPy(object):
 
 		i = 0
 		result = EOperationFailed
-		while i < tries:
+		while True:
 			result = self.__request_work(url, pars, act, method, actargs, **kwargs)
 			# only EOperationFailed needs retry, other error still directly return
-			if result == EOperationFailed:
+			if result == EOperationFailed and i < tries:
 				i += 1
 				# algo changed: delay more after each failure
 				delay = RetryDelayInSec * i
@@ -1196,7 +1195,9 @@ get information of the given path (dir / file) at Baidu Yun.
 
 		return self.__post(CPcsUrl + 'file',
 				pars, self.__upload_slice_act, remotepath,
-				files = { 'file' : (os.path.basename(self.__current_file), self.__current_slice) } )
+				# wants to be proper? properness doesn't work (search this sentence for more occurence)
+				#files = { 'file' : (os.path.basename(self.__current_file), self.__current_slice) } )
+				files = { 'file' : ('file', self.__current_slice) } )
 
 	def __upload_file_slices(self, localpath, remotepath, ondup = 'overwrite'):
 		pieces = MaxSlicePieces
@@ -2096,15 +2097,18 @@ if not specified, it defaults to the root directory
 OriginalFloatTime = True
 
 def onexit(retcode = ENoError):
-	sys.stdout.flush()
-	os.stat_float_times(OriginalFloatTime)
+	# saving is the most important
 	# we save, but don't clean, why?
 	# think about unmount path, moved files,
 	# once we discard the information, they are gone.
 	# so unless the user specifically request a clean,
 	# we don't act too smart.
-	cached.savecache()
 	#cached.cleancache()
+	cached.savecache()
+	os.stat_float_times(OriginalFloatTime)
+	# if we flush() on Ctrl-C, we get
+	# IOError: [Errno 32] Broken pipe 
+	sys.stdout.flush()
 	sys.exit(retcode)
 
 def sighandler(signum, frame):
