@@ -702,14 +702,14 @@ class ByPy(object):
 		slice_size = DefaultSliceSize, dl_chunk_size = DefaultDlChunkSize,
 		verify = True, secure = True,
 		retry = 5, timeout = None,
-		cont = False,
+		quit_when_fail = False,
 		listfile = None,
 		verbose = 0, debug = False):
 		self.__slice_size = slice_size
 		self.__dl_chunk_size = dl_chunk_size
 		self.__verify = verify
 		self.__retry = retry
-		self.__cont = cont
+		self.__quit_when_fail = quit_when_fail
 		self.__timeout = timeout
 		self.__secure = secure
 		self.__listfile = listfile
@@ -857,15 +857,14 @@ class ByPy(object):
 			else:
 				break
 
-		if retry:
-			if i >= tries:
+		if i >= tries:
+			if retry:
 				perr("Maximum number ({}) of tries failed.".format(tries))
-				perr("This is SEVERE, Aborting ...")
-				# default abort the program after max retry fails
-				if not self.__cont:
-					onexit(EMaxRetry)
-		else:
-			perr("No retry, returning")
+			else:
+				perr("No retry, returning")
+
+			if self.__quit_when_fail:
+				onexit(EMaxRetry)
 
 		return result
 
@@ -2107,7 +2106,7 @@ def onexit(retcode = ENoError):
 	cached.savecache()
 	os.stat_float_times(OriginalFloatTime)
 	# if we flush() on Ctrl-C, we get
-	# IOError: [Errno 32] Broken pipe 
+	# IOError: [Errno 32] Broken pipe
 	sys.stdout.flush()
 	sys.exit(retcode)
 
@@ -2219,7 +2218,7 @@ right after the '# PCS configuration constants' comment.
 
 		# program tunning, configration (those will be passed to class ByPy)
 		parser.add_argument("-r", "--retry", dest="retry", default=5, help="number of retry attempts on network error [default: %(default)i times]")
-		parser.add_argument("--continue-on-failure", dest="cont", default=False, help="continue tasks even maximum number of retry failed [default: %(default)s]")
+		parser.add_argument("-q", "--quit-when-fail", dest="quit", default=False, help="quit when maximum number of retry failed [default: %(default)s]")
 		parser.add_argument("-t", "--timeout", dest="timeout", default=60, help="network time out in seconds [default: %(default)s]")
 		parser.add_argument("-s", "--slice", dest="slice", default=DefaultSliceSize, help="size of file upload slice (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultSliceInMB))
 		parser.add_argument("--chunk", dest="chunk", default=DefaultDlChunkSize, help="size of file download chunk (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultDlChunkSize / OneM))
@@ -2296,7 +2295,7 @@ right after the '# PCS configuration constants' comment.
 			by = ByPy(slice_size = int(slice_size), dl_chunk_size = int(args.chunk),
 					verify = args.verify, secure = not args.insecure,
 					retry = int(args.retry), timeout = timeout,
-					cont = args.cont,
+					quit_when_fail = args.quit,
 					listfile = args.listfile,
 					verbose = args.verbose, debug = args.debug)
 			uargs = []
