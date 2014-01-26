@@ -801,8 +801,9 @@ class ByPy(object):
 				ec = j['error_code']
 				self.__print_error_json(r)
 
-				# Access token invalid or no longer valid
-				if ec == 110: # and sc == 401:
+				#   6 (sc: 403): No permission to access user data
+				# 110 (sc: 401): Access token invalid or no longer valid
+				if ec == 110 or ec == 6: # and sc == 401:
 					self.pd("Needs to refresh token, refreshing")
 					if ENoError == self.__refresh_token(): # refresh the token and re-request
 						# TODO: avoid dead loops
