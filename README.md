@@ -77,6 +77,8 @@ And there are more commands ...
 
 Hash caching is also implemented.
 
+Add in "-v" parameter, the program will print more details about the progress.
+Add in "-d" parameter, the program will print some debug messages.
 ----
 [中文]
 
@@ -137,3 +139,5 @@ bypy.py compare
 还有一些其他命令 ...
 
 哈希值的计算加入了缓存处理，使得第一次以后的计算速度有所提高。
+
+运行时添加 -v 参数，程序会显示进度详情；添加 -d ，程序会显示一些调试信息。
