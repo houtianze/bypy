@@ -79,6 +79,7 @@ Hash caching is also implemented.
 
 Add in "-v" parameter, the program will print more details about the progress.
 Add in "-d" parameter, the program will print some debug messages.
+
 ----
 [中文]
 
