@@ -1378,7 +1378,7 @@ get information of the given path (dir / file) at Baidu Yun.
 			self.pd("'{}' is small and being non-slicing uploaded.".format(self.__current_file))
 			return self.__upload_one_file(localpath, remotepath, ondup)
 
-	def upload(self, localpath = None, remotepath = None, ondup = "overwrite"):
+	def upload(self, localpath = '', remotepath = '', ondup = "overwrite"):
 		''' Usage: upload [localpath] [remotepath] [ondup] - \
 upload a file or directory (recursively)
     localpath - local path, is the current directory '.' if not specified
@@ -1529,7 +1529,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 		return self.__get(DPcsUrl + 'file', pars,
 			self.__downfile_act, rfile, stream = True)
 
-	def downfile(self, remotefile, localpath = None):
+	def downfile(self, remotefile, localpath = ''):
 		''' Usage: downfile <remotefile> [localpath] - \
 download a remote file.
   remotefile - remote file at Baidu Yun (after app root directory at Baidu Yun)
@@ -1964,7 +1964,7 @@ if not specified, it defaults to the root directory.
 		pr("Remote only: {}".format(len(remote)));
 
 	# CAVEAT: empty directories are not synced
-	def syncdown(self, remotedir = None, localdir = None, deletelocal = False):
+	def syncdown(self, remotedir = '', localdir = '', deletelocal = False):
 		''' Usage: syncdown [remotedir] [localdir] [deletelocal] - \
 sync down from the remote direcotry to the local directory
   remotedir - the remote directory at Baidu Yun (after app's direcotry) to sync from. \
@@ -2012,7 +2012,7 @@ if not specified, it defaults to the root directory
 		return result
 
 	# CAVEAT: empty directories are not synced
-	def syncup(self, localdir = None, remotedir = None, deleteremote = False):
+	def syncup(self, localdir = '', remotedir = '', deleteremote = False):
 		''' Usage: syncup [localdir] [remotedir] [deleteremote] - \
 sync up from the local direcotry to the remote directory
   localdir - the local directory to sync from if not specified, it defaults to the current directory.
