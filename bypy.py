@@ -771,9 +771,13 @@ class ByPy(object):
 				self.__print_error_json(r)
 				perr("Website returned: {}".format(rb(r.text)))
 
+	# always append / replace the 'access_token' parameter in the https request
 	def __request_work(self, url, pars, act, method, actargs = None, **kwargs):
 		result = ENoError
 		r = None
+
+		pars_with_token = pars.copy()
+		pars_with_token['access_token'] = self.__access_token
 
 		try:
 			self.pd(method + ' ' + url)
@@ -783,11 +787,11 @@ class ByPy(object):
 			if method.upper() == 'GET':
 				r = requests.get(url,
 					#headers = { 'User-Agent': UserAgent },
-					params = pars, timeout = self.__timeout, **kwargs)
+					params = pars_with_token, timeout = self.__timeout, **kwargs)
 			elif method.upper() == 'POST':
 				r = requests.post(url,
 					#headers = { 'User-Agent': UserAgent },
-					params = pars, timeout = self.__timeout, **kwargs)
+					params = pars_with_token, timeout = self.__timeout, **kwargs)
 
 			self.pd("Request Headers: {}".format(
 				pprint.pformat(r.request.headers)), 2)
@@ -1008,8 +1012,7 @@ class ByPy(object):
 	def quota(self):
 		''' Usage: quota - displays the quota information '''
 		pars = {
-			'method' : 'info',
-			'access_token' : self.__access_token }
+			'method' : 'info' }
 		return self.__get(PcsUrl + 'quota', pars, self.__quota_act)
 
 	def info(self):
@@ -1078,7 +1081,6 @@ class ByPy(object):
 		if rdir and rfile:
 			pars = {
 				'method' : 'list',
-				'access_token' : self.__access_token,
 				'path' : rdir,
 				'by' : 'name', # sort in case we can use binary-search, etc in the futrue.
 				'order' : 'asc' }
@@ -1119,7 +1121,6 @@ class ByPy(object):
 
 		pars = {
 			'method' : 'list',
-			'access_token' : self.__access_token,
 			'path' : rpath,
 			'by' : sort,
 			'order' : order }
@@ -1143,7 +1144,6 @@ get information of the given path (dir / file) at Baidu Yun.
 		rpath = get_pcs_path(remotepath)
 		pars = {
 			'method' : 'meta',
-			'access_token' : self.__access_token,
 			'path' : rpath }
 		return self.__get(PcsUrl + 'file', pars,
 			self.__meta_act, (rpath, fmt))
@@ -1163,7 +1163,6 @@ get information of the given path (dir / file) at Baidu Yun.
 	def __combine_file(self, remotepath, ondup = 'overwrite'):
 		pars = {
 			'method' : 'createsuperfile',
-			'access_token' : self.__access_token,
 			'path' : remotepath,
 			'ondup' : ondup }
 
@@ -1195,7 +1194,6 @@ get information of the given path (dir / file) at Baidu Yun.
 	def __upload_slice(self, remotepath):
 		pars = {
 			'method' : 'upload',
-			'access_token' : self.__access_token,
 			'type' : 'tmpfile'}
 
 		return self.__post(CPcsUrl + 'file',
@@ -1272,7 +1270,6 @@ get information of the given path (dir / file) at Baidu Yun.
 		crcstr = hex(self.__current_file_crc32)
 		pars = {
 			'method' : 'rapidupload',
-			'access_token' : self.__access_token,
 			'path' : remotepath,
 			'content-length' : self.__current_file_size,
 			'content-md5' : md5str,
@@ -1296,7 +1293,6 @@ get information of the given path (dir / file) at Baidu Yun.
 	def __upload_one_file(self, localpath, remotepath, ondup = 'overwrite'):
 		pars = {
 			'method' : 'upload',
-			'access_token' : self.__access_token,
 			'path' : remotepath,
 			'ondup' : ondup }
 
@@ -1474,7 +1470,6 @@ try to create a file at PCS by combining slices, having MD5s specified
 	def __get_meta(self, remotefile):
 		pars = {
 			'method' : 'meta',
-			'access_token' : self.__access_token,
 			'path' : remotefile }
 		return self.__get(
 			PcsUrl + 'file', pars,
@@ -1528,7 +1523,6 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 		pars = {
 			'method' : 'download',
-			'access_token' : self.__access_token,
 			'path' : rfile }
 
 		return self.__get(DPcsUrl + 'file', pars,
@@ -1579,7 +1573,6 @@ download a remote file.
 	def __walk_remote_dir(self, remotepath, proceed, args = None):
 		pars = {
 			'method' : 'list',
-			'access_token' : self.__access_token,
 			'path' : remotepath,
 			'by' : 'name',
 			'order' : 'asc' }
@@ -1681,7 +1674,6 @@ create a directory at Baidu Yun
 
 		pars = {
 			'method' : 'mkdir',
-			'access_token' : self.__access_token,
 			'path' : rpath }
 		return self.__post(PcsUrl + 'file', pars, self.__mkdir_act)
 
@@ -1700,7 +1692,6 @@ move a file / dir remotely at Baidu Yun
 		'''
 		pars = {
 			'method' : 'move',
-			'access_token' : self.__access_token,
 			'from' : fromp,
 			'to' : to }
 
@@ -1726,7 +1717,6 @@ copy a file / dir remotely at Baidu Yun
 		top = get_pcs_path(to)
 		pars = {
 			'method' : 'copy',
-			'access_token' : self.__access_token,
 			'from' : frompp,
 			'to' : top }
 
@@ -1747,7 +1737,6 @@ copy a file / dir remotely at Baidu Yun
 	def __delete(self, rpath):
 		pars = {
 			'method' : 'delete',
-			'access_token' : self.__access_token,
 			'path' : rpath }
 
 		self.pd("Remote deleting: '{}'".format(rpath))
@@ -1776,7 +1765,6 @@ search for a file using keyword at Baidu Yun
 
 		pars = {
 			'method' : 'search',
-			'access_token' : self.__access_token,
 			'path' : rpath,
 			'wd' : keyword,
 			're' : '1' if recursive else '0'}
@@ -1796,7 +1784,6 @@ list the recycle contents
 		'''
 		pars = {
 			'method' : 'listrecycle',
-			'access_token' : self.__access_token,
 			'start' : start,
 			'limit' : limit }
 
@@ -1820,7 +1807,6 @@ list the recycle contents
 		if fsid:
 			pars = {
 				'method' : 'restore',
-				'access_token' : self.__access_token,
 				'fs_id' : fsid }
 			return self.__post(PcsUrl + 'file', pars, self.__restore_act, path)
 		else:
@@ -1834,8 +1820,7 @@ restore a file from the recycle bin
 		rpath = get_pcs_path(remotepath)
 		# by default, only 1000 items, more than that sounds a bit crazy
 		pars = {
-			'method' : 'listrecycle',
-			'access_token' : self.__access_token }
+			'method' : 'listrecycle' }
 
 		self.pd("Searching for fs_id to restore")
 		return self.__get(PcsUrl + 'file', pars, self.__restore_search_act, rpath)
