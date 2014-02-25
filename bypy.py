@@ -748,8 +748,12 @@ class ByPy(object):
 		try:
 			dj = r.json()
 			if 'error_code' in dj and 'error_msg' in dj:
-				perr('Error code: ' + str(dj['error_code']))
-				perr('Error Description: ' + dj['error_msg'])
+				ec = dj['error_code']
+				pf = perr
+				if ec == IEMD5NotFound:
+					pf = pinfo
+				pf('Error code: ' + str(ec))
+				pf('Error Description: ' + dj['error_msg'])
 		except Exception:
 			perr('Error parsing JSON Error Code from {}'.format(rb(r.text)))
 			perr('Exception: {}'.format(traceback.format_exc()))
@@ -803,7 +807,8 @@ class ByPy(object):
 
 				#   6 (sc: 403): No permission to access user data
 				# 110 (sc: 401): Access token invalid or no longer valid
-				if ec == 110 or ec == 6: # and sc == 401:
+				# 111 (sc: 401): Access token expired
+				if ec == 111 or ec == 110 or ec == 6: # and sc == 401:
 					self.pd("Needs to refresh token, refreshing")
 					if ENoError == self.__refresh_token(): # refresh the token and re-request
 						# TODO: avoid dead loops
@@ -1146,9 +1151,9 @@ get information of the given path (dir / file) at Baidu Yun.
 	def __combine_file_act(self, r, args):
 		result = self.__verify_current_file(r.json(), False)
 		if result == ENoError:
-			self.pv("'{}' >>==> '{}' OK.".format(self.__current_file, args))
+			self.pv("'{}' =C=> '{}' OK.".format(self.__current_file, args))
 		else:
-			perr("'{}' >>==> '{}' FAILED.".format(self.__current_file, args))
+			perr("'{}' =C=> '{}' FAILED.".format(self.__current_file, args))
 		# save the md5 list, in case we add in resume function later to this program
 		self.__last_slice_md5s = self.__slice_md5s
 		self.__slice_md5s = []
@@ -1282,7 +1287,7 @@ get information of the given path (dir / file) at Baidu Yun.
 	def __upload_one_file_act(self, r, args):
 		result = self.__verify_current_file(r.json(), False)
 		if result == ENoError:
-			self.pv("'{}' => '{}' OK.".format(self.__current_file, args))
+			self.pv("'{}' ==> '{}' OK.".format(self.__current_file, args))
 		else:
 			perr("'{}' ==> '{}' FAILED.".format(self.__current_file, args))
 
@@ -1354,7 +1359,7 @@ get information of the given path (dir / file) at Baidu Yun.
 			self.pd("'{}' is being RapidUploaded.".format(self.__current_file))
 			result = self.__rapidupload_file(localpath, remotepath, ondup)
 			if result == ENoError:
-				self.pd("RapidUpload finished OK.")
+				self.pv("RapidUpload: '{}' =R=> '{}' OK.".format(localpath, remotepath))
 			else:
 				self.pd("'{}' can't be RapidUploaded, now trying normal uploading.".format(
 					self.__current_file))
@@ -1549,7 +1554,14 @@ download a remote file.
 		else:
 			localfile = localpath
 
-		return self.__downfile(get_pcs_path(remotefile), localfile)
+		pcsrpath = get_pcs_path(remotefile)
+		result = self.__downfile(pcsrpath, localfile)
+		if result == ENoError:
+			self.pv("'{}' <== '{}' OK".format(localfile, pcsrpath))
+		else:
+			perr("'{}' <== '{}' FAILED".format(localfile, pcsrpath))
+
+		return result
 
 	def __walk_remote_dir_act(self, r, args):
 		dirjs, filejs = args
@@ -1700,7 +1712,7 @@ move a file / dir remotely at Baidu Yun
 		list = j['extra']['list']
 		fromp = list['from']
 		to = list['to']
-		self.pd("Remote copy: '{}' =cc-> '{}' OK".format(fromp, to))
+		self.pd("Remote copy: '{}' =cc=> '{}' OK".format(fromp, to))
 
 		return ENoError
 
