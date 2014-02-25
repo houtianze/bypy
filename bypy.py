@@ -705,6 +705,9 @@ class ByPy(object):
 		quit_when_fail = False,
 		listfile = None,
 		verbose = 0, debug = False):
+
+		self.__access_token = ''
+
 		self.__slice_size = slice_size
 		self.__dl_chunk_size = dl_chunk_size
 		self.__verify = verify
