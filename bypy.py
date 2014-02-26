@@ -706,6 +706,7 @@ class ByPy(object):
 		listfile = None,
 		verbose = 0, debug = False):
 
+		self.__json = {}
 		self.__access_token = ''
 
 		self.__slice_size = slice_size
@@ -736,8 +737,13 @@ class ByPy(object):
 			enable_http_logging()
 
 		if not self.__load_local_json():
-			if self.__auth():
-				self.__load_local_json()
+			# no need to call __load_local_json() again as __auth() will load the json & acess token.
+			result = self.__auth()
+			if result != ENoError:
+				perr("Program authorization FAILED.\n" + \
+					"You need to authorize this program before using any PCS functions.\n" + \
+					"Quitting...\n")
+				onexit(result)
 
 	def pv(self, msg, **kwargs):
 		if self.Verbose:
@@ -775,12 +781,13 @@ class ByPy(object):
 				perr("Website returned: {}".format(rb(r.text)))
 
 	# always append / replace the 'access_token' parameter in the https request
-	def __request_work(self, url, pars, act, method, actargs = None, **kwargs):
+	def __request_work(self, url, pars, act, method, actargs = None, addtoken = True, **kwargs):
 		result = ENoError
 		r = None
 
-		pars_with_token = pars.copy()
-		pars_with_token['access_token'] = self.__access_token
+		parsnew = pars.copy()
+		if addtoken:
+			parsnew['access_token'] = self.__access_token
 
 		try:
 			self.pd(method + ' ' + url)
@@ -790,11 +797,11 @@ class ByPy(object):
 			if method.upper() == 'GET':
 				r = requests.get(url,
 					#headers = { 'User-Agent': UserAgent },
-					params = pars_with_token, timeout = self.__timeout, **kwargs)
+					params = parsnew, timeout = self.__timeout, **kwargs)
 			elif method.upper() == 'POST':
 				r = requests.post(url,
 					#headers = { 'User-Agent': UserAgent },
-					params = pars_with_token, timeout = self.__timeout, **kwargs)
+					params = parsnew, timeout = self.__timeout, **kwargs)
 
 			self.pd("Request Headers: {}".format(
 				pprint.pformat(r.request.headers)), 2)
@@ -816,11 +823,11 @@ class ByPy(object):
 				# 110 (sc: 401): Access token invalid or no longer valid
 				# 111 (sc: 401): Access token expired
 				if ec == 111 or ec == 110 or ec == 6: # and sc == 401:
-					self.pd("Needs to refresh token, refreshing")
+					self.pd("Need to refresh token, refreshing")
 					if ENoError == self.__refresh_token(): # refresh the token and re-request
 						# TODO: avoid dead loops
 						# TODO: properly pass retry
-						result = self.__request(url, pars, act, method, actargs, True, **kwargs)
+						result = self.__request(url, pars, act, method, actargs, True, addtoken, **kwargs)
 					else:
 						result = EOperationFailed
 				# File md5 not found, you should use upload API to upload the whole file.
@@ -850,7 +857,7 @@ class ByPy(object):
 
 		return result
 
-	def __request(self, url, pars, act, method, actargs = None, retry = True, **kwargs):
+	def __request(self, url, pars, act, method, actargs = None, retry = True, addtoken = True, **kwargs):
 		tries = 1
 		if retry:
 			tries = self.__retry
@@ -858,7 +865,7 @@ class ByPy(object):
 		i = 0
 		result = EOperationFailed
 		while True:
-			result = self.__request_work(url, pars, act, method, actargs, **kwargs)
+			result = self.__request_work(url, pars, act, method, actargs, addtoken, **kwargs)
 			# only EOperationFailed needs retry, other error still directly return
 			if result == EOperationFailed and i < tries:
 				i += 1
@@ -881,11 +888,11 @@ class ByPy(object):
 
 		return result
 
-	def __get(self, url, pars, act, actargs = None, retry = True, **kwargs):
-		return self.__request(url, pars, act, 'GET', actargs, retry, **kwargs)
+	def __get(self, url, pars, act, actargs = None, retry = True, addtoken = True, **kwargs):
+		return self.__request(url, pars, act, 'GET', actargs, retry, addtoken, **kwargs)
 
-	def __post(self, url, pars, act, actargs = None, retry = True, **kwargs):
-		return self.__request(url, pars, act, 'POST', actargs, retry, **kwargs)
+	def __post(self, url, pars, act, actargs = None, retry = True, addtoken = True, **kwargs):
+		return self.__request(url, pars, act, 'POST', actargs, retry, addtoken, **kwargs)
 
 	def __replace_list_format(self, fmt, j):
 		output = fmt
@@ -947,7 +954,7 @@ class ByPy(object):
 		pars = {
 			'code' : auth_code,
 			'redirect_uri' : 'oob' }
-		return self.__get(RedirectUrl, pars, self.__server_auth_act)
+		return self.__get(RedirectUrl, pars, self.__server_auth_act, addtoken = False)
 
 	def __device_auth_act(self, r, args):
 		dj = r.json()
@@ -958,13 +965,14 @@ class ByPy(object):
 			'client_id' : ApiKey,
 			'response_type' : 'device_code',
 			'scope' : 'basic netdisk'}
-		return self.__get(DeviceAuthUrl, pars, self.__device_auth_act)
+		return self.__get(DeviceAuthUrl, pars, self.__device_auth_act, addtoken = False)
 
 	def __get_token_act(self, r, args):
 		return self.__store_json(r)
 
 	def __get_token(self, deviceJson):
-		pr('Please visit:\n' + deviceJson['verification_url'] + ' within ' + str(deviceJson['expires_in']) + ' seconds')
+		pr('Please visit:\n' + deviceJson['verification_url'] + \
+			' within ' + str(deviceJson['expires_in']) + ' seconds')
 		pr('Input the CODE: {}'.format(deviceJson['user_code']))
 		pr('and Authorize this little app.')
 		raw_input("Press [Enter] when you've finished")
@@ -974,7 +982,7 @@ class ByPy(object):
 			'client_id' : ApiKey,
 			'client_secret' : SecretKey}
 
-		return self.__get(TokenUrl, pars, self.__get_token_act)
+		return self.__get(TokenUrl, pars, self.__get_token_act, addtoken = False)
 
 	def __refresh_token_act(self, r, args):
 		return self.__store_json(r)
@@ -984,7 +992,7 @@ class ByPy(object):
 			pars = {
 				'grant_type' : 'refresh_token',
 				'refresh_token' : self.__json['refresh_token'] }
-			return self.__get(RefreshUrl, pars, self.__refresh_token_act)
+			return self.__get(RefreshUrl, pars, self.__refresh_token_act, addtoken = False)
 		else:
 			pars = {
 				'grant_type' : 'refresh_token',
@@ -2250,6 +2258,7 @@ right after the '# PCS configuration constants' comment.
 			return Profile()
 
 		pr("Token file: '{}'".format(TokenFilePath))
+		pr("Hash Cache file: '{}'".format(HashCachePath))
 		pr("App root path at Baidu Yun '{}'".format(AppPcsPath))
 		pr("sys.stdin.encoding = {}".format(sys.stdin.encoding))
 		pr("sys.stdout.encoding = {}".format(sys.stdout.encoding))
@@ -2259,6 +2268,17 @@ right after the '# PCS configuration constants' comment.
 			pr("Debug = {}".format(args.debug))
 
 		pr("----\n")
+
+		cachesize = getfilesize(HashCachePath)
+		if cachesize > 10 * OneM or cachesize == -1:
+			pr((
+"*** WARNING ***\n"
+"Hash Cache file '{0}' is very large ({1}).\n"
+"This may affect program's performance (high memory consumption).\n"
+"You can first try to run 'bypy.py cleancache' to slim the file.\n"
+"But if the file size won't reduce (this warning persists),"
+" you may consider deleting / moving the Hash Cache file '{0}'\n"
+"*** WARNING ***\n\n\n").format(HashCachePath, si_size(cachesize)))
 
 		if args.clean >= 1:
 			result = removefile(TokenFilePath, args.verbose)
