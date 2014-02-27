@@ -2269,7 +2269,7 @@ right after the '# PCS configuration constants' comment.
 
 		pr("----\n")
 
-		if os.path.exits(HashCachePath):
+		if os.path.exists(HashCachePath):
 			cachesize = getfilesize(HashCachePath)
 			if cachesize > 10 * OneM or cachesize == -1:
 				pr((
