@@ -2269,9 +2269,10 @@ right after the '# PCS configuration constants' comment.
 
 		pr("----\n")
 
-		cachesize = getfilesize(HashCachePath)
-		if cachesize > 10 * OneM or cachesize == -1:
-			pr((
+		if os.path.exits(HashCachePath):
+			cachesize = getfilesize(HashCachePath)
+			if cachesize > 10 * OneM or cachesize == -1:
+				pr((
 "*** WARNING ***\n"
 "Hash Cache file '{0}' is very large ({1}).\n"
 "This may affect program's performance (high memory consumption).\n"
