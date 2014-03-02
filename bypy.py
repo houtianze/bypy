@@ -803,12 +803,14 @@ class ByPy(object):
 					#headers = { 'User-Agent': UserAgent },
 					params = parsnew, timeout = self.__timeout, **kwargs)
 
-			self.pd("Request Headers: {}".format(
-				pprint.pformat(r.request.headers)), 2)
+			# BUGFIX: DON'T do this, if we are downloading a big file, the program sticks and dies
+			#self.pd("Request Headers: {}".format(
+			#	pprint.pformat(r.request.headers)), 2)
 			sc = r.status_code
 			self.pd("HTTP Status Code: {}".format(sc))
-			self.pd("Header returned: {}".format(pprint.pformat(r.headers)), 2)
-			self.pd("Website returned: {}".format(rb(r.text)), 3)
+			# BUGFIX: DON'T do this, if we are downloading a big file, the program sticks and dies
+			#self.pd("Header returned: {}".format(pprint.pformat(r.headers)), 2)
+			#self.pd("Website returned: {}".format(rb(r.text)), 3)
 			if sc == requests.codes.ok:
 				self.pd("Request OK, processing action")
 				result = act(r, actargs)
@@ -1492,6 +1494,8 @@ try to create a file at PCS by combining slices, having MD5s specified
 				if chunk: # filter out keep-alive new chunks
 					f.write(chunk)
 					f.flush()
+					# https://stackoverflow.com/questions/7127075/what-exactly-the-pythons-file-flush-is-doing
+					#os.fsync(f.fileno())
 
 		# No exception above, then everything goes fine
 		if self.__verify:
@@ -1548,6 +1552,10 @@ download a remote file.
     if it specifies an existing directory, it is the local direcotry
     if not specified, the local direcotry is the current directory '.'
     otherwise, it specifies the local file name
+To stream a file using downfile, you can use the 'mkfifo' trick with omxplayer etc.:
+  mkfifo /tmp/omx
+  bypy.py downfile <remotepath> /tmp/omx &
+  omxplayer /tmp/omx
 		'''
 		localfile = localpath
 		if not localpath:
@@ -1567,6 +1575,42 @@ download a remote file.
 			perr("'{}' <== '{}' FAILED".format(localfile, pcsrpath))
 
 		return result
+
+	def __stream_act_actual(self, r, args):
+		pipe, csize = args
+		with open(pipe, 'wb') as f:
+			for chunk in r.iter_content(chunk_size = csize):
+				if chunk: # filter out keep-alive new chunks
+					f.write(chunk)
+					f.flush()
+					# https://stackoverflow.com/questions/7127075/what-exactly-the-pythons-file-flush-is-doing
+					#os.fsync(f.fileno())
+
+	def __streaming_act(self, r, args):
+		return self.__stream_act_actual(r, args)
+
+	# NOT WORKING YET
+	def streaming(self, remotefile, localpipe, fmt = 'M3U8_480_360', chunk = 4 * OneM):
+		''' Usage: stream <remotefile> <localpipe> [format] [chunk] - \
+stream a video / audio file converted to M3U format at cloud side, to a pipe.
+  remotefile - remote file at Baidu Yun (after app root directory at Baidu Yun)
+  localpipe - the local pipe file to write to
+  format - output video format (M3U8_320_240 | M3U8_480_224 | \
+M3U8_480_360 | M3U8_640_480 | M3U8_854_480). Default: M3U8_480_360
+  chunk - chunk (initial buffering) size for streaming (default: 4M)
+To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
+  mkfifo /tmp/omx
+  bypy.py downfile <remotepath> /tmp/omx &
+  omxplayer /tmp/omx
+  *** NOT WORKING YET ****
+		'''
+		pars = {
+			'method' : 'streaming',
+			'path' : get_pcs_path(remotefile),
+			'type' : fmt }
+
+		return self.__get(PcsUrl + 'file', pars,
+			self.__streaming_act, (localpipe, chunk), stream = True)
 
 	def __walk_remote_dir_act(self, r, args):
 		dirjs, filejs = args
