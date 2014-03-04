@@ -144,7 +144,9 @@ EFailToDeleteDir = 110
 EFailToDeleteFile = 120
 EFileNotFound = 130
 EMaxRetry = 140
-EOperationFailed = 10000 # pcs operation failed
+ERequestFailed = 150 # request failed
+ECacheNotLoaded = 160
+EFatal = -1 # No way to continue
 
 # internal errors
 IEMD5NotFound = 31079 # corresponds to "File md5 not found, you should use upload API to upload the whole file." error at Baidu PCS
@@ -158,9 +160,13 @@ IEMD5NotFound = 31079 # corresponds to "File md5 not found, you should use uploa
 # - Change the AppPcsPath to your own App's directory at Baidu PCS
 # Then you are good to go
 ServerAuth = True # change it to 'False' if you use your own appid
-RedirectServer = 'http://bypyoauth.appspot.com'
-RedirectUrl = RedirectServer + '/auth'
-RefreshUrl = RedirectServer + '/refresh'
+GaeUrl = 'https://bypyoauth.appspot.com'
+OpenShiftUrl = 'https://bypy-tianze.rhcloud.com'
+GaeRedirectUrl = GaeUrl + '/auth'
+GaeRefreshUrl = GaeUrl + '/refresh'
+OpenShiftRedirectUrl = OpenShiftUrl + '/auth'
+OpenShiftRefreshUrl = OpenShiftUrl + '/refresh'
+
 ApiKey = 'q8WE4EpCsau1oS0MplgMKNBn' # replace with your own ApiKey if you use your own appid
 SecretKey = '' # replace with your own SecretKey if you use your own appid
 # NOTE: no trailing '/'
@@ -764,7 +770,7 @@ class ByPy(object):
 				pf('Error code: ' + str(ec))
 				pf('Error Description: ' + dj['error_msg'])
 		except Exception:
-			perr('Error parsing JSON Error Code from {}'.format(rb(r.text)))
+			perr('Error parsing JSON Error Code from:\n{}'.format(rb(r.text)))
 			perr('Exception: {}'.format(traceback.format_exc()))
 
 	def __dump_exception(self, ex, url, pars, r, act):
@@ -817,9 +823,13 @@ class ByPy(object):
 				if result == ENoError:
 					self.pd("Request all goes fine")
 			else:
-				j = r.json()
-				ec = j['error_code']
-				self.__print_error_json(r)
+				ec = 0
+				try:
+					j = r.json()
+					ec = j['error_code']
+					self.__print_error_json(r)
+				except ValueError:
+					perr("Not valid error JSON")
 
 				#   6 (sc: 403): No permission to access user data
 				# 110 (sc: 401): Access token invalid or no longer valid
@@ -827,11 +837,13 @@ class ByPy(object):
 				if ec == 111 or ec == 110 or ec == 6: # and sc == 401:
 					self.pd("Need to refresh token, refreshing")
 					if ENoError == self.__refresh_token(): # refresh the token and re-request
-						# TODO: avoid dead loops
+						# TODO: avoid dead recursive loops
 						# TODO: properly pass retry
 						result = self.__request(url, pars, act, method, actargs, True, addtoken, **kwargs)
 					else:
-						result = EOperationFailed
+						result = EFatal
+						perr("FATAL: Token refreshing failed, can't continue.\nQuitting...\n")
+						onexit(result)
 				# File md5 not found, you should use upload API to upload the whole file.
 				elif ec == IEMD5NotFound: # and sc == 404:
 					self.pd("MD5 not found, rapidupload failed")
@@ -847,12 +859,16 @@ class ByPy(object):
 					result = ec
 					self.__dump_exception(None, url, pars, r, act)
 				else:
-					result = EOperationFailed
+					result = ERequestFailed
 					self.__dump_exception(None, url, pars, r, act)
-
-		except Exception as ex:
+		except requests.exceptions.RequestException as ex:
 			self.__dump_exception(ex, url, pars, r, act)
-			result = EOperationFailed
+			result = ERequestFailed
+		except Exception as ex: # shall i quit? i think so.
+			self.__dump_exception(ex, url, pars, r, act)
+			result = EFatal
+			perr("Fatal Exception.\nQuitting...\n")
+			onexit(result)
 			# we eat the exception, and use return code as the only
 			# error notification method, we don't want to mix them two
 			#raise # must notify the caller about the failure
@@ -865,28 +881,25 @@ class ByPy(object):
 			tries = self.__retry
 
 		i = 0
-		result = EOperationFailed
+		result = ERequestFailed
 		while True:
 			result = self.__request_work(url, pars, act, method, actargs, addtoken, **kwargs)
-			# only EOperationFailed needs retry, other error still directly return
-			if result == EOperationFailed and i < tries:
-				i += 1
-				# algo changed: delay more after each failure
-				delay = RetryDelayInSec * i
-				perr("Waiting {} seconds before retrying...".format(delay))
-				time.sleep(delay)
-				perr("Request Try #{} / {}".format(i + 1, tries))
+			i += 1
+			# only ERequestFailed needs retry, other error still directly return
+			if result == ERequestFailed:
+				if i < tries:
+					# algo changed: delay more after each failure
+					delay = RetryDelayInSec * i
+					perr("Waiting {} seconds before retrying...".format(delay))
+					time.sleep(delay)
+					perr("Request Try #{} / {}".format(i + 1, tries))
+				else:
+					perr("Maximum number ({}) of tries failed.".format(tries))
+					if self.__quit_when_fail:
+						onexit(EMaxRetry)
+					break
 			else:
 				break
-
-		if i >= tries:
-			if retry:
-				perr("Maximum number ({}) of tries failed.".format(tries))
-			else:
-				perr("No retry, returning")
-
-			if self.__quit_when_fail:
-				onexit(EMaxRetry)
 
 		return result
 
@@ -933,12 +946,6 @@ class ByPy(object):
 	def __store_json(self, r):
 		return self.__store_json_only(r.json())
 
-	def __auth(self):
-		if ServerAuth:
-			return self.__server_auth()
-		else:
-			return self.__device_auth()
-
 	def __server_auth_act(self, r, args):
 		return self.__store_json(r)
 
@@ -953,10 +960,20 @@ class ByPy(object):
 		pr('Paste the Authorization Code here and then press [Enter] within 10 minutes.')
 		auth_code = raw_input().strip()
 		self.pd("auth_code: {}".format(auth_code))
+		pr('Authorizing, please be patient, it may take upto {} seconds...'.format(self.__timeout))
+
 		pars = {
 			'code' : auth_code,
 			'redirect_uri' : 'oob' }
-		return self.__get(RedirectUrl, pars, self.__server_auth_act, addtoken = False)
+
+		result = self.__get(GaeRedirectUrl, pars, self.__server_auth_act, retry = False, addtoken = False)
+		if result != ENoError:
+			pr("I think you are WALLed, trying OpenShift server to auth...")
+			result = self.__get(OpenShiftRedirectUrl, pars, self.__server_auth_act, retry = True, addtoken = False)
+			if result != ENoError:
+				perr("Fatal: Both GAE & OpenShift server authorizations failed.")
+
+		return result
 
 	def __device_auth_act(self, r, args):
 		dj = r.json()
@@ -968,6 +985,12 @@ class ByPy(object):
 			'response_type' : 'device_code',
 			'scope' : 'basic netdisk'}
 		return self.__get(DeviceAuthUrl, pars, self.__device_auth_act, addtoken = False)
+
+	def __auth(self):
+		if ServerAuth:
+			return self.__server_auth()
+		else:
+			return self.__device_auth()
 
 	def __get_token_act(self, r, args):
 		return self.__store_json(r)
@@ -991,10 +1014,17 @@ class ByPy(object):
 
 	def __refresh_token(self):
 		if ServerAuth:
+			pr('Refreshing, please be patient, it may take upto {} seconds...'.format(self.__timeout))
+
 			pars = {
 				'grant_type' : 'refresh_token',
 				'refresh_token' : self.__json['refresh_token'] }
-			return self.__get(RefreshUrl, pars, self.__refresh_token_act, addtoken = False)
+			result = self.__get(GaeRefreshUrl, pars, self.__refresh_token_act, retry = False, addtoken = False)
+			if result != ENoError:
+				pr("I think you are WALLed, trying OpenShift server to refresh")
+				result = self.__get(OpenShiftRefreshUrl, pars, self.__refresh_token_act, retry = True, addtoken = False)
+
+			return result
 		else:
 			pars = {
 				'grant_type' : 'refresh_token',
@@ -2127,7 +2157,7 @@ if not specified, it defaults to the root directory
 			return ENoError
 		else:
 			perr("Cache not loaded.")
-			return EOperationFailed
+			return ECacheNotLoaded
 
 	def cleancache(self):
 		''' Usage: cleancache - remove invalid entries from hash cache file'''
