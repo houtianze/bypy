@@ -712,9 +712,6 @@ class ByPy(object):
 		listfile = None,
 		verbose = 0, debug = False):
 
-		self.__json = {}
-		self.__access_token = ''
-
 		self.__slice_size = slice_size
 		self.__dl_chunk_size = dl_chunk_size
 		self.__verify = verify
@@ -726,13 +723,17 @@ class ByPy(object):
 		self.Verbose = verbose
 		self.Debug = debug
 
+		# guru said: thou shalt initialize
+		self.__json = {}
+		self.__access_token = ''
+		self.__remote_json = {}
+		self.__slice_md5s = []
+
 		if self.__listfile and os.path.exists(self.__listfile):
 			with open(self.__listfile, 'r') as f:
 				self.__list_file_contents = f.read()
 		else:
 			self.__list_file_contents = None
-
-		self.__slice_md5s = []
 
 		# only if user specifies '-ddd' or more 'd's, the following
 		# debugging information will be shown, as it's very talkative.
