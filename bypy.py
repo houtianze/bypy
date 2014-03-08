@@ -804,11 +804,11 @@ class ByPy(object):
 			if method.upper() == 'GET':
 				r = requests.get(url,
 					#headers = { 'User-Agent': UserAgent },
-					params = parsnew, timeout = self.__timeout, **kwargs)
+					params = parsnew, timeout = self.__timeout, verify = False, **kwargs)
 			elif method.upper() == 'POST':
 				r = requests.post(url,
 					#headers = { 'User-Agent': UserAgent },
-					params = parsnew, timeout = self.__timeout, **kwargs)
+					params = parsnew, timeout = self.__timeout, verify = False, **kwargs)
 
 			# BUGFIX: DON'T do this, if we are downloading a big file, the program sticks and dies
 			#self.pd("Request Headers: {}".format(
