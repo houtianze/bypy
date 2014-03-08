@@ -1064,46 +1064,54 @@ class ByPy(object):
 		return self.quota()
 
 	def __verify_current_file(self, j, gotlmd5):
-		if self.__verify:
-			rsize = 0
-			rmd5 = 0
-			if 'size' in j:
-				rsize = j['size']
-			else:
-				perr("Unable to verify JSON: '{}', as no 'size' entry found".format(j))
-				return EHashMismatch
+		rsize = 0
+		rmd5 = 0
 
-			if 'md5' in j:
-				rmd5 = binascii.unhexlify(j['md5'])
-			#elif 'block_list' in j and len(j['block_list']) > 0:
-			#	rmd5 = j['block_list'][0]
-			#else:
-			#	# quick hack for meta's 'block_list' field
-			#	pwarn("No 'md5' nor 'block_list' found in json:\n{}".format(j))
-			#	pwarn("Assuming MD5s match, checking size ONLY.")
-			#	rmd5 = self.__current_file_md5
-			else:
-				perr("Unable to verify JSON: '{}', as no 'md5' entry found".format(j))
-				return EHashMismatch
-
-			if not gotlmd5:
-				self.__current_file_md5 = md5(self.__current_file)
-
-			self.pd("Comparing local file '{}' and remote file '{}'".format(
-				self.__current_file, j['path']))
-			self.pd("Local file size : {}".format(self.__current_file_size))
-			self.pd("Remote file size: {}".format(rsize))
-			self.pd("Local file MD5 : {}".format(binascii.hexlify(self.__current_file_md5)))
-			self.pd("Remote file MD5: {}".format(binascii.hexlify(rmd5)))
-
-			if self.__current_file_size == rsize and self.__current_file_md5 == rmd5:
-				self.pd("Local file and remote file match")
-				return ENoError
-			else:
-				perr("Local file and remote file DON'T match")
-				return EHashMismatch
+		# always perform size check even __verify is False
+		if 'size' in j:
+			rsize = j['size']
 		else:
-			return ENoError
+			perr("Unable to verify JSON: '{}', as no 'size' entry found".format(j))
+			return EHashMismatch
+
+		if 'md5' in j:
+			rmd5 = binascii.unhexlify(j['md5'])
+		#elif 'block_list' in j and len(j['block_list']) > 0:
+		#	rmd5 = j['block_list'][0]
+		#else:
+		#	# quick hack for meta's 'block_list' field
+		#	pwarn("No 'md5' nor 'block_list' found in json:\n{}".format(j))
+		#	pwarn("Assuming MD5s match, checking size ONLY.")
+		#	rmd5 = self.__current_file_md5
+		else:
+			perr("Unable to verify JSON: '{}', as no 'md5' entry found".format(j))
+			return EHashMismatch
+
+		if not gotlmd5:
+			self.__current_file_md5 = md5(self.__current_file)
+
+		self.pd("Comparing local file '{}' and remote file '{}'".format(
+			self.__current_file, j['path']))
+		self.pd("Local file size : {}".format(self.__current_file_size))
+		self.pd("Remote file size: {}".format(rsize))
+
+		if self.__current_file_size == rsize:
+			self.pd("Local file and remote file sizes match")
+			if self.__verify:
+				self.pd("Local file MD5 : {}".format(binascii.hexlify(self.__current_file_md5)))
+				self.pd("Remote file MD5: {}".format(binascii.hexlify(rmd5)))
+
+				if self.__current_file_md5 == rmd5:
+					self.pd("Local file and remote file hashes match")
+					return ENoError
+				else:
+					perr("Local file and remote file hashes DON'T match")
+					return EHashMismatch
+			else:
+				return ENoError
+		else:
+			perr("Local file and remote file sizes DON'T match")
+			return EHashMismatch
 
 	def __get_file_info_act(self, r, args):
 		remotefile, out_json = args
