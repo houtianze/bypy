@@ -59,8 +59,10 @@ import sys
 #sys.setdefaultencoding(SystemEncoding)
 import locale
 SystemLanguageCode, SystemEncoding = locale.getdefaultlocale()
-if SystemEncoding.upper() != 'UTF-8':
-	err = "You MUST set system locale to 'UTF-8' to support unicode file names."
+sysenc = SystemEncoding.upper()
+if sysenc != 'UTF-8' and sysenc != 'UTF8':
+	err = "You MUST set system locale to 'UTF-8' to support unicode file names.\n" + \
+		"Current locale is '{}'".format(SystemEncoding)
 	ex = Exception(err)
 	print(err)
 	raise ex
@@ -705,11 +707,13 @@ class ByPy(object):
 	}
 
 	def __init__(self,
-		slice_size = DefaultSliceSize, dl_chunk_size = DefaultDlChunkSize,
+		slice_size = DefaultSliceSize,
+		dl_chunk_size = DefaultDlChunkSize,
 		verify = True, secure = True,
 		retry = 5, timeout = None,
 		quit_when_fail = False,
 		listfile = None,
+		resumedownload = True,
 		verbose = 0, debug = False):
 
 		self.__slice_size = slice_size
@@ -720,6 +724,7 @@ class ByPy(object):
 		self.__timeout = timeout
 		self.__secure = secure
 		self.__listfile = listfile
+		self.__resumedownload = resumedownload
 		self.Verbose = verbose
 		self.Debug = debug
 
@@ -818,8 +823,11 @@ class ByPy(object):
 			# BUGFIX: DON'T do this, if we are downloading a big file, the program sticks and dies
 			#self.pd("Header returned: {}".format(pprint.pformat(r.headers)), 2)
 			#self.pd("Website returned: {}".format(rb(r.text)), 3)
-			if sc == requests.codes.ok:
-				self.pd("Request OK, processing action")
+			if sc == requests.codes.ok or sc == 206: # 206 Partial Content
+				if sc == requests.codes.ok:
+					self.pd("Request OK, processing action")
+				else:
+					self.pd("206 Partial Content")
 				result = act(r, actargs)
 				if result == ENoError:
 					self.pd("Request all goes fine")
@@ -1062,6 +1070,23 @@ class ByPy(object):
 	def info(self):
 		''' Usage: info - same as 'quota' '''
 		return self.quota()
+
+	# return:
+	#   0: local and remote files are of same size
+	#   1: local file is larger
+	#   2: remote file is larger
+	#  -1: inconclusive (probably invalid remote json)
+	def __compare_size(self, lsize, rjson):
+		if 'size' in self.__remote_json:
+			rsize = self.__remote_json['size']
+			if lsize == rsize:
+				return 0;
+			elif lsize > rsize:
+				return 1;
+			else:
+				return 2
+		else:
+			return -1
 
 	def __verify_current_file(self, j, gotlmd5):
 		rsize = 0
@@ -1528,7 +1553,10 @@ try to create a file at PCS by combining slices, having MD5s specified
 			self.__get_meta_act)
 
 	def __downfile_act(self, r, args):
+		rfile, offset = args
 		with open(self.__current_file, 'wb') as f:
+			if offset > 0:
+				f.seek(offset)
 			for chunk in r.iter_content(chunk_size = self.__dl_chunk_size):
 				if chunk: # filter out keep-alive new chunks
 					f.write(chunk)
@@ -1556,6 +1584,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 			if result != ENoError:
 				return result
 
+		offset = 0
 		self.pd("Checking if we already have the copy locally")
 		if os.path.isfile(localfile):
 			self.pd("Same-name local file exists, checking if MD5s match")
@@ -1563,6 +1592,14 @@ try to create a file at PCS by combining slices, having MD5s specified
 			if ENoError == self.__verify_current_file(self.__remote_json, False):
 				self.pd("Same local file already exists, skip downloading")
 				return ENoError
+
+			if self.__resumedownload and \
+				self.__compare_size(self.__current_file_size, self.__remote_json) == 2:
+				# revert back at least one download chunk
+				pieces = self.__current_file_size // self.__dl_chunk_size
+				if pieces > 1:
+					offset = (pieces - 1) * self.__dl_chunk_size
+
 		elif os.path.isdir(localfile):
 			self.pv("Directory with the same name '{}' exists, removing ...".format(localfile))
 			result = removedir(localfile, self.Verbose)
@@ -1579,8 +1616,13 @@ try to create a file at PCS by combining slices, having MD5s specified
 			'method' : 'download',
 			'path' : rfile }
 
-		return self.__get(DPcsUrl + 'file', pars,
-			self.__downfile_act, rfile, stream = True)
+		if offset > 0:
+			headers = { "Range" : "bytes={}-".format(offset) }
+			return self.__get(DPcsUrl + 'file', pars,
+				self.__downfile_act, (rfile, offset), headers = headers, stream = True)
+		else:
+			return self.__get(DPcsUrl + 'file', pars,
+				self.__downfile_act, (rfile, offset), stream = True)
 
 	def downfile(self, remotefile, localpath = ''):
 		''' Usage: downfile <remotefile> [localpath] - \
@@ -2318,6 +2360,7 @@ right after the '# PCS configuration constants' comment.
 		parser.add_argument("-I", "--insecure", dest="insecure", action="store_true", default=False, help="use http (INSECURE) instead of https connections [default: %(default)s] - NOT IMPLEMENTED")
 		parser.add_argument("-f", "--force-hash", dest="forcehash", action="store_true", default=False, help="force file MD5 / CRC32 calculation instead of using cached values [default: %(default)s]")
 		parser.add_argument("-l", "--list-file", dest="listfile", default=None, help="input list file (used by some of the commands only [default: %(default)s]")
+		parser.add_argument("--resume-download", dest="resumedl", default=True, help="resume instead of restart when downloading if locale file already exists [default: %(default)s]")
 
 		# action
 		parser.add_argument("-c", "--clean", dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean both settings and hash cache [default: %(default)s]")
@@ -2402,6 +2445,7 @@ right after the '# PCS configuration constants' comment.
 					retry = int(args.retry), timeout = timeout,
 					quit_when_fail = args.quit,
 					listfile = args.listfile,
+					resumedownload = args.resumedl,
 					verbose = args.verbose, debug = args.debug)
 			uargs = []
 			for arg in args.command[1:]:
