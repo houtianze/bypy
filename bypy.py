@@ -1565,11 +1565,17 @@ try to create a file at PCS by combining slices, having MD5s specified
 					#os.fsync(f.fileno())
 
 		# No exception above, then everything goes fine
+		result = ENoError
 		if self.__verify:
 			self.__current_file_size = getfilesize(self.__current_file)
-			return self.__verify_current_file(self.__remote_json, False)
+			result = self.__verify_current_file(self.__remote_json, False)
+
+		if result == ENoError:
+			self.pv("'{}' <== '{}' OK".format(self.__current_file, rfile))
 		else:
-			return ENoError
+			self.pv("'{}' <== '{}' FAILED".format(self.__current_file, rfile))
+
+		return result
 
 	def __downfile(self, remotefile, localfile):
 		result = ENoError
@@ -1577,7 +1583,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 		self.pd("Downloading '{}' as '{}'".format(rfile, localfile))
 		self.__current_file = localfile
-		if self.__verify:
+		if self.__verify or self.__resumedownload:
 			self.pd("Getting info of remote file '{}' for later verification".format(rfile))
 			self.__remote_json = {}
 			result = self.__get_file_info(rfile, self.__remote_json)
