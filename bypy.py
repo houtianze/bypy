@@ -1077,8 +1077,8 @@ class ByPy(object):
 	#   2: remote file is larger
 	#  -1: inconclusive (probably invalid remote json)
 	def __compare_size(self, lsize, rjson):
-		if 'size' in self.__remote_json:
-			rsize = self.__remote_json['size']
+		if 'size' in rjson:
+			rsize = rjson['size']
 			if lsize == rsize:
 				return 0;
 			elif lsize > rsize:
@@ -1139,20 +1139,23 @@ class ByPy(object):
 			return EHashMismatch
 
 	def __get_file_info_act(self, r, args):
-		remotefile, out_json = args
+		remotefile = args
 		j = r.json()
 		self.pd("List json: {}".format(j))
 		l = j['list']
 		for f in l:
 			if f['path'] == remotefile: # case-sensitive
-				out_json = f
-				self.pd("File info json: {}".format(out_json))
+				self.__remote_json = f
+				self.pd("File info json: {}".format(self.__remote_json))
 				return ENoError;
 
 		return EFileNotFound
 
 	# the 'meta' command sucks, since it doesn't supply MD5 ...
-	def __get_file_info(self, remotefile, out_json):
+	# now the JSON is written to self.__remote_json, due to Python call-by-reference chaos
+	# https://stackoverflow.com/questions/986006/python-how-do-i-pass-a-variable-by-reference
+	# as if not enough confusion in Python call-by-reference
+	def __get_file_info(self, remotefile):
 		rdir, rfile = posixpath.split(remotefile)
 		self.pd("__get_file_info(): rdir : {} | rfile: {}".format(rdir, rfile))
 		if rdir and rfile:
@@ -1162,7 +1165,7 @@ class ByPy(object):
 				'by' : 'name', # sort in case we can use binary-search, etc in the futrue.
 				'order' : 'asc' }
 
-			return self.__get(PcsUrl + 'file', pars, self.__get_file_info_act, (remotefile, out_json))
+			return self.__get(PcsUrl + 'file', pars, self.__get_file_info_act, remotefile)
 		else:
 			perr("Invalid remotefile '{}' specified.".format(remotefile))
 			return EArgument
@@ -1408,9 +1411,9 @@ get information of the given path (dir / file) at Baidu Yun.
 				self.__current_file = lfile
 				rfile = rdir + '/' + name.replace('\\', '/')
 				# if the corresponding file matches at Baidu Yun, then don't upload
-				fjson = {}
-				subresult = self.__get_file_info(rfile, fjson)
-				if subresult == ENoError and self.__verify_current_file(fjson, False):
+				self.__remote_json = {}
+				subresult = self.__get_file_info(rfile)
+				if subresult == ENoError and self.__verify_current_file(self.__remote_json, False):
 					self.pv("Remote file exists, skip uploading".format(rfile))
 				else:
 					fileresult = self.__upload_file(lfile, rfile, ondup)
@@ -1581,12 +1584,12 @@ try to create a file at PCS by combining slices, having MD5s specified
 		result = ENoError
 		rfile = remotefile
 
+		self.__remote_json = {}
 		self.pd("Downloading '{}' as '{}'".format(rfile, localfile))
 		self.__current_file = localfile
 		if self.__verify or self.__resumedownload:
 			self.pd("Getting info of remote file '{}' for later verification".format(rfile))
-			self.__remote_json = {}
-			result = self.__get_file_info(rfile, self.__remote_json)
+			result = self.__get_file_info(rfile)
 			if result != ENoError:
 				return result
 
