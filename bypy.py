@@ -1130,12 +1130,12 @@ class ByPy(object):
 					self.pd("Local file and remote file hashes match")
 					return ENoError
 				else:
-					perr("Local file and remote file hashes DON'T match")
+					pinfo("Local file and remote file hashes DON'T match")
 					return EHashMismatch
 			else:
 				return ENoError
 		else:
-			perr("Local file and remote file sizes DON'T match")
+			pinfo("Local file and remote file sizes DON'T match")
 			return EHashMismatch
 
 	def __get_file_info_act(self, r, args):
