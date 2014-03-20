@@ -2198,7 +2198,7 @@ if not specified, it defaults to the root directory
 			pp = '\\' # previous path, setting to '\\' make sure it won't be found in the first step
 			for r in remote:
 				#p = rpartialdir + '/' + r[1]
-				p = get_pcs_path(r[1])
+				p = rdir + '/' + r[1]
 				if 0 != p.find(pp): # another path
 					#subresult = self.delete(p)
 					subresult = self.__delete(p)
