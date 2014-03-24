@@ -59,13 +59,14 @@ import sys
 #sys.setdefaultencoding(SystemEncoding)
 import locale
 SystemLanguageCode, SystemEncoding = locale.getdefaultlocale()
-sysenc = SystemEncoding.upper()
-if sysenc != 'UTF-8' and sysenc != 'UTF8':
-	err = "You MUST set system locale to 'UTF-8' to support unicode file names.\n" + \
-		"Current locale is '{}'".format(SystemEncoding)
-	ex = Exception(err)
-	print(err)
-	raise ex
+if SystemEncoding:
+	sysenc = SystemEncoding.upper()
+	if sysenc != 'UTF-8' and sysenc != 'UTF8':
+		err = "You MUST set system locale to 'UTF-8' to support unicode file names.\n" + \
+			"Current locale is '{}'".format(SystemEncoding)
+		ex = Exception(err)
+		print(err)
+		raise ex
 import codecs
 # no idea who is the asshole that screws the sys.stdout.encoding
 # the locale is 'UTF-8', sys.stdin.encoding is 'UTF-8',
