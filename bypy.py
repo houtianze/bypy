@@ -94,17 +94,6 @@ from os.path import expanduser
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
-try:
-	# non-standard python library, needs 'pip install requests'
-	import requests
-except:
-	print "Fail to import the 'requests' library\n" \
-		"You need to install the 'requests' python library\n" \
-		"You can install it by running 'pip install requests'"
-	raise
-# non-standard python library, needs 'pip install requesocks'
-#import requesocks as requests # if you need socks proxy
-
 # Defines that should never be changed
 OneK = 1024
 OneM = OneK * OneK
@@ -132,6 +121,7 @@ MaxSlicePieces = 1024
 
 # return (error) codes
 ENoError = 0 # plain old OK, fine, no error.
+EIncorrectPythonVersion = 1
 EApiNotConfigured = 10 # ApiKey, SecretKey and AppPcsPath not properly configured
 EArgument = 10 # invalid program command argument
 EAbort = 20 # aborted
@@ -192,6 +182,23 @@ TokenUrl = OAuthUrl + "/token"
 PcsUrl = 'https://pcs.baidu.com/rest/2.0/pcs/'
 CPcsUrl = 'https://c.pcs.baidu.com/rest/2.0/pcs/'
 DPcsUrl = 'https://d.pcs.baidu.com/rest/2.0/pcs/'
+
+vi = sys.version_info
+if vi.major != 2 or vi.minor < 7:
+	print "Error: Incorrect Python version. " \
+		"You need 2.7 or above (but not 3)"
+	sys.exit(EIncorrectPythonVersion)
+
+try:
+	# non-standard python library, needs 'pip install requests'
+	import requests
+except:
+	print "Fail to import the 'requests' library\n" \
+		"You need to install the 'requests' python library\n" \
+		"You can install it by running 'pip install requests'"
+	raise
+# non-standard python library, needs 'pip install requesocks'
+#import requesocks as requests # if you need socks proxy
 
 # when was your last time flushing a toilet?
 __last_flush = time.time()
