@@ -1425,6 +1425,8 @@ get information of the given path (dir / file) at Baidu Yun.
 
 	def __upload_dir(self, localpath, remotepath, ondup = 'overwrite'):
 		self.pd("Uploading directory '{}' to '{}'".format(localpath, remotepath))
+		self.__current_file = localpath
+		self.__current_file_size = getfilesize(localpath)		
 		os.path.walk(localpath, self.__walk_upload, (localpath, remotepath, ondup))
 
 	def __upload_file(self, localpath, remotepath, ondup = 'overwrite'):
