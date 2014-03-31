@@ -185,17 +185,17 @@ DPcsUrl = 'https://d.pcs.baidu.com/rest/2.0/pcs/'
 
 vi = sys.version_info
 if vi.major != 2 or vi.minor < 7:
-	print "Error: Incorrect Python version. " \
-		"You need 2.7 or above (but not 3)"
+	print("Error: Incorrect Python version. " + \
+		"You need 2.7 or above (but not 3)")
 	sys.exit(EIncorrectPythonVersion)
 
 try:
 	# non-standard python library, needs 'pip install requests'
 	import requests
 except:
-	print "Fail to import the 'requests' library\n" \
-		"You need to install the 'requests' python library\n" \
-		"You can install it by running 'pip install requests'"
+	print("Fail to import the 'requests' library\n" + \
+		"You need to install the 'requests' python library\n" + \
+		"You can install it by running 'pip install requests'")
 	raise
 # non-standard python library, needs 'pip install requesocks'
 #import requesocks as requests # if you need socks proxy
@@ -208,8 +208,32 @@ PrintFlushPeriodInSec = 5.0
 last_cache_save = time.time()
 CacheSavePeriodInSec = 10 * 60.0
 
+# https://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python
+# https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
+# 0 - black, 1 - red, 2 - green, 3 - yellow
+# 4 - blue, 5 - magenta, 6 - cyan 7 - white
+class TermColor:
+	Black, Red, Green, Yellow, Blue, Magenta, Cyan, White = range(8)
+	Nil = -1
+
+def colorstr(msg, fg, bg):
+	CSI = '\x1b['
+	fgs = ''
+	bgs = ''
+	if fg >=0 and fg <= 7:
+		fgs = str(fg + 30)
+
+	if bg >= 0 and bg <=7:
+		bgs = str(bg + 40)
+
+	cs = ';'.join([fgs, bgs]).strip(';')
+	if cs:
+		return CSI + cs + 'm' + msg + CSI + '0m'
+	else:
+		return msg
+
 def pr(msg):
-	print msg
+	print(msg)
 	# we need to flush the output periodically to see the latest status
 	global __last_flush
 	now = time.time()
@@ -217,7 +241,14 @@ def pr(msg):
 		sys.stdout.flush()
 		__last_flush = now
 
-def plog(tag, msg, showtime = True, showdate = False, prefix = '', suffix = ''):
+def prcolor(msg, fg, bg):
+	if sys.stdout.isatty() and not sys.platform.startswith('win32'):
+		pr(colorstr(msg, fg, bg))
+	else:
+		pr(msg)
+
+def plog(tag, msg, showtime = True, showdate = False,
+		prefix = '', suffix = '', fg = TermColor.Nil, bg = TermColor.Nil):
 	if showtime or showdate:
 		now = time.localtime()
 		if showtime:
@@ -226,29 +257,43 @@ def plog(tag, msg, showtime = True, showdate = False, prefix = '', suffix = ''):
 			tag += time.strftime("[%Y-%m-%d] ", now)
 
 	if prefix:
-		pr("{}{}".format(tag, prefix))
-	pr("{}{}".format(tag, msg))
+		prcolor("{}{}".format(tag, prefix), fg, bg)
+
+	prcolor("{}{}".format(tag, msg), fg, bg)
+
 	if suffix:
-		pr("{}{}".format(tag, suffix))
+		prcolor("{}{}".format(tag, suffix), fg, bg)
 
 def perr(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
-	return plog('<E> ', msg, showtime, showdate, prefix, suffix)
+	return plog('<E> ', msg, showtime, showdate, prefix, suffix, TermColor.Red)
 
 def pwarn(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
-	return plog('<W> ', msg, showtime, showdate, prefix, suffix)
+	return plog('<W> ', msg, showtime, showdate, prefix, suffix, TermColor.Yellow)
 
 def pinfo(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
-	return plog('<I> ', msg, showtime, showdate, prefix, suffix)
+	return plog('<I> ', msg, showtime, showdate, prefix, suffix, TermColor.Green)
 
 def pdbg(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
-	return plog('<D> ', msg, showtime, showdate, prefix, suffix)
+	return plog('<D> ', msg, showtime, showdate, prefix, suffix, TermColor.Blue)
+
+# print progress
+# https://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console
+def pprgr(finish, total, prefix = '', suffix = '', seg = 20):
+	# we don't want this goes to the log, so we use stderr
+	segth = seg * finish // total
+	percent = 100 * finish // total
+	msg = '\r' + prefix + '[' + segth * '=' + (seg - segth) * ' ' + ']' + \
+		" {}% ({}/{})".format(percent, si_size(finish), si_size(total)) + \
+		suffix
+	sys.stderr.write(msg)
+	sys.stderr.flush()
 
 def si_size(num, precision = 3):
 	''' DocTests:
 	>>> si_size(1000)
-	'1000B'
+	u'1000B'
 	>>> si_size(1025)
-	'1.001KB'
+	u'1.001KB'
 	'''
 	numa = abs(num)
 	if numa < OneK:
@@ -1325,6 +1370,7 @@ get information of the given path (dir / file) at Baidu Yun.
 					ec = self.__upload_slice(remotepath)
 					if ec == ENoError:
 						self.pd("Slice MD5 match, continuing next slice")
+						pprgr(f.tell(), self.__current_file_size)
 						break
 					elif j < self.__retry:
 						j += 1
@@ -1574,10 +1620,13 @@ try to create a file at PCS by combining slices, having MD5s specified
 		with open(self.__current_file, 'wb') as f:
 			if offset > 0:
 				f.seek(offset)
+
+			rsize = self.__remote_json['size']
 			for chunk in r.iter_content(chunk_size = self.__dl_chunk_size):
 				if chunk: # filter out keep-alive new chunks
 					f.write(chunk)
 					f.flush()
+					pprgr(f.tell(), rsize)
 					# https://stackoverflow.com/questions/7127075/what-exactly-the-pythons-file-flush-is-doing
 					#os.fsync(f.fileno())
 
@@ -2000,7 +2049,7 @@ restore a file from the recycle bin
 				dirs.append(name)
 			else:
 				if self.Debug:
-					print "strange - {}|{}".format(dirname, name)
+					pr("strange - {}|{}".format(dirname, name))
 					assert False # shouldn't come here
 
 		reldir = dirname[arg:].replace('\\', '/')
@@ -2353,7 +2402,7 @@ right after the '# PCS configuration constants' comment.
 
 *** ABORT ***
 '''
-			print ApiNotConfigured
+			pr(ApiNotConfigured)
 			return EApiNotConfigured
 		# --- DEPRECATED ---
 
