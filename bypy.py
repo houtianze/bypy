@@ -778,11 +778,15 @@ class ByPy(object):
 			dj = r.json()
 			if 'error_code' in dj and 'error_msg' in dj:
 				ec = dj['error_code']
-				pf = perr
+				et = dj['error_msg']
+				msg = ''
 				if ec == IEMD5NotFound:
 					pf = pinfo
-				pf('Error code: ' + str(ec))
-				pf('Error Description: ' + dj['error_msg'])
+					msg = et
+				else:
+					pf = perr
+					msg = "Error code: {}\nError Description: {}".format(ec, et)
+				pf(msg)
 		except Exception:
 			perr('Error parsing JSON Error Code from:\n{}'.format(rb(r.text)))
 			perr('Exception: {}'.format(traceback.format_exc()))
