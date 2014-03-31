@@ -1432,6 +1432,7 @@ get information of the given path (dir / file) at Baidu Yun.
 
 	def __upload_dir(self, localpath, remotepath, ondup = 'overwrite'):
 		self.pd("Uploading directory '{}' to '{}'".format(localpath, remotepath))
+		self.__mkdir(remotepath) # it's so minor that we don't care about the return value
 		os.path.walk(localpath, self.__walk_upload, (localpath, remotepath, ondup))
 
 	def __upload_file(self, localpath, remotepath, ondup = 'overwrite'):
@@ -1817,18 +1818,22 @@ download a remote directory (recursively)
 
 		return ENoError
 
-	def mkdir(self, remotepath):
-		''' Usage: mkdir <remotedir> - \
-create a directory at Baidu Yun
-  remotedir - the remote directory
-'''
-		rpath = get_pcs_path(remotepath)
+	def __mkdir(self, rpath):
 		self.pd("Making remote directory '{}'".format(rpath))
 
 		pars = {
 			'method' : 'mkdir',
 			'path' : rpath }
 		return self.__post(PcsUrl + 'file', pars, self.__mkdir_act)
+
+
+	def mkdir(self, remotepath):
+		''' Usage: mkdir <remotedir> - \
+create a directory at Baidu Yun
+  remotedir - the remote directory
+'''
+		rpath = get_pcs_path(remotepath)
+		return self.__mkdir(rpath)
 
 	def __move_act(self, r, args):
 		j = r.json()
@@ -2113,7 +2118,6 @@ if not specified, it defaults to the root directory.
 		pr("Local only: {}".format(len(local)));
 		pr("Remote only: {}".format(len(remote)));
 
-	# CAVEAT: empty directories are not synced
 	def syncdown(self, remotedir = '', localdir = '', deletelocal = False):
 		''' Usage: syncdown [remotedir] [localdir] [deletelocal] - \
 sync down from the remote direcotry to the local directory
@@ -2129,19 +2133,32 @@ if not specified, it defaults to the root directory
 		for d in diff:
 			t = d[0]
 			p = d[1]
+			lcpath = os.path.join(localdir, p) # local complete path
+			rcpath = rpath + '/' + p # remote complete path
 			if t == 'DF':
-				result = removedir(os.path.join(localdir, p), self.Verbose)
+				result = removedir(lcpath, self.Verbose)
+				subresult = self.__downfile(rcpath, lcpath)
+				if subresult != ENoError:
+					result = subresult
 			elif t == 'FD':
-				result = removefile(os.path.join(localdir, p), self.Verbose)
-			else: # " d[0] == 'F' " must be true
-				subresult = self.__downfile(rpath + '/' + p, os.path.join(localdir, p))
+				result = removefile(lcpath, self.Verbose)
+				subresult = makedir(lcpath, self.Verbose)
+				if subresult != ENoError:
+					result = subresult
+			else: # " t == 'F' " must be true
+				result = self.__downfile(rcpath, lcpath)
 
 		for r in remote:
-			# don't care about dirs, since we will create them during file downloading.
 			t = r[0]
 			p = r[1]
+			lcpath = os.path.join(localdir, p) # local complete path
+			rcpath = rpath + '/' + p # remote complete path
 			if t == 'F':
-				subresult = self.__downfile(rpath + '/' + p, os.path.join(localdir, p))
+				subresult = self.__downfile(rcpath, lcpath)
+				if subresult != ENoError:
+					result = subresult
+			else: # " t == 'D' " must be true
+				subresult = makedir(lcpath, self.Verbose)
 				if subresult != ENoError:
 					result = subresult
 
@@ -2161,7 +2178,6 @@ if not specified, it defaults to the root directory
 
 		return result
 
-	# CAVEAT: empty directories are not synced
 	def syncup(self, localdir = '', remotedir = '', deleteremote = False):
 		''' Usage: syncup [localdir] [remotedir] [deleteremote] - \
 sync up from the local direcotry to the remote directory
@@ -2171,32 +2187,38 @@ if not specified, it defaults to the root directory
   deleteremote - delete remote files that are not inside the local direcotry, default is False
 		'''
 		result = ENoError
-		rdir = get_pcs_path(remotedir)
+		rpath = get_pcs_path(remotedir)
 		#rpartialdir = remotedir.rstrip('/ ')
-		same, diff, local, remote = self.__compare(rdir, localdir)
+		same, diff, local, remote = self.__compare(rpath, localdir)
 		# clear the way
 		for d in diff:
 			t = d[0] # type
 			p = d[1] # path
+			lcpath = os.path.join(localdir, p) # local complete path
+			rcpath = rpath + '/' + p # remote complete path
 			# this path is before get_pcs_path() since delete() expects so.
 			#result = self.delete(rpartialdir + '/' + p)
-			result = self.__delete(rdir + '/' + p)
-			# don't care about dirs, since we will create them during uploading
-			if t == 'F':
-				subresult = self.__upload_file(
-					os.path.join(localdir, p),
-					rdir + '/' + p)
+			result = self.__delete(rcpath)
+			if t == 'F' or t == 'FD':
+				subresult = self.__upload_file(lcpath, rcpath)
+				if subresult != ENoError:
+					result = subresult
+			else: # " t == 'DF' " must be true
+				subresult = self.__mkdir(rcpath)
 				if subresult != ENoError:
 					result = subresult
 
 		for l in local:
-			# don't care about dirs, since we will create them during uploading
 			t = l[0]
 			p = l[1]
+			lcpath = os.path.join(localdir, p) # local complete path
+			rcpath = rpath + '/' + p # remote complete path
 			if t == 'F':
-				subresult = self.__upload_file(
-					os.path.join(localdir, p),
-					rdir + '/' + p)
+				subresult = self.__upload_file(lcpath, rcpath)
+				if subresult != ENoError:
+					result = subresult
+			else: # " t == 'D' " must be true
+				subresult = self.__mkdir(rcpath)
 				if subresult != ENoError:
 					result = subresult
 
@@ -2206,7 +2228,7 @@ if not specified, it defaults to the root directory
 			pp = '\\' # previous path, setting to '\\' make sure it won't be found in the first step
 			for r in remote:
 				#p = rpartialdir + '/' + r[1]
-				p = rdir + '/' + r[1]
+				p = rpath + '/' + r[1]
 				if 0 != p.find(pp): # another path
 					#subresult = self.delete(p)
 					subresult = self.__delete(p)
