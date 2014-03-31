@@ -1425,7 +1425,7 @@ get information of the given path (dir / file) at Baidu Yun.
 				# if the corresponding file matches at Baidu Yun, then don't upload
 				self.__remote_json = {}
 				subresult = self.__get_file_info(rfile)
-				if subresult == ENoError and self.__verify_current_file(self.__remote_json, False):
+				if subresult == ENoError and ENoError == self.__verify_current_file(self.__remote_json, False):
 					self.pv("Remote file exists, skip uploading".format(rfile))
 				else:
 					fileresult = self.__upload_file(lfile, rfile, ondup)
