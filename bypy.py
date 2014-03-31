@@ -736,7 +736,7 @@ class ByPy(object):
 		self.Verbose = verbose
 		self.Debug = debug
 
-		# guru said: thou shalt initialize
+		# the prophet said: thou shalt initialize
 		self.__json = {}
 		self.__access_token = ''
 		self.__remote_json = {}
@@ -1421,6 +1421,7 @@ get information of the given path (dir / file) at Baidu Yun.
 			lfile = os.path.join(dirname, name)
 			if os.path.isfile(lfile):
 				self.__current_file = lfile
+				self.__current_file_size = getfilesize(lfile)
 				rfile = rdir + '/' + name.replace('\\', '/')
 				# if the corresponding file matches at Baidu Yun, then don't upload
 				self.__remote_json = {}
