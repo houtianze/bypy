@@ -278,14 +278,22 @@ def pdbg(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
 
 # print progress
 # https://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console
-def pprgr(finish, total, prefix = '', suffix = '', seg = 20):
+def pprgr(finish, total, start_time = None,
+		prefix = '', suffix = '', seg = 20):
 	# we don't want this goes to the log, so we use stderr
 	segth = seg * finish // total
 	percent = 100 * finish // total
+	eta = ''
+	now = time.time()
+	if start_time and percent > 5 and finish > 0:
+		finishf = float(finish)
+		totalf = float(total)
+		remainf = totalf - finishf
+		eta = 'ETA: ' + human_time((now - start_time) * remainf / finishf)
 	msg = '\r' + prefix + '[' + segth * '=' + (seg - segth) * ' ' + ']' + \
 		" {}% ({}/{})".format(percent, si_size(finish), si_size(total)) + \
-		suffix
-	sys.stderr.write(msg)
+		' ' + eta + suffix
+	sys.stderr.write(msg + ' ') # space is used as a clearer
 	sys.stderr.flush()
 
 def si_size(num, precision = 3):
@@ -350,6 +358,31 @@ def interpret_size(si):
 		return int(m.group(1)) * times
 	else:
 		raise ValueError
+
+def human_time(seconds):
+	''' DocTests:
+	>>> human_time(0)
+	u''
+	>>> human_time(122.1)
+	u'2m2s'
+	>>> human_time(133)
+	u'2m13s'
+	>>> human_time(12345678)
+	u'20W2D21h21m18s'
+	'''
+	isec = int(seconds)
+	s = isec % 60
+	m = isec / 60 % 60
+	h = isec / 60 / 60 % 24
+	d = isec / 60 / 60 / 24 % 7
+	w = isec / 60 / 60 / 24 / 7
+
+	result = ''
+	for t in [ ('W', w), ('D', d), ('h', h), ('m', m), ('s', s) ]:
+		if t[1]:
+			result += str(t[1]) + t[0]
+
+	return result
 
 def remove_backslash(s):
 	return s.replace(r'\/', r'/')
@@ -1357,6 +1390,7 @@ get information of the given path (dir / file) at Baidu Yun.
 		i = 0
 		ec = ENoError
 		with open(self.__current_file, 'rb') as f:
+			start_time = time.time()
 			while i < pieces:
 				self.__current_slice = f.read(slice)
 				m = hashlib.md5()
@@ -1370,7 +1404,7 @@ get information of the given path (dir / file) at Baidu Yun.
 					ec = self.__upload_slice(remotepath)
 					if ec == ENoError:
 						self.pd("Slice MD5 match, continuing next slice")
-						pprgr(f.tell(), self.__current_file_size)
+						pprgr(f.tell(), self.__current_file_size, start_time)
 						break
 					elif j < self.__retry:
 						j += 1
@@ -1622,11 +1656,12 @@ try to create a file at PCS by combining slices, having MD5s specified
 				f.seek(offset)
 
 			rsize = self.__remote_json['size']
+			start_time = time.time()
 			for chunk in r.iter_content(chunk_size = self.__dl_chunk_size):
 				if chunk: # filter out keep-alive new chunks
 					f.write(chunk)
 					f.flush()
-					pprgr(f.tell(), rsize)
+					pprgr(f.tell(), rsize, start_time)
 					# https://stackoverflow.com/questions/7127075/what-exactly-the-pythons-file-flush-is-doing
 					#os.fsync(f.fileno())
 
