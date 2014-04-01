@@ -763,13 +763,10 @@ class PathDictTree(dict):
 		result = []
 
 		for k, v in self.items():
-			if v.type == 'F':
-				result.append(k)
-			elif v.type == 'D':
+			result.append(k)
+			if v.type == 'D':
 				for p in self.get(k).allpath():
 					result.append(k + '/' + p)
-			else:
-				assert False # why are you here?
 
 		return result
 
