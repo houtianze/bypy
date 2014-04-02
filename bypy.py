@@ -274,7 +274,7 @@ def pinfo(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
 	return plog('<I> ', msg, showtime, showdate, prefix, suffix, TermColor.Green)
 
 def pdbg(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
-	return plog('<D> ', msg, showtime, showdate, prefix, suffix, TermColor.Blue)
+	return plog('<D> ', msg, showtime, showdate, prefix, suffix, TermColor.Cyan)
 
 # print progress
 # https://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console
@@ -1648,7 +1648,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 	def __downfile_act(self, r, args):
 		rfile, offset = args
-		with open(self.__current_file, 'wb') as f:
+		with open(self.__current_file, 'r+b' if offset > 0 else 'wb') as f:
 			if offset > 0:
 				f.seek(offset)
 
@@ -2501,6 +2501,11 @@ right after the '# PCS configuration constants' comment.
 		except (ValueError, KeyError):
 			pr("Error: Invalid slice size specified '{}'".format(args.slice))
 			return EArgument
+		try:
+			chunk_size = interpret_size(args.chunk)
+		except (ValueError, KeyError):
+			pr("Error: Invalid slice size specified '{}'".format(args.slice))
+			return EArgument
 
 		if args.TESTRUN:
 			return TestRun()
@@ -2565,7 +2570,7 @@ right after the '# PCS configuration constants' comment.
 			cached.debug = args.debug
 			cached.loadcache()
 
-			by = ByPy(slice_size = int(slice_size), dl_chunk_size = int(args.chunk),
+			by = ByPy(slice_size = slice_size, dl_chunk_size = chunk_size,
 					verify = args.verify, secure = not args.insecure,
 					retry = int(args.retry), timeout = timeout,
 					quit_when_fail = args.quit,
