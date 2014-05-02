@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # encoding: utf-8
 # ===  IMPORTANT  ====
-# NOTE: In order to support no-ASCII file names,
+# NOTE: In order to support non-ASCII file names,
 #       your system's locale MUST be set to 'utf-8'
 # CAVEAT: DOESN'T work with proxy, the underlying reason being
 #         the 'requests' package used for http communication doesn't seem
@@ -59,7 +59,7 @@ import sys
 #sys.setdefaultencoding(SystemEncoding)
 import locale
 SystemLanguageCode, SystemEncoding = locale.getdefaultlocale()
-if SystemEncoding:
+if SystemEncoding and not sys.platform.startswith('win32'):
 	sysenc = SystemEncoding.upper()
 	if sysenc != 'UTF-8' and sysenc != 'UTF8':
 		err = "You MUST set system locale to 'UTF-8' to support unicode file names.\n" + \
@@ -142,7 +142,8 @@ ECacheNotLoaded = 160
 EFatal = -1 # No way to continue
 
 # internal errors
-IEMD5NotFound = 31079 # corresponds to "File md5 not found, you should use upload API to upload the whole file." error at Baidu PCS
+IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload the whole file.
+IEFileDoesNotExist = 31066 # File does not exist
 
 # PCS configuration constants
 # ==== NOTE ====
@@ -197,6 +198,12 @@ except:
 		"You need to install the 'requests' python library\n" + \
 		"You can install it by running 'pip install requests'")
 	raise
+
+requests_version =  requests.__version__.split('.')
+if int(requests_version[0]) < 1:
+	print("You Python Requests Library version is to lower than 1.\n" + \
+		"You can run 'pip install requests' to upgrade it.")
+	raise
 # non-standard python library, needs 'pip install requesocks'
 #import requesocks as requests # if you need socks proxy
 
@@ -213,7 +220,8 @@ CacheSavePeriodInSec = 10 * 60.0
 # 0 - black, 1 - red, 2 - green, 3 - yellow
 # 4 - blue, 5 - magenta, 6 - cyan 7 - white
 class TermColor:
-	Black, Red, Green, Yellow, Blue, Magenta, Cyan, White = range(8)
+	NumOfColors = 8
+	Black, Red, Green, Yellow, Blue, Magenta, Cyan, White = range(NumOfColors)
 	Nil = -1
 
 def colorstr(msg, fg, bg):
@@ -232,7 +240,7 @@ def colorstr(msg, fg, bg):
 	else:
 		return msg
 
-def pr(msg):
+def prc(msg):
 	print(msg)
 	# we need to flush the output periodically to see the latest status
 	global __last_flush
@@ -241,11 +249,15 @@ def pr(msg):
 		sys.stdout.flush()
 		__last_flush = now
 
-def prcolor(msg, fg, bg):
+pr = prc
+
+def prcolorc(msg, fg, bg):
 	if sys.stdout.isatty() and not sys.platform.startswith('win32'):
 		pr(colorstr(msg, fg, bg))
 	else:
 		pr(msg)
+
+prcolor = prcolorc
 
 def plog(tag, msg, showtime = True, showdate = False,
 		prefix = '', suffix = '', fg = TermColor.Nil, bg = TermColor.Nil):
@@ -276,16 +288,23 @@ def pinfo(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
 def pdbg(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
 	return plog('<D> ', msg, showtime, showdate, prefix, suffix, TermColor.Cyan)
 
+def askc(msg):
+	pr(msg)
+	pr('Press [Enter] when you are done')
+	return raw_input()
+
+ask = askc
+
 # print progress
 # https://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console
-def pprgr(finish, total, start_time = None,
+def pprgrc(finish, total, start_time = None,
 		prefix = '', suffix = '', seg = 20):
 	# we don't want this goes to the log, so we use stderr
 	segth = seg * finish // total
 	percent = 100 * finish // total
 	eta = ''
 	now = time.time()
-	if start_time and percent > 5 and finish > 0:
+	if start_time is not None and percent > 5 and finish > 0:
 		finishf = float(finish)
 		totalf = float(total)
 		remainf = totalf - finishf
@@ -295,6 +314,8 @@ def pprgr(finish, total, start_time = None,
 		' ' + eta + suffix
 	sys.stderr.write(msg + ' ') # space is used as a clearer
 	sys.stderr.flush()
+
+pprgr = pprgrc
 
 def si_size(num, precision = 3):
 	''' DocTests:
@@ -461,6 +482,9 @@ def getfilemtime(path):
 		perr("Exception occured while getting modification time of '{}'. Exception:\n{}".format(path, traceback.format_exc()))
 
 	return mtime
+
+def donothing():
+	pass
 
 # https://stackoverflow.com/questions/10883399/unable-to-encode-decode-pprint-output
 class MyPrettyPrinter(pprint.PrettyPrinter):
@@ -797,6 +821,7 @@ class ByPy(object):
 		quit_when_fail = False,
 		listfile = None,
 		resumedownload = True,
+		extraupdate = lambda: (),
 		verbose = 0, debug = False):
 
 		self.__slice_size = slice_size
@@ -808,6 +833,7 @@ class ByPy(object):
 		self.__secure = secure
 		self.__listfile = listfile
 		self.__resumedownload = resumedownload
+		self.__extraupdate = extraupdate
 		self.Verbose = verbose
 		self.Debug = debug
 
@@ -855,7 +881,7 @@ class ByPy(object):
 				ec = dj['error_code']
 				et = dj['error_msg']
 				msg = ''
-				if ec == IEMD5NotFound:
+				if ec == IEMD5NotFound or ec == IEFileDoesNotExist:
 					pf = pinfo
 					msg = et
 				else:
@@ -884,6 +910,7 @@ class ByPy(object):
 		result = ENoError
 		r = None
 
+		self.__extraupdate()
 		parsnew = pars.copy()
 		if addtoken:
 			parsnew['access_token'] = self.__access_token
@@ -1052,9 +1079,9 @@ class ByPy(object):
 			'redirect_uri' : 'oob',
 			'scope' : 'basic netdisk' }
 		pars = urllib.urlencode(params)
-		pr('Please visit:\n{}\nAnd authorize this app'.format(ServerAuthUrl + '?' + pars))
-		pr('Paste the Authorization Code here and then press [Enter] within 10 minutes.')
-		auth_code = raw_input().strip()
+		msg = 'Please visit:\n{}\nAnd authorize this app'.format(ServerAuthUrl + '?' + pars) + \
+			'\nPaste the Authorization Code here within 10 minutes.'
+		auth_code = ask(msg).strip()
 		self.pd("auth_code: {}".format(auth_code))
 		pr('Authorizing, please be patient, it may take upto {} seconds...'.format(self.__timeout))
 
@@ -1092,11 +1119,13 @@ class ByPy(object):
 		return self.__store_json(r)
 
 	def __get_token(self, deviceJson):
-		pr('Please visit:\n' + deviceJson['verification_url'] + \
-			' within ' + str(deviceJson['expires_in']) + ' seconds')
-		pr('Input the CODE: {}'.format(deviceJson['user_code']))
-		pr('and Authorize this little app.')
-		raw_input("Press [Enter] when you've finished")
+		msg = 'Please visit:\n' + deviceJson['verification_url'] + \
+			'\nwithin ' + str(deviceJson['expires_in']) + ' seconds\n' + \
+			'Input the CODE: {}\n'.format(deviceJson['user_code']) + \
+			'and Authorize this little app.\n' + \
+			"Press [Enter] when you've finished\n"
+		ask(msg)
+
 		pars = {
 			'grant_type' : 'device_token',
 			'code' :  deviceJson['device_code'],
@@ -1646,6 +1675,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 			PcsUrl + 'file', pars,
 			self.__get_meta_act)
 
+	# NO LONG IN USE
 	def __downfile_act(self, r, args):
 		rfile, offset = args
 		with open(self.__current_file, 'r+b' if offset > 0 else 'wb') as f:
@@ -1671,7 +1701,62 @@ try to create a file at PCS by combining slices, having MD5s specified
 		if result == ENoError:
 			self.pv("'{}' <== '{}' OK".format(self.__current_file, rfile))
 		else:
-			self.pv("'{}' <== '{}' FAILED".format(self.__current_file, rfile))
+			perr("'{}' <== '{}' FAILED".format(self.__current_file, rfile))
+
+		return result
+
+	def __downchunks_act(self, r, args):
+		rfile, offset, rsize = args
+		with open(self.__current_file, 'r+b' if offset > 0 else 'wb') as f:
+			if offset > 0:
+				f.seek(offset)
+
+			start_time = time.time()
+			f.write(r.content)
+			pos = f.tell()
+			pprgr(pos, rsize, start_time)
+			if pos - offset == self.__dl_chunk_size:
+				return ENoError
+			else:
+				return EFileWrite
+
+	# requirment: self.__remote_json is already gotten
+	def __downchunks(self, rfile, start):
+		rsize = self.__remote_json['size']
+
+		pars = {
+			'method' : 'download',
+			'path' : rfile }
+
+		offset = start
+		while True:
+			nextoffset = offset + self.__dl_chunk_size
+			if nextoffset < rsize:
+				headers = { "Range" : "bytes={}-{}".format(
+					offset, nextoffset - 1) }
+			else:
+				headers = { "Range" : "bytes={}-".format(offset) }
+
+			subresult = self.__get(DPcsUrl + 'file', pars,
+				self.__downchunks_act, (rfile, offset, rsize), headers = headers)
+			if subresult != ENoError:
+				return subresult
+
+			if nextoffset < rsize:
+				offset += self.__dl_chunk_size
+			else:
+				break
+
+		# No exception above, then everything goes fine
+		result = ENoError
+		if self.__verify:
+			self.__current_file_size = getfilesize(self.__current_file)
+			result = self.__verify_current_file(self.__remote_json, False)
+
+		if result == ENoError:
+			self.pv("'{}' <== '{}' OK".format(self.__current_file, rfile))
+		else:
+			perr("'{}' <== '{}' FAILED".format(self.__current_file, rfile))
 
 		return result
 
@@ -1682,11 +1767,11 @@ try to create a file at PCS by combining slices, having MD5s specified
 		self.__remote_json = {}
 		self.pd("Downloading '{}' as '{}'".format(rfile, localfile))
 		self.__current_file = localfile
-		if self.__verify or self.__resumedownload:
-			self.pd("Getting info of remote file '{}' for later verification".format(rfile))
-			result = self.__get_file_info(rfile)
-			if result != ENoError:
-				return result
+		#if self.__verify or self.__resumedownload:
+		self.pd("Getting info of remote file '{}' for later verification".format(rfile))
+		result = self.__get_file_info(rfile)
+		if result != ENoError:
+			return result
 
 		offset = 0
 		self.pd("Checking if we already have the copy locally")
@@ -1716,17 +1801,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 			if result != ENoError:
 				return result
 
-		pars = {
-			'method' : 'download',
-			'path' : rfile }
-
-		if offset > 0:
-			headers = { "Range" : "bytes={}-".format(offset) }
-			return self.__get(DPcsUrl + 'file', pars,
-				self.__downfile_act, (rfile, offset), headers = headers, stream = True)
-		else:
-			return self.__get(DPcsUrl + 'file', pars,
-				self.__downfile_act, (rfile, offset), stream = True)
+		return self.__downchunks(rfile, offset)
 
 	def downfile(self, remotefile, localpath = ''):
 		''' Usage: downfile <remotefile> [localpath] - \
@@ -1753,13 +1828,7 @@ To stream a file using downfile, you can use the 'mkfifo' trick with omxplayer e
 			localfile = localpath
 
 		pcsrpath = get_pcs_path(remotefile)
-		result = self.__downfile(pcsrpath, localfile)
-		if result == ENoError:
-			self.pv("'{}' <== '{}' OK".format(localfile, pcsrpath))
-		else:
-			perr("'{}' <== '{}' FAILED".format(localfile, pcsrpath))
-
-		return result
+		return self.__downfile(pcsrpath, localfile)
 
 	def __stream_act_actual(self, r, args):
 		pipe, csize = args
@@ -1872,11 +1941,7 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 			rfile = filej['path']
 			relfile = rfile[rootlen:]
 			lfile = os.path.join(localpath, relfile)
-			subresult = self.__downfile(rfile, lfile)
-			if subresult != ENoError:
-				result = subresult
-				perr("Failed at downloading remote file '{}' as local file '{}'".format(
-					rfile, lfile))
+			self.__downfile(rfile, lfile)
 
 		return result
 
@@ -2557,7 +2622,8 @@ right after the '# PCS configuration constants' comment.
 
 			return result
 
-		if len(args.command) <= 0:
+		if len(args.command) <= 0 or \
+			(len(args.command) == 1 and args.command[0].lower() == 'help'):
 			parser.print_help()
 			return EArgument
 		elif args.command[0] in ByPy.__dict__: # dir(ByPy), dir(by)
@@ -2622,4 +2688,4 @@ def unused():
 if __name__ == "__main__":
 	main()
 
-# vim: tabstop=4 noexpandtab shiftwidth=4 softtabstop=4 ff=unix
+# vim: tabstop=4 noexpandtab shiftwidth=4 softtabstop=4 ff=unix fileencoding=utf-8
