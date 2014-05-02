@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # encoding: utf-8
 # ===  IMPORTANT  ====
 # NOTE: In order to support non-ASCII file names,
@@ -143,6 +143,7 @@ EFatal = -1 # No way to continue
 
 # internal errors
 IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload the whole file.
+IEFileAlreadyExists = 31061 # File does not exist
 IEFileDoesNotExist = 31066 # File does not exist
 
 # PCS configuration constants
@@ -881,7 +882,9 @@ class ByPy(object):
 				ec = dj['error_code']
 				et = dj['error_msg']
 				msg = ''
-				if ec == IEMD5NotFound or ec == IEFileDoesNotExist:
+				if ec == IEMD5NotFound or \
+					ec == IEFileDoesNotExist or \
+					ec == IEFileAlreadyExists:
 					pf = pinfo
 					msg = et
 				else:
@@ -1096,6 +1099,9 @@ class ByPy(object):
 			if result != ENoError:
 				perr("Fatal: Both GAE & OpenShift server authorizations failed.")
 
+		if result == ENoError:
+			pr("Successfully authorized")
+
 		return result
 
 	def __device_auth_act(self, r, args):
@@ -1148,6 +1154,9 @@ class ByPy(object):
 			if result != ENoError:
 				pr("I think you are WALLed, trying OpenShift server to refresh")
 				result = self.__get(OpenShiftRefreshUrl, pars, self.__refresh_token_act, retry = True, addtoken = False)
+
+			if result == ENoError:
+				pr("Token successfully refreshed")
 
 			return result
 		else:
