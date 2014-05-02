@@ -7,6 +7,7 @@
 # https://www.gnu.org/licenses/gpl-3.0.txt
 
 import sys
+import threading
 import Tkinter as tk
 import tkFileDialog
 
@@ -46,8 +47,6 @@ import ttk
 
 import bypy
 
-tkRoot = tk.Tk()
-
 Stretch = tk.N+tk.E+tk.S+tk.W
 GridStyle = { 'padx' : 0, 'pady' : 0 }
 
@@ -76,6 +75,17 @@ def fgtag(text):
 
 def bgtag(text):
 	return 'BG' + text
+
+class NewThread(threading.Thread):
+	def __init__(self, func):
+		threading.Thread.__init__(self)
+		self.func = func
+
+	def run(self):
+		self.func()
+
+def startthread(func):
+	NewThread(func).start()
 
 class AskGui(tk.Toplevel):
 	def __init__(self, master = None,
@@ -223,9 +233,10 @@ class BypyGui(tk.Frame):
 	#   in console: pr is the foundamental function, prcolor calls it
 	#   in GUI: prcolor is the foundamental fucntion, pr calls it
 	def prcolorg(self, msg, fg, bg):
-		self.wLog.insert(tk.END, msg + '\n',
-			(fgtag(ColorMap[fg]) if fg in ColorMap else fgtag(''),
-				bgtag(ColorMap[bg]) if bg in ColorMap else bgtag('')))
+		if self.bLog.get() != 0:
+			self.wLog.insert(tk.END, msg + '\n',
+				(fgtag(ColorMap[fg]) if fg in ColorMap else fgtag(''),
+					bgtag(ColorMap[bg]) if bg in ColorMap else bgtag('')))
 
 	def prg(self, msg):
 		return self.prcolorg(msg, bypy.TermColor.Nil, bypy.TermColor.Nil)
@@ -247,6 +258,8 @@ class BypyGui(tk.Frame):
 		self.grid(sticky = Stretch)
 
 		self.byp = None
+
+		self.threadrunning = False
 
 		self.localPath = tk.StringVar()
 		self.remotePath = tk.StringVar()
@@ -302,26 +315,21 @@ class BypyGui(tk.Frame):
 
 		self.wSyncUp = tk.Button(self.OpFrame, text = 'Sync Up 上传同步', underline = 5)
 		self.wSyncUp.grid(sticky = Stretch, **GridStyle)
-		self.wSyncUp.bind('<Button-1>', lambda e: self.byp.syncup(
-			self.localPath.get(), self.remotePath.get(), self.bSyncDelete.get()))
-		self.bind_all('<Alt-u>', lambda e: self.byp.syncup(
-			self.localPath.get(), self.remotePath.get(), self.bSyncDelete.get()))
+		self.wSyncUp.bind('<Button-1>', self.startsyncup)
+		self.bind_all('<Alt-u>', self.startsyncup)
 
 		self.wUpload = tk.Button(self.OpFrame, text = 'Upload 上传')
 		self.wUpload.grid(row = 0, column = 1, sticky = Stretch, **GridStyle)
-		self.wUpload.bind('<Button-1>', lambda e: self.byp.upload(
-			self.localPath.get(), self.remotePath.get()))
+		self.wUpload.bind('<Button-1>', self.startupload)
 
 		self.wSyncDown = tk.Button(self.OpFrame, text = 'Sync Down 下载同步', underline = 5)
 		self.wSyncDown.grid(row = 0, column = 2, sticky = Stretch, **GridStyle)
-		self.wSyncDown.bind('<Button-1>', lambda e: self.byp.syncdown(
-			self.remotePath.get(), self.localPath.get(), self.bSyncDelete.get()))
-		self.bind_all('<Alt-d>', lambda e: self.byp.syncdown(
-			self.remotePath.get(), self.localPath.get(), self.bSyncDelete.get()))
+		self.wSyncDown.bind('<Button-1>', self.startsyncdown)
+		self.bind_all('<Alt-d>', self.startsyncdown)
 
 		self.wDownload = tk.Button(self.OpFrame, text = 'Download 下载')
 		self.wDownload.grid(row = 0, column = 3, sticky = Stretch, **GridStyle)
-		self.wDownload.bind('<Button-1>', self.download)
+		self.wDownload.bind('<Button-1>', self.startdownload)
 
 		self.wSyncDelete = tk.Checkbutton(self.OpFrame, text = 'Sync Del 同步删除', underline = 7, variable = self.bSyncDelete)
 		self.wSyncDelete.grid(row = 0, column = 4, sticky = Stretch, **GridStyle)
@@ -332,12 +340,11 @@ class BypyGui(tk.Frame):
 
 		self.wCompare = tk.Button(self.OpFrame, text = 'Compare Dir 比较目录')
 		self.wCompare.grid(row = 1, column = 0, sticky = Stretch, **GridStyle)
-		self.wCompare.bind('<Button-1>', lambda e: self.byp.compare(
-			self.remotePath.get(), self.localPath.get()))
-		self.bind_all('<Alt-c>', lambda e: self.byp.compare(
-			self.remotePath.get(), self.localPath.get()))
+		self.wCompare.bind('<Button-1>', self.startcompare);
 
-		self.wProgressBar = ttk.Progressbar(self)
+		self.wProgressBar = ttk.Progressbar(
+			self, maximum = self.maxProgress, variable = self.progress,
+			mode = 'determinate')
 		self.wProgressBar.grid(row = 3, column = 0, columnspan = 3, sticky = Stretch, **GridStyle)
 		self.wLog = MyLogText(self)
 		self.wLog.grid(row = 4, column = 0, columnspan = 3, sticky = Stretch, **GridStyle)
@@ -360,7 +367,6 @@ class BypyGui(tk.Frame):
 		centerwindow(self.master)
 
 	def initbypy(self):
-		#self.byp = bypy.ByPy(extraupdate = self.update_idletasks)
 		self.byp = bypy.ByPy()
 
 	def selectlocalpath(self, *args):
@@ -378,13 +384,73 @@ class BypyGui(tk.Frame):
 		remoteList.wait_window(remoteList)
 		self.remotePath.set(remoteList.result)
 
-	def download(self, *args):
-		if self.remotePath.get()[-1] == '/':
-			return bypy.downdir(self.remotePath.get(), self.localPath.get())
+	def syncupproc(self, lpath, rpath, delete):
+		self.byp.syncup(lpath, rpath, delete)
+		self.threadrunning = False
+
+	def startsyncup(self, *args):
+		if not self.threadrunning:
+			self.threadrunning == True
+			threading.Thread(target = self.syncupproc,
+				args = (
+					self.localPath.get(),
+					self.remotePath.get(),
+					self.bSyncDelete.get())).start()
+
+	def uploadproc(self, lpath, rpath):
+		self.byp.upload(lpath, rpath)
+		self.threadrunning = False
+
+	def startupload(self, *args):
+		if not self.threadrunning:
+			self.threadrunning == True
+			threading.Thread(target = self.uploadproc,
+				args = (
+					self.localPath.get(),
+					self.remotePath.get())).start()
+
+	def syncdownproc(self, rpath, lpath, delete):
+		self.byp.syncdown(rpath, lpath, delete)
+		self.threadrunning = False
+
+	def startsyncdown(self, *args):
+		if not self.threadrunning:
+			self.threadrunning == True
+			threading.Thread(target = self.syncdownproc,
+				args = (
+					self.remotePath.get(),
+					self.localPath.get(),
+					self.bSyncDelete.get())).start()
+
+	def downloadproc(self, rpath, lpath):
+		if rpath[-1] == '/':
+			self.byp.downdir(rpath, lpath)
 		else:
-			return bypy.downfile(self.remotePath.get(), self.localPath.get())
+			self.byp.downfile(rpath, lpath)
+		self.threadrunning = False
+
+	def startdownload(self, *args):
+		if not self.threadrunning:
+			self.threadrunning == True
+			threading.Thread(target = self.downloadproc,
+				args = (
+					self.remotePath.get(),
+					self.localPath.get())).start()
+
+	def compareproc(self, rpath, lpath):
+		self.byp.compare(rpath, lpath)
+		self.threadrunning = False
+
+	def startcompare(self, *args):
+		if not self.threadrunning:
+			self.threadrunning == True
+			threading.Thread(target = self.compareproc,
+				args = (
+					self.remotePath.get(),
+					self.localPath.get())).start()
 
 def main():
+	tkRoot = tk.Tk()
 	ui = BypyGui(tkRoot)
 	ui.mainloop()
 
