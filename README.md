@@ -6,6 +6,13 @@ Python client for Baidu Yun 百度云/百度网盘的Python客户端
 Copyright 2013 Hou Tianze (GitHub: houtianze, Twitter: @ibic, G+: +TianzeHou)
 
 ---
+Add in a simple GUI
+
+加入了简陋的图形界面
+
+---
+
+---
 **Now should be able to authorize behind the GFW.**
 
 **墙内使用应该没有问题了。卡在授权的童鞋可以下载最新版试试**
