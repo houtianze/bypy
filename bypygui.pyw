@@ -193,23 +193,46 @@ class RemoteListGui(tk.Toplevel):
 		self.master.focus_set()
 		self.destroy()
 
+	def Delete(self, selected):
+		if tkMessageBox.askyesno(
+			title = GuiTitle,
+			message = "Are you sure you want to delete '{}' at Baidu?".format(selected),
+			parent = self):
+			rpath = '/'.join([self.rpath, selected])
+			r = self.byp._ByPy__delete(rpath)
+			if r == bypy.ENoError:
+				self.wList.delete(tk.ANCHOR)
+			else:
+				tkMessageBox.showerror(
+					title = GuiTitle,
+					message = "Fail to delete '{}' at Baidu".format(selected),
+					parent = self)
+
 	def Select(self, event):
 		if event.widget == self.wOK:
 			self.Bye(self.rpath[len(bypy.AppPcsPath):])
-		else:
+		elif event.widget == self.wList:
 			selected = ''
-			if event.type == 4: # mouse is special or not?
+			iet = int(event.type) # i don't know why, but it seems needed
+			if iet == 4: # mouse event. mouse is special or not?
 				selected = self.wList.get(self.wList.nearest(event.y))
-			else:
+			elif iet == 2: # KeyPress
 				selected = self.wList.get(tk.ACTIVE)
-			if selected[-1] == '/':
-				self.rpath = '/'.join([self.rpath, selected[:-1]])
-				self.GetRemote()
-			elif selected == '..':
-				self.rpath = '/'.join(self.rpath.split('/')[:-1])
-				self.GetRemote()
-			else:
-				self.Bye('/'.join([self.rpath, selected])[len(bypy.AppPcsPath):])
+
+			if iet == 4 or \
+				(iet == 2 and event.keysym == 'Return'):
+				if selected[-1] == '/':
+					self.rpath = '/'.join([self.rpath, selected[:-1]])
+					self.GetRemote()
+				elif selected == '..':
+					self.rpath = '/'.join(self.rpath.split('/')[:-1])
+					self.GetRemote()
+				else:
+					self.Bye('/'.join([self.rpath, selected])[len(bypy.AppPcsPath):])
+			elif iet == 2 and event.keysym == 'Delete':
+				# don't handlle this, not so rational usage
+				if selected != '..':
+					self.Delete(selected)
 
 	def CreateWidgets(self):
 		self.grid_columnconfigure(0, weight = 1)
@@ -218,6 +241,7 @@ class RemoteListGui(tk.Toplevel):
 		self.wList.grid(sticky = Stretch, **GridStyle)
 		self.wList.bind('<Double-Button-1>', self.Select)
 		self.wList.bind('<Return>', self.Select)
+		self.wList.bind('<Delete>', self.Select)
 		self.wOK = tk.Button(self, text = 'OK', default = tk.ACTIVE)
 		self.wOK.grid(row = 1, column = 0, sticky = tk.E + tk.W, **GridStyle)
 		self.wOK.bind('<Button-1>', self.Select)
@@ -367,7 +391,7 @@ class BypyGui(tk.Frame):
 		centerwindow(self.master)
 
 	def initbypy(self):
-		self.byp = bypy.ByPy()
+		self.byp = bypy.ByPy(verbose = 1)
 
 	def selectlocalpath(self, *args):
 		self.localPath.set(
