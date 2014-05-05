@@ -89,6 +89,7 @@ import binascii
 import re
 import cPickle as pickle
 import pprint
+import socket
 #from collections import OrderedDict
 from os.path import expanduser
 from argparse import ArgumentParser
@@ -987,7 +988,8 @@ class ByPy(object):
 				else:
 					result = ERequestFailed
 					self.__dump_exception(None, url, pars, r, act)
-		except requests.exceptions.RequestException as ex:
+		except (requests.exceptions.RequestException,
+				socket.error) as ex:
 			self.__dump_exception(ex, url, pars, r, act)
 			result = ERequestFailed
 		except Exception as ex: # shall i quit? i think so.
