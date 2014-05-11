@@ -1726,7 +1726,10 @@ try to create a file at PCS by combining slices, having MD5s specified
 			f.write(r.content)
 			pos = f.tell()
 			pprgr(pos, rsize, start_time)
-			if pos - offset == self.__dl_chunk_size:
+			expectedBytes = self.__dl_chunk_size
+			if rsize - offset < self.__dl_chunk_size:
+				expectedBytes = rsize - offset
+			if pos - offset == expectedBytes:
 				return ENoError
 			else:
 				return EFileWrite
