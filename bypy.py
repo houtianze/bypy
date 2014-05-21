@@ -310,7 +310,11 @@ def pprgrc(finish, total, start_time = None,
 		finishf = float(finish)
 		totalf = float(total)
 		remainf = totalf - finishf
-		eta = 'ETA: ' + human_time((now - start_time) * remainf / finishf)
+		elapsed = now - start_time
+		speed = human_speed(finishf / elapsed)
+		eta = 'ETA: ' + human_time(elapsed * remainf / finishf) + \
+				' (Speed: ' + speed + ', Elapsed: ' + \
+				'{:.3f}'.format(elapsed)  + ')'
 	msg = '\r' + prefix + '[' + segth * '=' + (seg - segth) * ' ' + ']' + \
 		" {}% ({}/{})".format(percent, si_size(finish), si_size(total)) + \
 		' ' + eta + suffix
@@ -406,6 +410,21 @@ def human_time(seconds):
 			result += str(t[1]) + t[0]
 
 	return result
+
+def human_speed(speed):
+	''' DocTests:
+	'''
+	# https://stackoverflow.com/questions/15263597/python-convert-floating-point-number-to-certain-precision-then-copy-to-string/15263885#15263885
+	if speed < OneK:
+		return '{:.3f}'.format(speed) + 'B/s'
+	elif speed < OneM:
+		return '{:.3f}'.format(speed / float(OneK)) + 'KB/s'
+	elif speed < OneG:
+		return '{:.3f}'.format(speed / float(OneM)) + 'MB/s'
+	elif speed < OneT:
+		return '{:.3f}'.format(speed / float(OneG)) + 'GB/s'
+	else:
+		return '*** BLAKC HOLE ***'
 
 def remove_backslash(s):
 	return s.replace(r'\/', r'/')
