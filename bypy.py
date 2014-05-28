@@ -314,8 +314,8 @@ def pprgrc(finish, total, start_time = None,
 		speed = human_speed(finishf / elapsed)
 		eta = 'ETA: ' + human_time(elapsed * remainf / finishf) + \
 				' (Speed: ' + speed + ', Elapsed: ' + \
-				'{:.3f}'.format(elapsed)  + ')'
-	msg = '\r' + prefix + '[' + segth * '=' + (seg - segth) * ' ' + ']' + \
+				'{:.3f}s'.format(elapsed)  + ')'
+	msg = '\r' + prefix + '[' + segth * '=' + (seg - segth) * '_' + ']' + \
 		" {}% ({}/{})".format(percent, si_size(finish), si_size(total)) + \
 		' ' + eta + suffix
 	sys.stderr.write(msg + ' ') # space is used as a clearer
@@ -1705,7 +1705,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 			PcsUrl + 'file', pars,
 			self.__get_meta_act)
 
-	# NO LONG IN USE
+	# NO LONGER IN USE
 	def __downfile_act(self, r, args):
 		rfile, offset = args
 		with open(self.__current_file, 'r+b' if offset > 0 else 'wb') as f:
@@ -1736,12 +1736,11 @@ try to create a file at PCS by combining slices, having MD5s specified
 		return result
 
 	def __downchunks_act(self, r, args):
-		rfile, offset, rsize = args
+		rfile, offset, rsize, start_time = args
 		with open(self.__current_file, 'r+b' if offset > 0 else 'wb') as f:
 			if offset > 0:
 				f.seek(offset)
 
-			start_time = time.time()
 			f.write(r.content)
 			pos = f.tell()
 			pprgr(pos, rsize, start_time)
@@ -1762,6 +1761,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 			'path' : rfile }
 
 		offset = start
+		start_time = time.time()
 		while True:
 			nextoffset = offset + self.__dl_chunk_size
 			if nextoffset < rsize:
@@ -1771,7 +1771,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 				headers = { "Range" : "bytes={}-".format(offset) }
 
 			subresult = self.__get(DPcsUrl + 'file', pars,
-				self.__downchunks_act, (rfile, offset, rsize), headers = headers)
+				self.__downchunks_act, (rfile, offset, rsize, start_time), headers = headers)
 			if subresult != ENoError:
 				return subresult
 
