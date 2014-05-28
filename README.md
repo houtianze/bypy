@@ -6,6 +6,18 @@ Python client for Baidu Yun 百度云/百度网盘的Python客户端
 Copyright 2013 Hou Tianze (GitHub: houtianze, Twitter: @ibic, G+: +TianzeHou)
 
 ---
+关于百度的一个bug造成的Syncup的一点问题。
+
+参见 #43 #47
+
+简单说就是：大文件分片上传合并后，百度会返回错误的MD5值。这会导致文件比较失败（本地和远程同样的大文件被认为是不同的文件，因为拿到MD5不一样），进而导致syncup / syncdown重复上传下载。
+
+**曲线解决方法：syncup两次。（第二次大文件算是秒传，很快的；小文件不会再传。然后百度云端返回的MD5值都是正确的了）**
+
+
+---
+
+---
 Add in a simple GUI
 
 加入了简陋的图形界面
