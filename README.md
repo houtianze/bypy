@@ -6,14 +6,22 @@ Python client for Baidu Yun 百度云/百度网盘的Python客户端
 Copyright 2013 Hou Tianze (GitHub: houtianze, Twitter: @ibic, G+: +TianzeHou)
 
 ---
-关于百度的一个bug造成的Syncup的一点问题。
+About a bug of Baidu that's affecting syncup。
+
+Please refer to [#43](../../issues/43) 和 [#47](../../issues/47)
+
+Basically: After a big file uploaded using slices and then combined, Baidu will return the wrong MD5. This will affect comparision (as MD5 is used to assert if the files local and remote are equal), thus will force syncup / syncdown transfer a second time.
+
+**Workaround: syncup twice (For the second time, the big files are "rapidly uploaded", which is very fast. Small files that are the same will be skipped. After this, Baidu will return the correct MD5)**
+
+
+关于百度的一个bug造成的syncup的一点问题。
 
 参见 [#43](../../issues/43) 和 [#47](../../issues/47)
 
 简单说就是：大文件分片上传合并后，百度会返回错误的MD5值。这会导致文件比较失败（本地和远程同样的大文件被认为是不同的文件，因为拿到MD5不一样），进而导致syncup / syncdown重复上传下载。
 
 **曲线解决方法：syncup两次。（第二次大文件算是秒传，很快的；小文件不会再传。然后百度云端返回的MD5值都是正确的了）**
-
 
 ---
 
