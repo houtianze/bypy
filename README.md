@@ -24,13 +24,10 @@ Basically: After a big file uploaded using slices and then combined, Baidu will 
 **曲线解决方法：syncup两次。（第二次大文件算是秒传，很快的；小文件不会再传。然后百度云端返回的MD5值都是正确的了）**
 
 ---
-
----
 Add in a simple GUI
 
 加入了简陋的图形界面
 
----
 
 ---
 **Now should be able to authorize behind the GFW.**
