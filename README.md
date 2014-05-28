@@ -8,7 +8,7 @@ Copyright 2013 Hou Tianze (GitHub: houtianze, Twitter: @ibic, G+: +TianzeHou)
 ---
 关于百度的一个bug造成的Syncup的一点问题。
 
-参见 #43 #47
+参见 [#43](../../issues/43) 和 [#47](../../issues/47)
 
 简单说就是：大文件分片上传合并后，百度会返回错误的MD5值。这会导致文件比较失败（本地和远程同样的大文件被认为是不同的文件，因为拿到MD5不一样），进而导致syncup / syncdown重复上传下载。
 
