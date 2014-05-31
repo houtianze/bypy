@@ -916,7 +916,9 @@ class ByPy(object):
 			perr("Error accessing '{}'".format(url))
 			if ex and isinstance(ex, Exception) and self.Debug:
 				perr("Exception: {}".format(ex))
-			pr(traceback.format_exc())
+			tb = traceback.format_exc()
+			if tb:
+				pr(tb)
 			perr("Function: {}".format(act.__name__))
 			perr("Website parameters: {}".format(pars))
 			if r:
@@ -925,7 +927,7 @@ class ByPy(object):
 				perr("Website returned: {}".format(rb(r.text)))
 
 	# always append / replace the 'access_token' parameter in the https request
-	def __request_work(self, url, pars, act, method, actargs = None, addtoken = True, **kwargs):
+	def __request_work(self, url, pars, act, method, actargs = None, addtoken = True, dumpex = True, **kwargs):
 		result = ENoError
 		r = None
 
@@ -982,7 +984,7 @@ class ByPy(object):
 					if ENoError == self.__refresh_token(): # refresh the token and re-request
 						# TODO: avoid dead recursive loops
 						# TODO: properly pass retry
-						result = self.__request(url, pars, act, method, actargs, True, addtoken, **kwargs)
+						result = self.__request(url, pars, act, method, actargs, True, addtoken, dumpex, **kwargs)
 					else:
 						result = EFatal
 						perr("FATAL: Token refreshing failed, can't continue.\nQuitting...\n")
@@ -1000,20 +1002,20 @@ class ByPy(object):
 					ec == 31065 or # sc == 400 directory is full
 					ec == 31066): # sc == 403 (indeed 404) file does not exist
 					result = ec
-					if not ('nodump' in kwargs):
+					if dumpex:
 						self.__dump_exception(None, url, pars, r, act)
 				else:
 					result = ERequestFailed
-					if not ('nodump' in kwargs):
+					if dumpex:
 						self.__dump_exception(None, url, pars, r, act)
 		except (requests.exceptions.RequestException,
 				socket.error) as ex:
 			result = ERequestFailed
-			if not ('nodump' in kwargs):
+			if dumpex:
 				self.__dump_exception(ex, url, pars, r, act)
 		except Exception as ex: # shall i quit? i think so.
 			result = EFatal
-			if not ('nodump' in kwargs):
+			if dumpex:
 				self.__dump_exception(ex, url, pars, r, act)
 			perr("Fatal Exception.\nQuitting...\n")
 			onexit(result)
@@ -1023,7 +1025,7 @@ class ByPy(object):
 
 		return result
 
-	def __request(self, url, pars, act, method, actargs = None, retry = True, addtoken = True, **kwargs):
+	def __request(self, url, pars, act, method, actargs = None, retry = True, addtoken = True, dumpex = True, **kwargs):
 		tries = 1
 		if retry:
 			tries = self.__retry
@@ -1031,7 +1033,7 @@ class ByPy(object):
 		i = 0
 		result = ERequestFailed
 		while True:
-			result = self.__request_work(url, pars, act, method, actargs, addtoken, **kwargs)
+			result = self.__request_work(url, pars, act, method, actargs, addtoken, dumpex, **kwargs)
 			i += 1
 			# only ERequestFailed needs retry, other error still directly return
 			if result == ERequestFailed:
@@ -1051,11 +1053,11 @@ class ByPy(object):
 
 		return result
 
-	def __get(self, url, pars, act, actargs = None, retry = True, addtoken = True, **kwargs):
-		return self.__request(url, pars, act, 'GET', actargs, retry, addtoken, **kwargs)
+	def __get(self, url, pars, act, actargs = None, retry = True, addtoken = True, dumpex = True, **kwargs):
+		return self.__request(url, pars, act, 'GET', actargs, retry, addtoken, dumpex, **kwargs)
 
-	def __post(self, url, pars, act, actargs = None, retry = True, addtoken = True, **kwargs):
-		return self.__request(url, pars, act, 'POST', actargs, retry, addtoken, **kwargs)
+	def __post(self, url, pars, act, actargs = None, retry = True, addtoken = True, dumpex = True, **kwargs):
+		return self.__request(url, pars, act, 'POST', actargs, retry, addtoken, dumpex, **kwargs)
 
 	def __replace_list_format(self, fmt, j):
 		output = fmt
@@ -1562,7 +1564,7 @@ get information of the given path (dir / file) at Baidu Yun.
 				rfile = rdir + '/' + name.replace('\\', '/')
 				# if the corresponding file matches at Baidu Yun, then don't upload
 				self.__remote_json = {}
-				subresult = self.__get_file_info(rfile, nodump = True)
+				subresult = self.__get_file_info(rfile, dumpex = False)
 				if subresult == ENoError and ENoError == self.__verify_current_file(self.__remote_json, False):
 					self.pv("Remote file exists, skip uploading".format(rfile))
 				else:
