@@ -144,8 +144,6 @@ EFatal = -1 # No way to continue
 
 # internal errors
 IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload the whole file.
-IEFileAlreadyExists = 31061 # File does not exist
-IEFileDoesNotExist = 31066 # File does not exist
 
 # PCS configuration constants
 # ==== NOTE ====
@@ -902,9 +900,7 @@ class ByPy(object):
 				ec = dj['error_code']
 				et = dj['error_msg']
 				msg = ''
-				if ec == IEMD5NotFound or \
-					ec == IEFileDoesNotExist or \
-					ec == IEFileAlreadyExists:
+				if ec == IEMD5NotFound:
 					pf = pinfo
 					msg = et
 				else:
@@ -973,7 +969,8 @@ class ByPy(object):
 				try:
 					j = r.json()
 					ec = j['error_code']
-					self.__print_error_json(r)
+					# error print is done in __dump_exception()
+					# self.__print_error_json(r)
 				except ValueError:
 					perr("Not valid error JSON")
 
@@ -1003,17 +1000,21 @@ class ByPy(object):
 					ec == 31065 or # sc == 400 directory is full
 					ec == 31066): # sc == 403 (indeed 404) file does not exist
 					result = ec
-					self.__dump_exception(None, url, pars, r, act)
+					if not ('nodump' in kwargs):
+						self.__dump_exception(None, url, pars, r, act)
 				else:
 					result = ERequestFailed
-					self.__dump_exception(None, url, pars, r, act)
+					if not ('nodump' in kwargs):
+						self.__dump_exception(None, url, pars, r, act)
 		except (requests.exceptions.RequestException,
 				socket.error) as ex:
-			self.__dump_exception(ex, url, pars, r, act)
 			result = ERequestFailed
+			if not ('nodump' in kwargs):
+				self.__dump_exception(ex, url, pars, r, act)
 		except Exception as ex: # shall i quit? i think so.
-			self.__dump_exception(ex, url, pars, r, act)
 			result = EFatal
+			if not ('nodump' in kwargs):
+				self.__dump_exception(ex, url, pars, r, act)
 			perr("Fatal Exception.\nQuitting...\n")
 			onexit(result)
 			# we eat the exception, and use return code as the only
@@ -1301,7 +1302,7 @@ class ByPy(object):
 	# now the JSON is written to self.__remote_json, due to Python call-by-reference chaos
 	# https://stackoverflow.com/questions/986006/python-how-do-i-pass-a-variable-by-reference
 	# as if not enough confusion in Python call-by-reference
-	def __get_file_info(self, remotefile):
+	def __get_file_info(self, remotefile, **kwargs):
 		rdir, rfile = posixpath.split(remotefile)
 		self.pd("__get_file_info(): rdir : {} | rfile: {}".format(rdir, rfile))
 		if rdir and rfile:
@@ -1311,7 +1312,7 @@ class ByPy(object):
 				'by' : 'name', # sort in case we can use binary-search, etc in the futrue.
 				'order' : 'asc' }
 
-			return self.__get(PcsUrl + 'file', pars, self.__get_file_info_act, remotefile)
+			return self.__get(PcsUrl + 'file', pars, self.__get_file_info_act, remotefile, **kwargs)
 		else:
 			perr("Invalid remotefile '{}' specified.".format(remotefile))
 			return EArgument
@@ -1561,7 +1562,7 @@ get information of the given path (dir / file) at Baidu Yun.
 				rfile = rdir + '/' + name.replace('\\', '/')
 				# if the corresponding file matches at Baidu Yun, then don't upload
 				self.__remote_json = {}
-				subresult = self.__get_file_info(rfile)
+				subresult = self.__get_file_info(rfile, nodump = True)
 				if subresult == ENoError and ENoError == self.__verify_current_file(self.__remote_json, False):
 					self.pv("Remote file exists, skip uploading".format(rfile))
 				else:
