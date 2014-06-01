@@ -1576,7 +1576,8 @@ get information of the given path (dir / file) at Baidu Yun.
 
 	def __upload_dir(self, localpath, remotepath, ondup = 'overwrite'):
 		self.pd("Uploading directory '{}' to '{}'".format(localpath, remotepath))
-		self.__mkdir(remotepath) # it's so minor that we don't care about the return value
+		# it's so minor that we don't care about the return value
+		self.__mkdir(remotepath, dumpex = False)
 		os.path.walk(localpath, self.__walk_upload, (localpath, remotepath, ondup))
 
 	def __upload_file(self, localpath, remotepath, ondup = 'overwrite'):
@@ -2005,13 +2006,13 @@ download a remote directory (recursively)
 
 		return ENoError
 
-	def __mkdir(self, rpath):
+	def __mkdir(self, rpath, **kwargs):
 		self.pd("Making remote directory '{}'".format(rpath))
 
 		pars = {
 			'method' : 'mkdir',
 			'path' : rpath }
-		return self.__post(PcsUrl + 'file', pars, self.__mkdir_act)
+		return self.__post(PcsUrl + 'file', pars, self.__mkdir_act, **kwargs)
 
 
 	def mkdir(self, remotepath):
