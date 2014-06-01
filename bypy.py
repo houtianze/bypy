@@ -311,8 +311,8 @@ def pprgrc(finish, total, start_time = None,
 		elapsed = now - start_time
 		speed = human_speed(finishf / elapsed)
 		eta = 'ETA: ' + human_time(elapsed * remainf / finishf) + \
-				' (Speed: ' + speed + ', Elapsed: ' + \
-				'{:.3f}s'.format(elapsed)  + ')'
+				' (' + speed + ', ' + \
+				human_time(elapsed) + ' gone)'
 	msg = '\r' + prefix + '[' + segth * '=' + (seg - segth) * '_' + ']' + \
 		" {}% ({}/{})".format(percent, si_size(finish), si_size(total)) + \
 		' ' + eta + suffix
