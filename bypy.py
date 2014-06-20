@@ -2159,7 +2159,7 @@ list the recycle contents
 			perr("'{}' not found in the recycle bin".format(path))
 
 	def restore(self, remotepath):
-		''' Usage: retore <remotepath> - \
+		''' Usage: restore <remotepath> - \
 restore a file from the recycle bin
   remotepath - the remote path to restore
 		'''
@@ -2580,17 +2580,17 @@ right after the '# PCS configuration constants' comment.
 		# program tunning, configration (those will be passed to class ByPy)
 		parser.add_argument("-r", "--retry", dest="retry", default=5, help="number of retry attempts on network error [default: %(default)i times]")
 		parser.add_argument("-q", "--quit-when-fail", dest="quit", default=False, help="quit when maximum number of retry failed [default: %(default)s]")
-		parser.add_argument("-t", "--timeout", dest="timeout", default=60, help="network time out in seconds [default: %(default)s]")
+		parser.add_argument("-t", "--timeout", dest="timeout", default=60, help="network timeout in seconds [default: %(default)s]")
 		parser.add_argument("-s", "--slice", dest="slice", default=DefaultSliceSize, help="size of file upload slice (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultSliceInMB))
 		parser.add_argument("--chunk", dest="chunk", default=DefaultDlChunkSize, help="size of file download chunk (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultDlChunkSize / OneM))
 		parser.add_argument("-e", "--verify", dest="verify", action="store_true", default=False, help="Verify upload / download [default : %(default)s]")
 		parser.add_argument("-I", "--insecure", dest="insecure", action="store_true", default=False, help="use http (INSECURE) instead of https connections [default: %(default)s] - NOT IMPLEMENTED")
 		parser.add_argument("-f", "--force-hash", dest="forcehash", action="store_true", default=False, help="force file MD5 / CRC32 calculation instead of using cached values [default: %(default)s]")
 		parser.add_argument("-l", "--list-file", dest="listfile", default=None, help="input list file (used by some of the commands only [default: %(default)s]")
-		parser.add_argument("--resume-download", dest="resumedl", default=True, help="resume instead of restart when downloading if locale file already exists [default: %(default)s]")
+		parser.add_argument("--resume-download", dest="resumedl", default=True, help="resume instead of restarting when downloading if local file already exists [default: %(default)s]")
 
 		# action
-		parser.add_argument("-c", "--clean", dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean both settings and hash cache [default: %(default)s]")
+		parser.add_argument("-c", "--clean", dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean settings and hash cache [default: %(default)s]")
 
 		# the MAIN parameter - what command to perform
 		parser.add_argument("command", nargs='*', help = "operations (quota / list)")
@@ -2645,7 +2645,7 @@ right after the '# PCS configuration constants' comment.
 				pr("Token file '{}' removed. You need to re-authorize "
 					"the application upon next run".format(TokenFilePath))
 			else:
-				perr("Fail to remove the token file '{}'".format(TokenFilePath))
+				perr("Failed to remove the token file '{}'".format(TokenFilePath))
 				perr("You need to remove it manually")
 
 			if args.clean >= 2:
@@ -2653,7 +2653,7 @@ right after the '# PCS configuration constants' comment.
 				if subresult == ENoError:
 					pr("Hash Cache File '{}' removed.".format(HashCachePath))
 				else:
-					perr("Fail to remove the Hash Cache File '{}'".format(HashCachePath))
+					perr("Failed to remove the Hash Cache File '{}'".format(HashCachePath))
 					perr("You need to remove it manually")
 					result = subresult
 
