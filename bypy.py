@@ -1561,6 +1561,9 @@ get information of the given path (dir / file) at Baidu Yun.
 			if not os.access(lfile,os.R_OK):
 				self.pv('ignoring {} due to permission problem'.format(lfile))
 				continue
+			if '\\' in name:
+				self.pv('ignoring {} due to name problem'.format(lfile))
+				continue
 			if os.path.isfile(lfile):
 				self.__current_file = lfile
 				self.__current_file_size = getfilesize(lfile)
@@ -2183,6 +2186,9 @@ restore a file from the recycle bin
 			if not os.access(fullname,os.R_OK):
 				self.pv('Ignoring file {} due to permission problem'.format(fullname));
 				continue
+			if '\\' in name:
+				self.pv('Ignoring file {} due to name problem'.format(fullname));
+				continue
 			if os.path.isfile(fullname):
 				files.append((name, getfilesize(fullname), md5(fullname)))
 			elif os.path.isdir(fullname):
@@ -2407,6 +2413,13 @@ if not specified, it defaults to the root directory
 			p = l[1]
 			lcpath = os.path.join(localdir, p) # local complete path
 			rcpath = rpath + '/' + p # remote complete path
+			# because during sync, changes to file system may occur
+			# Original files might got deleted
+			# instead of throw exception and shutdown half way
+			# I considered it better to simply skip it
+			if not os.access(lcpath,os.R_OK):
+				self.pv('skipping file {} that got deleted.'.format(lcpath))
+				continue
 			if t == 'F':
 				subresult = self.__upload_file(lcpath, rcpath)
 				if subresult != ENoError:
