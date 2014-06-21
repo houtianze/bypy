@@ -161,7 +161,7 @@ GaeRefreshUrl = GaeUrl + '/refresh'
 OpenShiftRedirectUrl = OpenShiftUrl + '/auth'
 OpenShiftRefreshUrl = OpenShiftUrl + '/refresh'
 
-ApiKey = 'q8WE4EpCsau1oS0MplgMKNBn' # replace with your own ApiKey if you use your own appid
+ApiKey = '' # replace with your own ApiKey if you use your own appid
 SecretKey = '' # replace with your own SecretKey if you use your own appid
 # NOTE: no trailing '/'
 AppPcsPath = '/apps/bypy' # change this to the App's direcotry you specified when creating the app
@@ -171,6 +171,7 @@ AppPcsPathLen = len(AppPcsPath)
 HomeDir = expanduser('~')
 TokenFilePath = HomeDir + os.sep + '.bypy.json'
 HashCachePath = HomeDir + os.sep + '.bypy.pickle'
+FilepathFilter = [r".*~.*",r".*/\..*"]
 #UserAgent = 'Mozilla/5.0'
 
 # Baidu PCS URLs etc.
@@ -481,6 +482,14 @@ def makedir(path, verbose = False):
 		result = EFailToCreateLocalDir
 
 	return result
+
+def checkpath(path):
+	for regx in FilepathFilter:
+		pattern = re.compile(regx)
+		match = pattern.match(path)
+		if match:
+			return True
+	return False
 
 # guarantee no-exception
 def getfilesize(path):
@@ -1607,8 +1616,7 @@ get information of the given path (dir / file) at Baidu Yun.
 					perr("Error: size of file '{}' - {} is too big".format(
 						self.__current_file,
 						self.__current_file_size))
-
-			return result
+				return result
 		else: # very small file, must be uploaded manually and no slicing is needed
 			self.pd("'{}' is small and being non-slicing uploaded.".format(self.__current_file))
 			return self.__upload_one_file(localpath, remotepath, ondup)
@@ -2382,8 +2390,10 @@ if not specified, it defaults to the root directory
 		for d in diff:
 			t = d[0] # type
 			p = d[1] # path
-			lcpath = os.path.join(localdir, p) # local complete path
 			rcpath = rpath + '/' + p # remote complete path
+			lcpath = os.path.join(localdir, p) # local complete path
+			if checkpath(lcpath):
+				continue
 			# this path is before get_pcs_path() since delete() expects so.
 			#result = self.delete(rpartialdir + '/' + p)
 			result = self.__delete(rcpath)
@@ -2399,8 +2409,10 @@ if not specified, it defaults to the root directory
 		for l in local:
 			t = l[0]
 			p = l[1]
-			lcpath = os.path.join(localdir, p) # local complete path
 			rcpath = rpath + '/' + p # remote complete path
+			lcpath = os.path.join(localdir, p) # local complete path
+			if checkpath(lcpath):
+				continue
 			if t == 'F':
 				subresult = self.__upload_file(lcpath, rcpath)
 				if subresult != ENoError:
