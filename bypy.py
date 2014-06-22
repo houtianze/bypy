@@ -789,7 +789,9 @@ class PathDictTree(dict):
 	def get(self, path):
 		place = self
 		if path:
-			assert '\\' not in path
+			# Linux can have file / folder names with '\\'?
+			if sys.platform.startswith('win32'):
+				assert '\\' not in path
 			route = filter(None, path.split('/'))
 			for part in route:
 				if part in place:
@@ -841,6 +843,7 @@ class ByPy(object):
 		listfile = None,
 		resumedownload = True,
 		extraupdate = lambda: (),
+		incregex = '',
 		verbose = 0, debug = False):
 
 		self.__slice_size = slice_size
@@ -853,6 +856,8 @@ class ByPy(object):
 		self.__listfile = listfile
 		self.__resumedownload = resumedownload
 		self.__extraupdate = extraupdate
+		self.__incregex = incregex
+		self.__incregmo = re.compile(incregex)
 		self.Verbose = verbose
 		self.Debug = debug
 
@@ -1058,6 +1063,34 @@ class ByPy(object):
 
 	def __post(self, url, pars, act, actargs = None, retry = True, addtoken = True, dumpex = True, **kwargs):
 		return self.__request(url, pars, act, 'POST', actargs, retry, addtoken, dumpex, **kwargs)
+
+	# direction: True - upload, False - download
+	def __shallinclude(self, lpath, rpath, direction):
+		arrow = '==>' if direction else '<=='
+		checkpath = lpath if direction else rpath
+		# TODO: bad practice, see os.access() document for more info
+		if direction: # upload
+			if not os.path.exists(lpath):
+				perr("'{}' {} '{}' skipped since local path no longer exists".format(
+					lpath, arrow, rpath));
+				return False
+		else: # download
+			if os.path.exists(lpath) and (not os.access(lpath, os.R_OK)):
+				perr("'{}' {} '{}' skipped due to permission".format(
+					lpath, arrow, rpath));
+				return False
+
+		if '\\' in os.path.basename(checkpath):
+			perr("'{}' {} '{}' skipped due to problemic '\\' in the path".format(
+				lpath, arrow, rpath));
+			return False
+
+		include = (not self.__incregex) or self.__incregmo.match(checkpath)
+		if not include:
+			self.pv("'{}' {} '{}' skipped as it's not included in the regex pattern".format(
+				lpath, arrow, rpath));
+
+		return include
 
 	def __replace_list_format(self, fmt, j):
 		output = fmt
@@ -1557,13 +1590,7 @@ get information of the given path (dir / file) at Baidu Yun.
 
 		result = ENoError
 		for name in names:
-			lfile = os.path.join(dirname, name)		
-			if not os.access(lfile,os.R_OK):
-				self.pv('ignoring {} due to permission problem'.format(lfile))
-				continue
-			if '\\' in name:
-				self.pv('ignoring {} due to name problem'.format(lfile))
-				continue
+			lfile = os.path.join(dirname, name)
 			if os.path.isfile(lfile):
 				self.__current_file = lfile
 				self.__current_file_size = getfilesize(lfile)
@@ -1587,6 +1614,11 @@ get information of the given path (dir / file) at Baidu Yun.
 		os.path.walk(localpath, self.__walk_upload, (localpath, remotepath, ondup))
 
 	def __upload_file(self, localpath, remotepath, ondup = 'overwrite'):
+		# TODO: this is a quick patch
+		if not self.__shallinclude(localpath, remotepath, True):
+			# since we are not going to upload it, there is no error
+			return ENoError
+
 		self.__current_file = localpath
 		self.__current_file_size = getfilesize(localpath)
 
@@ -1804,6 +1836,11 @@ try to create a file at PCS by combining slices, having MD5s specified
 		return result
 
 	def __downfile(self, remotefile, localfile):
+		# TODO: this is a quick patch
+		if not self.__shallinclude(localfile, remotefile, False):
+			# since we are not going to download it, there is no error
+			return ENoError
+
 		result = ENoError
 		rfile = remotefile
 
@@ -2183,12 +2220,6 @@ restore a file from the recycle bin
 		dirs = []
 		for name in names:
 			fullname = os.path.join(dirname, name)
-			if not os.access(fullname,os.R_OK):
-				self.pv('Ignoring file {} due to permission problem'.format(fullname));
-				continue
-			if '\\' in name:
-				self.pv('Ignoring file {} due to name problem'.format(fullname));
-				continue
 			if os.path.isfile(fullname):
 				files.append((name, getfilesize(fullname), md5(fullname)))
 			elif os.path.isdir(fullname):
@@ -2413,13 +2444,6 @@ if not specified, it defaults to the root directory
 			p = l[1]
 			lcpath = os.path.join(localdir, p) # local complete path
 			rcpath = rpath + '/' + p # remote complete path
-			# because during sync, changes to file system may occur
-			# Original files might got deleted
-			# instead of throw exception and shutdown half way
-			# I considered it better to simply skip it
-			if not os.access(lcpath,os.R_OK):
-				self.pv('skipping file {} that got deleted.'.format(lcpath))
-				continue
 			if t == 'F':
 				subresult = self.__upload_file(lcpath, rcpath)
 				if subresult != ENoError:
@@ -2607,6 +2631,7 @@ right after the '# PCS configuration constants' comment.
 		parser.add_argument("-f", "--force-hash", dest="forcehash", action="store_true", default=False, help="force file MD5 / CRC32 calculation instead of using cached values [default: %(default)s]")
 		parser.add_argument("-l", "--list-file", dest="listfile", default=None, help="input list file (used by some of the commands only [default: %(default)s]")
 		parser.add_argument("--resume-download", dest="resumedl", default=True, help="resume instead of restarting when downloading if local file already exists [default: %(default)s]")
+		parser.add_argument("--include-regex", dest="incregex", default='', help="regular expression of files to include. if not specified (default), everything is included. for download, the regex applies to the remote files; for upload, the regex applies to the local files. to exclude files, think about your regex, some tips here: https://stackoverflow.com/questions/406230/regular-expression-to-match-string-not-containing-a-word [default: %(default)s]")
 
 		# action
 		parser.add_argument("-c", "--clean", dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean settings and hash cache [default: %(default)s]")
@@ -2698,6 +2723,7 @@ right after the '# PCS configuration constants' comment.
 					quit_when_fail = args.quit,
 					listfile = args.listfile,
 					resumedownload = args.resumedl,
+					incregex = args.incregex,
 					verbose = args.verbose, debug = args.debug)
 			uargs = []
 			for arg in args.command[1:]:
