@@ -297,7 +297,7 @@ ask = askc
 
 # print progress
 # https://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console
-def pprgrc(finish, total, start_time = None,
+def pprgrc(finish, total, start_time = None, existing = 0,
 		prefix = '', suffix = '', seg = 20):
 	# we don't want this goes to the log, so we use stderr
 	segth = seg * finish // total
@@ -305,7 +305,7 @@ def pprgrc(finish, total, start_time = None,
 	eta = ''
 	now = time.time()
 	if start_time is not None and percent > 5 and finish > 0:
-		finishf = float(finish)
+		finishf = float(finish) - float(existing)
 		totalf = float(total)
 		remainf = totalf - finishf
 		elapsed = now - start_time
@@ -314,7 +314,7 @@ def pprgrc(finish, total, start_time = None,
 				' (' + speed + ', ' + \
 				human_time(elapsed) + ' gone)'
 	msg = '\r' + prefix + '[' + segth * '=' + (seg - segth) * '_' + ']' + \
-		" {}% ({}/{})".format(percent, si_size(finish), si_size(total)) + \
+		" {}% ({}/{})".format(percent, si_size(finish, 0), si_size(total, 0)) + \
 		' ' + eta + suffix
 	sys.stderr.write(msg + ' ') # space is used as a clearer
 	sys.stderr.flush()
@@ -409,20 +409,21 @@ def human_time(seconds):
 
 	return result
 
-def human_speed(speed):
+def human_speed(speed, precision = 0):
 	''' DocTests:
 	'''
 	# https://stackoverflow.com/questions/15263597/python-convert-floating-point-number-to-certain-precision-then-copy-to-string/15263885#15263885
+	numfmt = '{{:.{}f}}'.format(precision)
 	if speed < OneK:
-		return '{:.3f}'.format(speed) + 'B/s'
+		return numfmt.format(speed) + 'B/s'
 	elif speed < OneM:
-		return '{:.3f}'.format(speed / float(OneK)) + 'KB/s'
+		return numfmt.format(speed / float(OneK)) + 'KB/s'
 	elif speed < OneG:
-		return '{:.3f}'.format(speed / float(OneM)) + 'MB/s'
+		return numfmt.format(speed / float(OneM)) + 'MB/s'
 	elif speed < OneT:
-		return '{:.3f}'.format(speed / float(OneG)) + 'GB/s'
+		return numfmt.format(speed / float(OneG)) + 'GB/s'
 	else:
-		return '*** BLAKC HOLE ***'
+		return 'HAHA'
 
 def remove_backslash(s):
 	return s.replace(r'\/', r'/')
@@ -1785,7 +1786,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 			f.write(r.content)
 			pos = f.tell()
-			pprgr(pos, rsize, start_time)
+			pprgr(pos, rsize, start_time, existing = offset)
 			expectedBytes = self.__dl_chunk_size
 			if rsize - offset < self.__dl_chunk_size:
 				expectedBytes = rsize - offset
