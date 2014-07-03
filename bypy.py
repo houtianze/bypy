@@ -314,7 +314,7 @@ def pprgrc(finish, total, start_time = None, existing = 0,
 				' (' + speed + ', ' + \
 				human_time(elapsed) + ' gone)'
 	msg = '\r' + prefix + '[' + segth * '=' + (seg - segth) * '_' + ']' + \
-		" {}% ({}/{})".format(percent, si_size(finish, 0), si_size(total, 0)) + \
+		" {}% ({}/{})".format(percent, si_size(finish), si_size(total)) + \
 		' ' + eta + suffix
 	sys.stderr.write(msg + ' ') # space is used as a clearer
 	sys.stderr.flush()
@@ -1272,6 +1272,10 @@ class ByPy(object):
 			return -1
 
 	def __verify_current_file(self, j, gotlmd5):
+		# if we really don't want to verify
+		if self.__current_file == '/dev/null' and self.__verify == False:
+			return ENoError
+
 		rsize = 0
 		rmd5 = 0
 
@@ -1295,9 +1299,6 @@ class ByPy(object):
 			perr("Unable to verify JSON: '{}', as no 'md5' entry found".format(j))
 			return EHashMismatch
 
-		if not gotlmd5:
-			self.__current_file_md5 = md5(self.__current_file)
-
 		self.pd("Comparing local file '{}' and remote file '{}'".format(
 			self.__current_file, j['path']))
 		self.pd("Local file size : {}".format(self.__current_file_size))
@@ -1306,6 +1307,8 @@ class ByPy(object):
 		if self.__current_file_size == rsize:
 			self.pd("Local file and remote file sizes match")
 			if self.__verify:
+				if not gotlmd5:
+					self.__current_file_md5 = md5(self.__current_file)
 				self.pd("Local file MD5 : {}".format(binascii.hexlify(self.__current_file_md5)))
 				self.pd("Remote file MD5: {}".format(binascii.hexlify(rmd5)))
 
@@ -1712,8 +1715,9 @@ try to create a file at PCS by combining slices, having MD5s specified
 		verify = self.__verify
 		if localfile:
 			self.__current_file = localfile
+			self.__current_file_size = getfilesize(localfile)
 		else:
-			self.__current_file = 'FAKE'
+			self.__current_file = '/dev/null' # Force no verify
 			self.__verify = False
 
 		result = self.__combine_file(get_pcs_path(remotefile))
@@ -1786,7 +1790,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 			f.write(r.content)
 			pos = f.tell()
-			pprgr(pos, rsize, start_time, existing = offset)
+			pprgr(pos, rsize, start_time, existing = self.__existing_size)
 			expectedBytes = self.__dl_chunk_size
 			if rsize - offset < self.__dl_chunk_size:
 				expectedBytes = rsize - offset
@@ -1804,6 +1808,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 			'path' : rfile }
 
 		offset = start
+		self.__existing_size = offset
 		start_time = time.time()
 		while True:
 			nextoffset = offset + self.__dl_chunk_size
