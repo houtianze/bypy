@@ -314,7 +314,7 @@ def pprgrc(finish, total, start_time = None, existing = 0,
 				' (' + speed + ', ' + \
 				human_time(elapsed) + ' gone)'
 	msg = '\r' + prefix + '[' + segth * '=' + (seg - segth) * '_' + ']' + \
-		" {}% ({}/{})".format(percent, si_size(finish, 0), si_size(total, 0)) + \
+		" {}% ({}/{})".format(percent, si_size(finish), si_size(total)) + \
 		' ' + eta + suffix
 	sys.stderr.write(msg + ' ') # space is used as a clearer
 	sys.stderr.flush()
