@@ -1272,6 +1272,10 @@ class ByPy(object):
 			return -1
 
 	def __verify_current_file(self, j, gotlmd5):
+		# if we really don't want to verify
+		if self.__current_file == '/dev/null' and self.__verify == False:
+			return ENoError
+
 		rsize = 0
 		rmd5 = 0
 
@@ -1712,8 +1716,9 @@ try to create a file at PCS by combining slices, having MD5s specified
 		verify = self.__verify
 		if localfile:
 			self.__current_file = localfile
+			self.__current_file_size = getfilesize(localfile)
 		else:
-			self.__current_file = 'FAKE'
+			self.__current_file = '/dev/null' # Force no verify
 			self.__verify = False
 
 		result = self.__combine_file(get_pcs_path(remotefile))
