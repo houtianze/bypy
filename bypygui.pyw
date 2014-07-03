@@ -265,9 +265,9 @@ class BypyGui(tk.Frame):
 	def prg(self, msg):
 		return self.prcolorg(msg, bypy.TermColor.Nil, bypy.TermColor.Nil)
 
-	def pprgrg(self, finish, total, start_time= None,
+	def pprgrg(self, finish, total, start_time= None, existing = 0,
 			prefix = '', suffix = '', seg = 1000):
-		self.progress.set(self.maxProgress * finish // total)
+		self.progress.set(self.maxProgress * (finish - existing) // total)
 
 	def askg(self, message = "Please input", title = GuiTitle):
 		asker = AskGui(self, message, title)
