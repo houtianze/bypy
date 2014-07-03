@@ -859,6 +859,7 @@ class ByPy(object):
 		self.__extraupdate = extraupdate
 		self.__incregex = incregex
 		self.__incregmo = re.compile(incregex)
+		self.__existing_size = 0
 		self.Verbose = verbose
 		self.Debug = debug
 
@@ -1273,7 +1274,7 @@ class ByPy(object):
 
 	def __verify_current_file(self, j, gotlmd5):
 		# if we really don't want to verify
-		if self.__current_file == '/dev/null' and self.__verify == False:
+		if self.__current_file == '/dev/null' and not self.__verify:
 			return ENoError
 
 		rsize = 0
