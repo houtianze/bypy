@@ -1299,9 +1299,6 @@ class ByPy(object):
 			perr("Unable to verify JSON: '{}', as no 'md5' entry found".format(j))
 			return EHashMismatch
 
-		if not gotlmd5:
-			self.__current_file_md5 = md5(self.__current_file)
-
 		self.pd("Comparing local file '{}' and remote file '{}'".format(
 			self.__current_file, j['path']))
 		self.pd("Local file size : {}".format(self.__current_file_size))
@@ -1310,6 +1307,8 @@ class ByPy(object):
 		if self.__current_file_size == rsize:
 			self.pd("Local file and remote file sizes match")
 			if self.__verify:
+				if not gotlmd5:
+					self.__current_file_md5 = md5(self.__current_file)
 				self.pd("Local file MD5 : {}".format(binascii.hexlify(self.__current_file_md5)))
 				self.pd("Remote file MD5: {}".format(binascii.hexlify(rmd5)))
 
@@ -1791,7 +1790,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 			f.write(r.content)
 			pos = f.tell()
-			pprgr(pos, rsize, start_time, existing = offset)
+			pprgr(pos, rsize, start_time, existing = self.__existing_size)
 			expectedBytes = self.__dl_chunk_size
 			if rsize - offset < self.__dl_chunk_size:
 				expectedBytes = rsize - offset
@@ -1809,6 +1808,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 			'path' : rfile }
 
 		offset = start
+		self.__existing_size = offset
 		start_time = time.time()
 		while True:
 			nextoffset = offset + self.__dl_chunk_size
