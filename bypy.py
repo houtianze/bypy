@@ -307,7 +307,7 @@ def pprgrc(finish, total, start_time = None, existing = 0,
 	if start_time is not None and percent > 5 and finish > 0:
 		finishf = float(finish) - float(existing)
 		totalf = float(total)
-		remainf = totalf - finishf
+		remainf = totalf - float(finish)
 		elapsed = now - start_time
 		speed = human_speed(finishf / elapsed)
 		eta = 'ETA: ' + human_time(elapsed * remainf / finishf) + \
