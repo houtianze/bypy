@@ -1785,20 +1785,25 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 	def __downchunks_act(self, r, args):
 		rfile, offset, rsize, start_time = args
-		with open(self.__current_file, 'r+b' if offset > 0 else 'wb') as f:
-			if offset > 0:
-				f.seek(offset)
 
-			f.write(r.content)
-			pos = f.tell()
-			pprgr(pos, rsize, start_time, existing = self.__existing_size)
-			expectedBytes = self.__dl_chunk_size
-			if rsize - offset < self.__dl_chunk_size:
-				expectedBytes = rsize - offset
-			if pos - offset == expectedBytes:
-				return ENoError
-			else:
-				return EFileWrite
+		expectedBytes = self.__dl_chunk_size
+		if rsize - offset < self.__dl_chunk_size:
+			expectedBytes = rsize - offset
+
+		if len(r.content) != expectedBytes:
+			return ERequestFailed
+		else:
+			with open(self.__current_file, 'r+b' if offset > 0 else 'wb') as f:
+				if offset > 0:
+					f.seek(offset)
+
+				f.write(r.content)
+				pos = f.tell()
+				pprgr(pos, rsize, start_time, existing = self.__existing_size)
+				if pos - offset == expectedBytes:
+					return ENoError
+				else:
+					return EFileWrite
 
 	# requirment: self.__remote_json is already gotten
 	def __downchunks(self, rfile, start):
