@@ -149,7 +149,7 @@ IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload 
 # ==== NOTE ====
 # I use server auth, because it's the only possible method to protect the SecretKey.
 # If you don't like that and want to perform local authorization using 'Device' method, you need to:
-# - Change to: ServerAuth = 0
+# - Change to: ServerAuth = False
 # - Paste your own ApiKey and SecretKey.
 # - Change the AppPcsPath to your own App's directory at Baidu PCS
 # Then you are good to go
@@ -163,6 +163,8 @@ OpenShiftRefreshUrl = OpenShiftUrl + '/refresh'
 
 ApiKey = 'q8WE4EpCsau1oS0MplgMKNBn' # replace with your own ApiKey if you use your own appid
 SecretKey = '' # replace with your own SecretKey if you use your own appid
+if not SecretKey:
+	ServerAuth = True
 # NOTE: no trailing '/'
 AppPcsPath = '/apps/bypy' # change this to the App's direcotry you specified when creating the app
 AppPcsPathLen = len(AppPcsPath)
