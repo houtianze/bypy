@@ -6,6 +6,21 @@ Python client for Baidu Yun 百度云/百度网盘的Python客户端
 Copyright 2013 Hou Tianze (GitHub: houtianze, Twitter: @ibic, G+: +TianzeHou)
 
 ---
+If you encounter `UnicodeDecodeError` while syncing up/down a directory, it's probably due the encoding of the directory / file names not being UTF-8 (especially if these files are copied from Windows to Unix / Linux). You can fix this using the `convmv` utility (to be issued in the directory to sync):
+```
+convmv -f GBK -t UTF-8 -r * (to see what renamings are going to happen)
+convmv -f GBK -t UTF-8 --notest -r * (performing the actual renaming)
+```
+Thanks to @zm1990s for providing this fix. (The orginal post from him is at [#62](../../issues/62), his blog post detailing the `convmv` usage is here: http://blog.sina.com.cn/s/blog_4b3646350100kugp.html All are in Chinese though)
+
+如果同步/比较是出现`UnicodeDecodeError`错误，很可能是因为目录/文件名编码不是UTF-8（特别是在文件是从Windows拷贝到Unix / Linux的情况下），解决方案是用`convmv`工具来修正编码，在要同步/比较的目录下输入如下命令:
+```
+convmv -f GBK -t UTF-8 -r * （查看将会将文件改名）
+convmv -f GBK -t UTF-8 --notest -r * （实际的改名操作）
+```
+感谢 @zm1990s 提供解决方案. 他原帖在这里：[#62](../../issues/62)，博客具体讲述`convmv`用法的文章在这里： http://blog.sina.com.cn/s/blog_4b3646350100kugp.html
+
+---
 About a bug of Baidu that's affecting syncup。
 
 Please refer to [#43](../../issues/43) 和 [#47](../../issues/47)
