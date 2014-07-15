@@ -1822,9 +1822,9 @@ try to create a file at PCS by combining slices, having MD5s specified
 			nextoffset = offset + self.__dl_chunk_size
 			if nextoffset < rsize:
 				headers = { "Range" : "bytes={}-{}".format(
-					offset, nextoffset - 1) }
+					offset, nextoffset - 1), "User-Agent" : None }
 			else:
-				headers = { "Range" : "bytes={}-".format(offset) }
+				headers = { "Range" : "bytes={}-".format(offset), "User-Agent" : None }
 
 			subresult = self.__get(DPcsUrl + 'file', pars,
 				self.__downchunks_act, (rfile, offset, rsize, start_time), headers = headers)
