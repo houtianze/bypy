@@ -112,7 +112,7 @@ __updated__ = '2014-01-13'
 # ByPy default values
 DefaultSliceInMB = 20
 DefaultSliceSize = 20 * OneM
-DefaultDlChunkSize = OneM
+DefaultDlChunkSize = 20 * OneM
 RetryDelayInSec = 10
 
 # Baidu PCS constants
