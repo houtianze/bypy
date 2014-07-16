@@ -57,14 +57,14 @@ Add in a simple GUI
 Unicode / Chinese file names are properly supported. 终于全面支持Unicode / 中文了。
 
 ---
-**Important: You need to set you system locale encoding to UTF-8 for this to work**
+**Important: You need to set you system locale encoding to UTF-8 for this to work (You can refere here: http://perlgeek.de/en/article/set-up-a-clean-utf8-environment)**
 
 **Important: You need to install the [Python Requests library](http://www.python-requests.org/).** In Debian / Ubuntu / Raspbian, you just run the following command:
 ```
 sudo pip install requests
 ```
 
-**重要：想要支持中文，你要把系统的区域编码设置为UTF-8。**
+**重要：想要支持中文，你要把系统的区域编码设置为UTF-8。（参见：http://perlgeek.de/en/article/set-up-a-clean-utf8-environment)**
 
 **重要：你需要安装[Python Requests 库](http://www.python-requests.org/). 在 Debian / Ubuntu / Raspbian** 环境下，只需执行如下命令一次：
 ```
