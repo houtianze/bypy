@@ -6,6 +6,11 @@ Python client for Baidu Yun 百度云/百度网盘的Python客户端
 Copyright 2013 Hou Tianze (GitHub: houtianze, Twitter: @ibic, G+: +TianzeHou)
 
 ---
+**Add in [wiki](../../wiki), for easier sharing / communicating.**
+
+**加入了[wiki](../../wiki)，方便分享/交流。**
+
+---
 If you encounter `UnicodeDecodeError` while syncing up/down a directory, it's probably due the encoding of the directory / file names not being UTF-8 (especially if these files are copied from Windows to Unix / Linux). You can fix this using the `convmv` utility (to be issued in the directory to sync):
 ```
 convmv -f GBK -t UTF-8 -r * (to see what renamings are going to happen)
