@@ -71,6 +71,7 @@ if SystemEncoding and not sys.platform.startswith('win32'):
 if not SystemEncoding:
 	# ASSUME UTF-8 encoding, if for whatever reason,
 	# we can't get the default system encoding
+	print("*WARNING*: Cannot detect the system encoding, assume it's 'UTF-8'")
 	SystemEncoding = 'utf-8'
 
 import codecs
