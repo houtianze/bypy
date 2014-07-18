@@ -67,6 +67,12 @@ if SystemEncoding and not sys.platform.startswith('win32'):
 		ex = Exception(err)
 		print(err)
 		raise ex
+
+if not SystemEncoding:
+	# ASSUME UTF-8 encoding, if for whatever reason,
+	# we can't get the default system encoding
+	SystemEncoding = 'utf-8'
+
 import codecs
 # no idea who is the asshole that screws the sys.stdout.encoding
 # the locale is 'UTF-8', sys.stdin.encoding is 'UTF-8',
