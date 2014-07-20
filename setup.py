@@ -10,7 +10,7 @@ setup(
 	author='Hou Tianze',
 	author_email='houtianze@gmail.com',
 	url='https://github.com/houtianze/bypy',
-	packages=['bypy'],
+	py_modules=['bypy']
 	)
 
 # vim: set fileencoding=utf-8
