@@ -269,7 +269,7 @@ class BypyGui(tk.Frame):
 			prefix = '', suffix = '', seg = 1000):
 		self.progress.set(self.maxProgress * (finish - existing) // total)
 
-	def askg(self, message = "Please input", title = GuiTitle):
+	def askg(self, message = "Please input", enter = True, title = GuiTitle):
 		asker = AskGui(self, message, title)
 		centerwindow(asker)
 		asker.wait_window(asker)

@@ -181,6 +181,9 @@ HomeDir = expanduser('~')
 TokenFilePath = HomeDir + os.sep + '.bypy.json'
 HashCachePath = HomeDir + os.sep + '.bypy.pickle'
 #UserAgent = 'Mozilla/5.0'
+#UserAgent = "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)"
+# According to seanlis@github, this User-Agent string affects the download.
+UserAgent = None
 
 # Baidu PCS URLs etc.
 OpenApiUrl = "https://openapi.baidu.com"
@@ -297,9 +300,10 @@ def pinfo(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
 def pdbg(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
 	return plog('<D> ', msg, showtime, showdate, prefix, suffix, TermColor.Cyan)
 
-def askc(msg):
+def askc(msg, enter = True):
 	pr(msg)
-	pr('Press [Enter] when you are done')
+	if enter:
+		pr('Press [Enter] when you are done')
 	return raw_input()
 
 ask = askc
@@ -854,6 +858,7 @@ class ByPy(object):
 		resumedownload = True,
 		extraupdate = lambda: (),
 		incregex = '',
+		ondup = '',
 		verbose = 0, debug = False):
 
 		self.__slice_size = slice_size
@@ -868,11 +873,15 @@ class ByPy(object):
 		self.__extraupdate = extraupdate
 		self.__incregex = incregex
 		self.__incregmo = re.compile(incregex)
-		self.__existing_size = 0
+		if ondup and len(ondup) > 0:
+			self.__ondup = ondup[0].upper()
+		else:
+			self.__ondup = 'O' # O - Overwrite* S - Skip P - Prompt
 		self.Verbose = verbose
 		self.Debug = debug
 
 		# the prophet said: thou shalt initialize
+		self.__existing_size = 0
 		self.__json = {}
 		self.__access_token = ''
 		self.__remote_json = {}
@@ -908,6 +917,16 @@ class ByPy(object):
 	def pd(self, msg, level = 1, **kwargs):
 		if self.Debug >= level:
 			pdbg(msg, kwargs)
+
+	def shalloverwrite(self, prompt):
+		if self.__ondup == 'S':
+			return False
+		elif self.__ondup == 'P':
+			ans = ask(prompt, False).upper()
+			if not ans.startswith('Y'):
+				return False
+
+		return True
 
 	def __print_error_json(self, r):
 		try:
@@ -959,11 +978,9 @@ class ByPy(object):
 
 			if method.upper() == 'GET':
 				r = requests.get(url,
-					#headers = { 'User-Agent': UserAgent },
 					params = parsnew, timeout = self.__timeout, verify = False, **kwargs)
 			elif method.upper() == 'POST':
 				r = requests.post(url,
-					#headers = { 'User-Agent': UserAgent },
 					params = parsnew, timeout = self.__timeout, verify = False, **kwargs)
 
 			# BUGFIX: DON'T do this, if we are downloading a big file, the program sticks and dies
@@ -1048,8 +1065,16 @@ class ByPy(object):
 
 		i = 0
 		result = ERequestFailed
+
+		# Change the User-Agent to avoid server fuss
+		kwnew = kwargs.copy()
+		if 'headers' not in kwnew:
+			kwnew['headers'] = { 'User-Agent': UserAgent }
+		else:
+			kwnew['headers']['User-Agent'] = UserAgent
+
 		while True:
-			result = self.__request_work(url, pars, act, method, actargs, addtoken, dumpex, **kwargs)
+			result = self.__request_work(url, pars, act, method, actargs, addtoken, dumpex, **kwnew)
 			i += 1
 			# only ERequestFailed needs retry, other error still directly return
 			if result == ERequestFailed:
@@ -1610,14 +1635,26 @@ get information of the given path (dir / file) at Baidu Yun.
 				self.__current_file_size = getfilesize(lfile)
 				rfile = rdir + '/' + name.replace('\\', '/')
 				# if the corresponding file matches at Baidu Yun, then don't upload
+				upload = True
 				self.__remote_json = {}
 				subresult = self.__get_file_info(rfile, dumpex = False)
-				if subresult == ENoError and ENoError == self.__verify_current_file(self.__remote_json, False):
-					self.pv("Remote file '{}' exists, skip uploading".format(rfile))
-				else:
+				if subresult == ENoError: # same-name remote file exists
+					if ENoError == self.__verify_current_file(self.__remote_json, False):
+						# the two files are the same
+						upload = False
+						self.pv("Remote file '{}' already exists, skip uploading".format(rfile))
+					else: # the two files are different
+						if not self.shalloverwrite("Remote file '{}' exists but is different, " + \
+								"do you want to overwrite it? [y/N]".format(rfile)):
+							upload = False
+
+				if upload:
 					fileresult = self.__upload_file(lfile, rfile, ondup)
 					if fileresult != ENoError:
 						result = fileresult # we still continue
+				else:
+					pinfo("Remote file '{}' exists but is different, skip uploading".format(rfile))
+					# next / continue
 
 		return result
 
@@ -1829,9 +1866,9 @@ try to create a file at PCS by combining slices, having MD5s specified
 			nextoffset = offset + self.__dl_chunk_size
 			if nextoffset < rsize:
 				headers = { "Range" : "bytes={}-{}".format(
-					offset, nextoffset - 1), "User-Agent" : None }
+					offset, nextoffset - 1) }
 			else:
-				headers = { "Range" : "bytes={}-".format(offset), "User-Agent" : None }
+				headers = { "Range" : "bytes={}-".format(offset) }
 
 			subresult = self.__get(DPcsUrl + 'file', pars,
 				self.__downchunks_act, (rfile, offset, rsize, start_time), headers = headers)
@@ -1877,11 +1914,16 @@ try to create a file at PCS by combining slices, having MD5s specified
 		offset = 0
 		self.pd("Checking if we already have the copy locally")
 		if os.path.isfile(localfile):
-			self.pd("Same-name local file exists, checking if MD5s match")
+			self.pd("Same-name local file '{}' exists, checking if contents match".format(localfile))
 			self.__current_file_size = getfilesize(self.__current_file)
 			if ENoError == self.__verify_current_file(self.__remote_json, False):
-				self.pd("Same local file already exists, skip downloading")
+				self.pd("Same local file '{}' already exists, skip downloading".format(localfile))
 				return ENoError
+			else:
+				if not self.shalloverwrite("Same-name locale file '{}' exists but is different, " + \
+						"do you want to overwrite it? [y/N]".format(localfile)):
+					pinfo("Same-name local file '{}' exists but is different, skip downloading".format(localfile))
+					return ENoError
 
 			if self.__resumedownload and \
 				self.__compare_size(self.__current_file_size, self.__remote_json) == 2:
@@ -1889,20 +1931,28 @@ try to create a file at PCS by combining slices, having MD5s specified
 				pieces = self.__current_file_size // self.__dl_chunk_size
 				if pieces > 1:
 					offset = (pieces - 1) * self.__dl_chunk_size
-
 		elif os.path.isdir(localfile):
+			if not self.shalloverwrite("Same-name direcotry '{}' exists, " + \
+				"do you want to remove it? [y/N]".format(localfile)):
+				pinfo("Same-name directory '{}' exists, skip downloading".format(localfile))
+				return ENoError
+
 			self.pv("Directory with the same name '{}' exists, removing ...".format(localfile))
 			result = removedir(localfile, self.Verbose)
-			if result != ENoError:
+			if result == ENoError:
+				self.pv("Removed")
+			else:
+				perr("Error removing the directory '{}'".format(localfile))
 				return result
 
 		ldir, file = os.path.split(localfile)
 		if ldir and not os.path.exists(ldir):
 			result = makedir(ldir, self.Verbose)
-			if result != ENoError:
+			if result == ENoError:
+				return self.__downchunks(rfile, offset)
+			else:
+				perr("Fail to make directory '{}'".format(ldir))
 				return result
-
-		return self.__downchunks(rfile, offset)
 
 	def downfile(self, remotefile, localpath = ''):
 		''' Usage: downfile <remotefile> [localpath] - \
@@ -2448,17 +2498,18 @@ if not specified, it defaults to the root directory
 			p = d[1] # path
 			lcpath = os.path.join(localdir, p) # local complete path
 			rcpath = rpath + '/' + p # remote complete path
-			# this path is before get_pcs_path() since delete() expects so.
-			#result = self.delete(rpartialdir + '/' + p)
-			result = self.__delete(rcpath)
-			if t == 'F' or t == 'FD':
-				subresult = self.__upload_file(lcpath, rcpath)
-				if subresult != ENoError:
-					result = subresult
-			else: # " t == 'DF' " must be true
-				subresult = self.__mkdir(rcpath)
-				if subresult != ENoError:
-					result = subresult
+			if self.shalloverwrite("Do you want to overwrite '{}' at Baidu Yun?".format(p)):
+				# this path is before get_pcs_path() since delete() expects so.
+				#result = self.delete(rpartialdir + '/' + p)
+				result = self.__delete(rcpath)
+				if t == 'F' or t == 'FD':
+					subresult = self.__upload_file(lcpath, rcpath)
+					if subresult != ENoError:
+						result = subresult
+				else: # " t == 'DF' " must be true
+					subresult = self.__mkdir(rcpath)
+					if subresult != ENoError:
+						result = subresult
 
 		for l in local:
 			t = l[0]
@@ -2653,7 +2704,7 @@ right after the '# PCS configuration constants' comment.
 		parser.add_argument("-l", "--list-file", dest="listfile", default=None, help="input list file (used by some of the commands only [default: %(default)s]")
 		parser.add_argument("--resume-download", dest="resumedl", default=True, help="resume instead of restarting when downloading if local file already exists [default: %(default)s]")
 		parser.add_argument("--include-regex", dest="incregex", default='', help="regular expression of files to include. if not specified (default), everything is included. for download, the regex applies to the remote files; for upload, the regex applies to the local files. to exclude files, think about your regex, some tips here: https://stackoverflow.com/questions/406230/regular-expression-to-match-string-not-containing-a-word [default: %(default)s]")
-
+		parser.add_argument("--on-dup", dest="ondup", default='overwrite', help="what to do when the same file / folder exists in the destination: 'overwrite', 'skip', 'prompt' [default: %(default)s]")
 		# action
 		parser.add_argument("-c", "--clean", dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean settings and hash cache [default: %(default)s]")
 
@@ -2745,6 +2796,7 @@ right after the '# PCS configuration constants' comment.
 					listfile = args.listfile,
 					resumedownload = args.resumedl,
 					incregex = args.incregex,
+					ondup = args.ondup,
 					verbose = args.verbose, debug = args.debug)
 			uargs = []
 			for arg in args.command[1:]:
