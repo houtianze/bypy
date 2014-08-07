@@ -2498,7 +2498,7 @@ if not specified, it defaults to the root directory
 			p = d[1] # path
 			lcpath = os.path.join(localdir, p) # local complete path
 			rcpath = rpath + '/' + p # remote complete path
-			if self.shalloverwrite("Do you want to overwrite '{}' at Baidu Yun?".format(p)):
+			if self.shalloverwrite("Do you want to overwrite '{}' at Baidu Yun? [y/N]".format(p)):
 				# this path is before get_pcs_path() since delete() expects so.
 				#result = self.delete(rpartialdir + '/' + p)
 				result = self.__delete(rcpath)
@@ -2510,6 +2510,8 @@ if not specified, it defaults to the root directory
 					subresult = self.__mkdir(rcpath)
 					if subresult != ENoError:
 						result = subresult
+			else:
+				pinfo("Uploading '{}' skipped".format(lcpath))
 
 		for l in local:
 			t = l[0]
