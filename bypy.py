@@ -1644,8 +1644,8 @@ get information of the given path (dir / file) at Baidu Yun.
 						upload = False
 						self.pv("Remote file '{}' already exists, skip uploading".format(rfile))
 					else: # the two files are different
-						if not self.shalloverwrite("Remote file '{}' exists but is different, " + \
-								"do you want to overwrite it? [y/N]".format(rfile)):
+						if not self.shalloverwrite("Remote file '{}' exists but is different, ".format(rfile) + \
+								"do you want to overwrite it? [y/N]"):
 							upload = False
 
 				if upload:
@@ -1920,8 +1920,8 @@ try to create a file at PCS by combining slices, having MD5s specified
 				self.pd("Same local file '{}' already exists, skip downloading".format(localfile))
 				return ENoError
 			else:
-				if not self.shalloverwrite("Same-name locale file '{}' exists but is different, " + \
-						"do you want to overwrite it? [y/N]".format(localfile)):
+				if not self.shalloverwrite("Same-name locale file '{}' exists but is different, ".format(localfile) + \
+						"do you want to overwrite it? [y/N]"):
 					pinfo("Same-name local file '{}' exists but is different, skip downloading".format(localfile))
 					return ENoError
 
@@ -1932,8 +1932,8 @@ try to create a file at PCS by combining slices, having MD5s specified
 				if pieces > 1:
 					offset = (pieces - 1) * self.__dl_chunk_size
 		elif os.path.isdir(localfile):
-			if not self.shalloverwrite("Same-name direcotry '{}' exists, " + \
-				"do you want to remove it? [y/N]".format(localfile)):
+			if not self.shalloverwrite("Same-name direcotry '{}' exists, ".format(localfile) + \
+				"do you want to remove it? [y/N]"):
 				pinfo("Same-name directory '{}' exists, skip downloading".format(localfile))
 				return ENoError
 
@@ -1948,11 +1948,11 @@ try to create a file at PCS by combining slices, having MD5s specified
 		ldir, file = os.path.split(localfile)
 		if ldir and not os.path.exists(ldir):
 			result = makedir(ldir, self.Verbose)
-			if result == ENoError:
-				return self.__downchunks(rfile, offset)
-			else:
+			if result != ENoError:
 				perr("Fail to make directory '{}'".format(ldir))
 				return result
+
+		return self.__downchunks(rfile, offset)
 
 	def downfile(self, remotefile, localpath = ''):
 		''' Usage: downfile <remotefile> [localpath] - \
