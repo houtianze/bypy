@@ -9,15 +9,14 @@
 # NOTE: It seems Baidu doesn't handle MD5 quite right after combining files,
 #       so it may return erroneous MD5s. Perform a rapidupload again may fix the problem.
 #        That's why I changed default behavior to no-verification.
-# TODO: syncup / upload, syncdown / downdir are partially duplicates
+# NOTE: syncup / upload, syncdown / downdir are partially duplicates
 #       the difference: syncup/down compare and perform actions
 #       while down/up just proceed to download / upload (but still compare during actions)
 #       so roughly the same, except that sync can delete extra files
-# TODO: Use batch functions for better performance
-# TODO: Use posixpath for path handling
+#
 # TODO: Dry run?
-# TODO: Insecure (http) operations for better performance?
-# TODO: Better logic for __request() with retry (also use decorator maybe?)
+# TODO: Use batch functions for better performance
+
 '''
 bypy -- Python client for Baidu Yun
 ---
@@ -851,7 +850,7 @@ class ByPy(object):
 	def __init__(self,
 		slice_size = DefaultSliceSize,
 		dl_chunk_size = DefaultDlChunkSize,
-		verify = True, secure = True,
+		verify = True,
 		retry = 5, timeout = None,
 		quit_when_fail = False,
 		listfile = None,
@@ -859,6 +858,7 @@ class ByPy(object):
 		extraupdate = lambda: (),
 		incregex = '',
 		ondup = '',
+		followlink = True,
 		verbose = 0, debug = False):
 
 		self.__slice_size = slice_size
@@ -867,7 +867,6 @@ class ByPy(object):
 		self.__retry = retry
 		self.__quit_when_fail = quit_when_fail
 		self.__timeout = timeout
-		self.__secure = secure
 		self.__listfile = listfile
 		self.__resumedownload = resumedownload
 		self.__extraupdate = extraupdate
@@ -877,6 +876,7 @@ class ByPy(object):
 			self.__ondup = ondup[0].upper()
 		else:
 			self.__ondup = 'O' # O - Overwrite* S - Skip P - Prompt
+		self.__followlink = followlink;
 		self.Verbose = verbose
 		self.Debug = debug
 
@@ -1616,10 +1616,11 @@ get information of the given path (dir / file) at Baidu Yun.
 				#files = { 'file' : (os.path.basename(localpath), f) })
 				files = { 'file' : ('file', f) })
 
-	def __walk_upload(self, arg, dirname, names):
-		localpath, remotepath, ondup = arg
+	#TODO: upload empty directories as well?
+	def __walk_upload(self, localpath, remotepath, ondup, walk):
+		(dirpath, dirnames, filenames) = walk
 
-		rdir = os.path.relpath(dirname, localpath)
+		rdir = os.path.relpath(dirpath, localpath)
 		if rdir == '.':
 			rdir = ''
 		else:
@@ -1628,33 +1629,32 @@ get information of the given path (dir / file) at Baidu Yun.
 		rdir = (remotepath + '/' + rdir).rstrip('/') # '/' bites
 
 		result = ENoError
-		for name in names:
-			lfile = os.path.join(dirname, name)
-			if os.path.isfile(lfile):
-				self.__current_file = lfile
-				self.__current_file_size = getfilesize(lfile)
-				rfile = rdir + '/' + name.replace('\\', '/')
-				# if the corresponding file matches at Baidu Yun, then don't upload
-				upload = True
-				self.__remote_json = {}
-				subresult = self.__get_file_info(rfile, dumpex = False)
-				if subresult == ENoError: # same-name remote file exists
-					if ENoError == self.__verify_current_file(self.__remote_json, False):
-						# the two files are the same
+		for name in filenames:
+			lfile = os.path.join(dirpath, name)
+			self.__current_file = lfile
+			self.__current_file_size = getfilesize(lfile)
+			rfile = rdir + '/' + name.replace('\\', '/')
+			# if the corresponding file matches at Baidu Yun, then don't upload
+			upload = True
+			self.__remote_json = {}
+			subresult = self.__get_file_info(rfile, dumpex = False)
+			if subresult == ENoError: # same-name remote file exists
+				if ENoError == self.__verify_current_file(self.__remote_json, False):
+					# the two files are the same
+					upload = False
+					self.pv("Remote file '{}' already exists, skip uploading".format(rfile))
+				else: # the two files are different
+					if not self.shalloverwrite("Remote file '{}' exists but is different, ".format(rfile) + \
+							"do you want to overwrite it? [y/N]"):
 						upload = False
-						self.pv("Remote file '{}' already exists, skip uploading".format(rfile))
-					else: # the two files are different
-						if not self.shalloverwrite("Remote file '{}' exists but is different, ".format(rfile) + \
-								"do you want to overwrite it? [y/N]"):
-							upload = False
 
-				if upload:
-					fileresult = self.__upload_file(lfile, rfile, ondup)
-					if fileresult != ENoError:
-						result = fileresult # we still continue
-				else:
-					pinfo("Remote file '{}' exists but is different, skip uploading".format(rfile))
-					# next / continue
+			if upload:
+				fileresult = self.__upload_file(lfile, rfile, ondup)
+				if fileresult != ENoError:
+					result = fileresult # we still continue
+			else:
+				pinfo("Remote file '{}' exists but is different, skip uploading".format(rfile))
+				# next / continue
 
 		return result
 
@@ -1662,7 +1662,8 @@ get information of the given path (dir / file) at Baidu Yun.
 		self.pd("Uploading directory '{}' to '{}'".format(localpath, remotepath))
 		# it's so minor that we don't care about the return value
 		self.__mkdir(remotepath, dumpex = False)
-		os.path.walk(localpath, self.__walk_upload, (localpath, remotepath, ondup))
+		for walk in os.walk(localpath, followlinks=self.__followlink):
+			self.__walk_upload(localpath, remotepath, ondup, walk)
 
 	def __upload_file(self, localpath, remotepath, ondup = 'overwrite'):
 		# TODO: this is a quick patch
@@ -2285,24 +2286,18 @@ restore a file from the recycle bin
 		self.pd("Searching for fs_id to restore")
 		return self.__get(PcsUrl + 'file', pars, self.__restore_search_act, rpath)
 
-	def __proceed_local_gather(self, arg, dirname, names):
+	def __proceed_local_gather(self, dirlen, walk):
 		#names.sort()
-		files = []
-		dirs = []
-		for name in names:
-			fullname = os.path.join(dirname, name)
-			if os.path.isfile(fullname):
-				files.append((name, getfilesize(fullname), md5(fullname)))
-			elif os.path.isdir(fullname):
-				dirs.append(name)
-			else:
-				if self.Debug:
-					pr("strange - {}|{}".format(dirname, name))
-					assert False # shouldn't come here
+		(dirpath, dirnames, filenames) = walk
 
-		reldir = dirname[arg:].replace('\\', '/')
+		files = []
+		for name in filenames:
+			fullname = os.path.join(dirpath, name)
+			files.append((name, getfilesize(fullname), md5(fullname)))
+
+		reldir = dirpath[dirlen:].replace('\\', '/')
 		place = self.__local_dir_contents.get(reldir)
-		for dir in dirs:
+		for dir in dirnames:
 			place.add(dir, PathDictTree('D'))
 		for file in files:
 			place.add(file[0], PathDictTree('F', size = file[1], md5 = file[2]))
@@ -2311,7 +2306,8 @@ restore a file from the recycle bin
 
 	def __gather_local_dir(self, dir):
 		self.__local_dir_contents = PathDictTree()
-		os.path.walk(dir, self.__proceed_local_gather, len(dir))
+		for walk in os.walk(dir, followlinks=self.__followlink):
+			self.__proceed_local_gather(len(dir), walk)
 		self.pd(self.__local_dir_contents)
 
 	def __proceed_remote_gather(self, remotepath, dirjs, filejs, args = None):
@@ -2701,12 +2697,13 @@ right after the '# PCS configuration constants' comment.
 		parser.add_argument("-s", "--slice", dest="slice", default=DefaultSliceSize, help="size of file upload slice (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultSliceInMB))
 		parser.add_argument("--chunk", dest="chunk", default=DefaultDlChunkSize, help="size of file download chunk (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultDlChunkSize / OneM))
 		parser.add_argument("-e", "--verify", dest="verify", action="store_true", default=False, help="Verify upload / download [default : %(default)s]")
-		parser.add_argument("-I", "--insecure", dest="insecure", action="store_true", default=False, help="use http (INSECURE) instead of https connections [default: %(default)s] - NOT IMPLEMENTED")
 		parser.add_argument("-f", "--force-hash", dest="forcehash", action="store_true", default=False, help="force file MD5 / CRC32 calculation instead of using cached values [default: %(default)s]")
 		parser.add_argument("-l", "--list-file", dest="listfile", default=None, help="input list file (used by some of the commands only [default: %(default)s]")
 		parser.add_argument("--resume-download", dest="resumedl", default=True, help="resume instead of restarting when downloading if local file already exists [default: %(default)s]")
 		parser.add_argument("--include-regex", dest="incregex", default='', help="regular expression of files to include. if not specified (default), everything is included. for download, the regex applies to the remote files; for upload, the regex applies to the local files. to exclude files, think about your regex, some tips here: https://stackoverflow.com/questions/406230/regular-expression-to-match-string-not-containing-a-word [default: %(default)s]")
 		parser.add_argument("--on-dup", dest="ondup", default='overwrite', help="what to do when the same file / folder exists in the destination: 'overwrite', 'skip', 'prompt' [default: %(default)s]")
+		parser.add_argument("--no-symlink", dest="followlink", action="store_false", default=True, help="DON'T follow symbol links when uploading / syncing up [default: %(default)s]")
+
 		# action
 		parser.add_argument("-c", "--clean", dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean settings and hash cache [default: %(default)s]")
 
@@ -2792,13 +2789,14 @@ right after the '# PCS configuration constants' comment.
 			cached.loadcache()
 
 			by = ByPy(slice_size = slice_size, dl_chunk_size = chunk_size,
-					verify = args.verify, secure = not args.insecure,
+					verify = args.verify,
 					retry = int(args.retry), timeout = timeout,
 					quit_when_fail = args.quit,
 					listfile = args.listfile,
 					resumedownload = args.resumedl,
 					incregex = args.incregex,
 					ondup = args.ondup,
+					followlink = args.followlink,
 					verbose = args.verbose, debug = args.debug)
 			uargs = []
 			for arg in args.command[1:]:
