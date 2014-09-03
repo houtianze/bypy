@@ -515,6 +515,18 @@ def getfilemtime(path):
 
 	return mtime
 
+# seems os.path.join() doesn't handle Unicode well
+def joinpath(first, second):
+	head = ''
+	if first:
+		head = first.rstrip('/') + '/'
+
+	tail = ''
+	if second:
+		tail = second.lstrip('/')
+
+	return head + tail
+
 def donothing():
 	pass
 
@@ -684,7 +696,8 @@ class cached(object):
 					files = {}
 					needclean = False
 					for f in oldfiles.keys():
-						p = os.path.join(absdir, f)
+						#p = os.path.join(absdir, f)
+						p = joinpath(absdir, f)
 						if os.path.exists(p):
 							files[f] = oldfiles[f]
 						else:
@@ -1634,7 +1647,8 @@ get information of the given path (dir / file) at Baidu Yun.
 
 		result = ENoError
 		for name in filenames:
-			lfile = os.path.join(dirpath, name)
+			#lfile = os.path.join(dirpath, name)
+			lfile = joinpath(dirpath, name)
 			self.__current_file = lfile
 			self.__current_file_size = getfilesize(lfile)
 			rfile = rdir + '/' + name.replace('\\', '/')
@@ -1985,7 +1999,8 @@ To stream a file using downfile, you can use the 'mkfifo' trick with omxplayer e
 		elif localpath[-1] == '\\' or \
 			localpath[-1] == '/' or \
 			os.path.isdir(localpath):
-			localfile = os.path.join(localpath, os.path.basename(remotefile))
+			#localfile = os.path.join(localpath, os.path.basename(remotefile))
+			localfile = joinpath(localpath, os.path.basename(remotefile))
 		else:
 			localfile = localpath
 
@@ -2093,7 +2108,8 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 
 		for dirj in dirjs:
 			reldir = dirj['path'][rlen:]
-			ldir = os.path.join(localpath, reldir)
+			#ldir = os.path.join(localpath, reldir)
+			ldir = joinpath(localpath, reldir)
 			result = self.__prepare_local_dir(ldir)
 			if result != ENoError:
 				perr("Fail to create prepare local directory '{}' for downloading, ABORT".format(ldir))
@@ -2102,7 +2118,8 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 		for filej in filejs:
 			rfile = filej['path']
 			relfile = rfile[rootlen:]
-			lfile = os.path.join(localpath, relfile)
+			#lfile = os.path.join(localpath, relfile)
+			lfile = joinpath(localpath, relfile)
 			self.__downfile(rfile, lfile)
 
 		return result
@@ -2325,7 +2342,8 @@ restore a file from the recycle bin
 
 		files = []
 		for name in filenames:
-			fullname = os.path.join(dirpath, name)
+			#fullname = os.path.join(dirpath, name)
+			fullname = joinpath(dirpath, name)
 			files.append((name, getfilesize(fullname), md5(fullname)))
 
 		reldir = dirpath[dirlen:].replace('\\', '/')
@@ -2464,7 +2482,8 @@ if not specified, it defaults to the root directory
 		for d in diff:
 			t = d[0]
 			p = d[1]
-			lcpath = os.path.join(localdir, p) # local complete path
+			#lcpath = os.path.join(localdir, p) # local complete path
+			lcpath = joinpath(localdir, p) # local complete path
 			rcpath = rpath + '/' + p # remote complete path
 			if t == 'DF':
 				result = removedir(lcpath, self.Verbose)
@@ -2482,7 +2501,8 @@ if not specified, it defaults to the root directory
 		for r in remote:
 			t = r[0]
 			p = r[1]
-			lcpath = os.path.join(localdir, p) # local complete path
+			#lcpath = os.path.join(localdir, p) # local complete path
+			lcpath = joinpath(localdir, p) # local complete path
 			rcpath = rpath + '/' + p # remote complete path
 			if t == 'F':
 				subresult = self.__downfile(rcpath, lcpath)
@@ -2497,7 +2517,8 @@ if not specified, it defaults to the root directory
 			for l in local:
 				# use os.path.isfile()/isdir() instead of l[0], because we need to check file/dir existence.
 				# as we may have removed the parent dir previously during the iteration
-				p = os.path.join(localdir, l[1])
+				#p = os.path.join(localdir, l[1])
+				p = joinpath(localdir, l[1])
 				if os.path.isfile(p):
 					subresult = removefile(p, self.Verbose)
 					if subresult != ENoError:
@@ -2525,7 +2546,8 @@ if not specified, it defaults to the root directory
 		for d in diff:
 			t = d[0] # type
 			p = d[1] # path
-			lcpath = os.path.join(localdir, p) # local complete path
+			#lcpath = os.path.join(localdir, p) # local complete path
+			lcpath = joinpath(localdir, p) # local complete path
 			rcpath = rpath + '/' + p # remote complete path
 			if self.shalloverwrite("Do you want to overwrite '{}' at Baidu Yun? [y/N]".format(p)):
 				# this path is before get_pcs_path() since delete() expects so.
@@ -2545,7 +2567,8 @@ if not specified, it defaults to the root directory
 		for l in local:
 			t = l[0]
 			p = l[1]
-			lcpath = os.path.join(localdir, p) # local complete path
+			#lcpath = os.path.join(localdir, p) # local complete path
+			lcpath = joinpath(localdir, p) # local complete path
 			rcpath = rpath + '/' + p # remote complete path
 			if t == 'F':
 				subresult = self.__upload_file(lcpath, rcpath)
