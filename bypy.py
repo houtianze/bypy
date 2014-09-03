@@ -1279,15 +1279,14 @@ class ByPy(object):
 		''' Usage: refreshtoken - refresh the access token '''
 		return self.__refresh_token()
 
+	def info(self):
+		return self.quota()
+
 	def quota(self):
-		''' Usage: quota - displays the quota information '''
+		''' Usage: quota/info - displays the quota information '''
 		pars = {
 			'method' : 'info' }
 		return self.__get(PcsUrl + 'quota', pars, self.__quota_act)
-
-	def info(self):
-		''' Usage: info - same as 'quota' '''
-		return self.quota()
 
 	# return:
 	#   0: local and remote files are of same size
@@ -1400,10 +1399,15 @@ class ByPy(object):
 
 		return ENoError
 
+	def ls(self, remotepath = '',
+		fmt = '$t $f $s $m $d',
+		sort = 'name', order = 'asc'):
+		return self.list(remotepath, fmt, sort, order)
+
 	def list(self, remotepath = '',
 		fmt = '$t $f $s $m $d',
 		sort = 'name', order = 'asc'):
-		''' Usage: list [remotepath] [format] [sort] [order] - list the 'remotepath' directory at Baidu PCS
+		''' Usage: list/ls [remotepath] [format] [sort] [order] - list the 'remotepath' directory at Baidu PCS
     remotepath - the remote path at Baidu PCS. default: root directory '/'
 	format - specifies how the list are displayed
 	  $t - Type: Directory ('D') or File ('F')
@@ -1713,6 +1717,7 @@ upload a file or directory (recursively)
 		# copying since Python is call-by-reference by default,
 		# so we shall not modify the passed-in parameters
 		lpath = localpath.rstrip('\\/ ') # no trailing slashes
+		lpathbase = os.path.basename(lpath)
 		rpath = remotepath
 		if not lpath:
 			# so, if you don't specify the local path, it will always be the current direcotry
@@ -1722,12 +1727,17 @@ upload a file or directory (recursively)
 
 		if os.path.isfile(lpath):
 			self.pd("Uploading file '{}'".format(lpath))
-			if not rpath:
-				rpath = os.path.basename(lpath)
+			if not rpath or rpath == '/': # to root we go
+				rpath = lpathbase
 			if rpath[-1] == '/': # user intends to upload to this DIR
-				rpath = get_pcs_path(rpath + os.path.basename(lpath))
+				rpath = get_pcs_path(rpath + lpathbase)
 			else:
 				rpath = get_pcs_path(rpath)
+				# avoid uploading a file and destroy a directory by accident
+				subresult = self.__get_file_info(rpath)
+				if subresult == ENoError: # remove path exists, check is dir or file
+					if self.__remote_json['isdir']: # do this only for dir
+						rpath += '/' + lpathbase # rpath is guaranteed no '/' ended
 			self.pd("remote path is '{}'".format(rpath))
 			return self.__upload_file(lpath, rpath, ondup)
 		elif os.path.isdir(lpath):
@@ -2141,20 +2151,32 @@ create a directory at Baidu Yun
 	def __move_act(self, r, args):
 		j = r.json()
 		list = j['extra']['list']
-		fromp = list['from']
-		to = list['to']
+		fromp = list[0]['from']
+		to = list[0]['to']
 		self.pd("Remote move: '{}' =mm-> '{}' OK".format(fromp, to))
 
+	# aliases
+	def mv(self, fromp, to):
+		return self.move(fromp, to)
+
+	def rename(self, fromp, to):
+		return self.move(fromp, to)
+
+	def ren(self, fromp, to):
+		return self.move(fromp, to)
+
 	def move(self, fromp, to):
-		''' Usage: move <from> <to> - \
+		''' Usage: move/mv/rename/ren <from> <to> - \
 move a file / dir remotely at Baidu Yun
   from - source path (file / dir)
   to - destination path (file / dir)
 		'''
+		frompp = get_pcs_path(fromp)
+		top = get_pcs_path(to)
 		pars = {
 			'method' : 'move',
-			'from' : fromp,
-			'to' : to }
+			'from' : frompp,
+			'to' : top }
 
 		self.pd("Remote moving: '{}' =mm=> '{}'".format(fromp, to))
 		return self.__post(PcsUrl + 'file', pars, self.__move_act)
@@ -2168,8 +2190,12 @@ move a file / dir remotely at Baidu Yun
 
 		return ENoError
 
+	# alias
+	def cp(self, fromp, to):
+		return self.copy(fromp, to)
+
 	def copy(self, fromp, to):
-		''' Usage: copy <from> <to> - \
+		''' Usage: copy/cp <from> <to> - \
 copy a file / dir remotely at Baidu Yun
   from - source path (file / dir)
   to - destination path (file / dir)
@@ -2203,8 +2229,15 @@ copy a file / dir remotely at Baidu Yun
 		self.pd("Remote deleting: '{}'".format(rpath))
 		return self.__post(PcsUrl + 'file', pars, self.__delete_act)
 
+	# aliases
+	def remove(self, remotepath):
+		return self.delete(remotepath)
+
+	def rm(self, remotepath):
+		return self.delete(remotepath)
+
 	def delete(self, remotepath):
-		''' Usage: delete <remotepath> - \
+		''' Usage: delete/remove/rm <remotepath> - \
 delete a file / dir remotely at Baidu Yun
   remotepath - destination path (file / dir)
 		'''
