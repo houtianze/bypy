@@ -516,14 +516,14 @@ def getfilemtime(path):
 	return mtime
 
 # seems os.path.join() doesn't handle Unicode well
-def joinpath(first, second):
+def joinpath(first, second, sep = os.sep):
 	head = ''
 	if first:
-		head = first.rstrip('/') + '/'
+		head = first.rstrip(sep) + sep
 
 	tail = ''
 	if second:
-		tail = second.lstrip('/')
+		tail = second.lstrip(sep)
 
 	return head + tail
 
