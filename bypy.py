@@ -101,6 +101,14 @@ from os.path import expanduser
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
+# https://urllib3.readthedocs.org/en/latest/security.html
+# prevents the InsecureRequestWarning from appearing in rare case
+try:
+	import urllib3
+	urllib3.disable_warnings()
+except:
+	pass
+
 # Defines that should never be changed
 OneK = 1024
 OneM = OneK * OneK
