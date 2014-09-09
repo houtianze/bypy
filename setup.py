@@ -11,7 +11,7 @@ setup(
 	author_email='houtianze@gmail.com',
 	url='https://github.com/houtianze/bypy',
 	packages=find_packages(),
-	scripts=["bypy.py"],
+	scripts=["bypy.py","bypygui.pyw"],
 	)
 
 # vim: set fileencoding=utf-8
