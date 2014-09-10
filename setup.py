@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 
-from distutils.core import setup
+from setuptools import setup,find_packages
 
 setup(
 	name='bypy',
@@ -10,7 +10,8 @@ setup(
 	author='Hou Tianze',
 	author_email='houtianze@gmail.com',
 	url='https://github.com/houtianze/bypy',
-	py_modules=['bypy']
+	packages=find_packages(),
+	scripts=["bypy.py","bypygui.pyw"],
 	)
 
 # vim: set fileencoding=utf-8
