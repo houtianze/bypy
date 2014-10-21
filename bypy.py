@@ -1642,7 +1642,7 @@ get information of the given path (dir / file) at Baidu Yun.
 				files = { 'file' : ('file', f) })
 
 	#TODO: upload empty directories as well?
-	def __walk_upload(self, localpath, remotepath, ondup, walk):
+	def __walk_upload(self, localpath, remotepath, ondup, walk, rapiduploadonly = False):
 		(dirpath, dirnames, filenames) = walk
 
 		rdir = os.path.relpath(dirpath, localpath)
@@ -1675,7 +1675,7 @@ get information of the given path (dir / file) at Baidu Yun.
 						upload = False
 
 			if upload:
-				fileresult = self.__upload_file(lfile, rfile, ondup)
+				fileresult = self.__upload_file(lfile, rfile, ondup, rapiduploadonly)
 				if fileresult != ENoError:
 					result = fileresult # we still continue
 			else:
@@ -1684,14 +1684,14 @@ get information of the given path (dir / file) at Baidu Yun.
 
 		return result
 
-	def __upload_dir(self, localpath, remotepath, ondup = 'overwrite'):
+	def __upload_dir(self, localpath, remotepath, ondup = 'overwrite', rapiduploadonly = False):
 		self.pd("Uploading directory '{}' to '{}'".format(localpath, remotepath))
 		# it's so minor that we don't care about the return value
 		self.__mkdir(remotepath, dumpex = False)
 		for walk in os.walk(localpath, followlinks=self.__followlink):
-			self.__walk_upload(localpath, remotepath, ondup, walk)
+			self.__walk_upload(localpath, remotepath, ondup, walk, rapiduploadonly)
 
-	def __upload_file(self, localpath, remotepath, ondup = 'overwrite'):
+	def __upload_file(self, localpath, remotepath, ondup = 'overwrite', rapiduploadonly = False):
 		# TODO: this is a quick patch
 		if not self.__shallinclude(localpath, remotepath, True):
 			# since we are not going to upload it, there is no error
@@ -1707,30 +1707,34 @@ get information of the given path (dir / file) at Baidu Yun.
 			if result == ENoError:
 				self.pv("RapidUpload: '{}' =R=> '{}' OK.".format(localpath, remotepath))
 			else:
-				self.pd("'{}' can't be RapidUploaded, now trying normal uploading.".format(
-					self.__current_file))
-				# rapid upload failed, we have to upload manually
-				if self.__current_file_size <= self.__slice_size:
-					self.pd("'{}' is being non-slicing uploaded.".format(self.__current_file))
-					# no-slicing upload
-					result = self.__upload_one_file(localpath, remotepath, ondup)
-				elif self.__current_file_size <= MaxSliceSize * MaxSlicePieces:
-					# slice them using slice size
-					self.pd("'{}' is being slicing uploaded.".format(self.__current_file))
-					result = self.__upload_file_slices(localpath, remotepath, ondup)
+				#ignore this file if --rapid-upload-only true is given
+				if rapiduploadonly:
+					self.pv("'{}' can't be rapidly uploaded, ignore it due to argument --rapid-upload-only true is given.".format(localpath))
 				else:
-					result = EFileTooBig
-					perr("Error: size of file '{}' - {} is too big".format(
-						self.__current_file,
-						self.__current_file_size))
+					self.pd("'{}' can't be RapidUploaded, now trying normal uploading.".format(
+						self.__current_file))
+					# rapid upload failed, we have to upload manually
+					if self.__current_file_size <= self.__slice_size:
+						self.pd("'{}' is being non-slicing uploaded.".format(self.__current_file))
+						# no-slicing upload
+						result = self.__upload_one_file(localpath, remotepath, ondup)
+					elif self.__current_file_size <= MaxSliceSize * MaxSlicePieces:
+						# slice them using slice size
+						self.pd("'{}' is being slicing uploaded.".format(self.__current_file))
+						result = self.__upload_file_slices(localpath, remotepath, ondup)
+					else:
+						result = EFileTooBig
+						perr("Error: size of file '{}' - {} is too big".format(
+							self.__current_file,
+							self.__current_file_size))
 
 			return result
 		else: # very small file, must be uploaded manually and no slicing is needed
 			self.pd("'{}' is small and being non-slicing uploaded.".format(self.__current_file))
 			return self.__upload_one_file(localpath, remotepath, ondup)
 
-	def upload(self, localpath = '', remotepath = '', ondup = "overwrite"):
-		''' Usage: upload [localpath] [remotepath] [ondup] - \
+	def upload(self, localpath = '', remotepath = '', ondup = "overwrite", rapiduploadonly = False):
+		''' Usage: upload [localpath] [remotepath] [ondup] [rapiduploadonly] - \
 upload a file or directory (recursively)
     localpath - local path, is the current directory '.' if not specified
     remotepath - remote path at Baidu Yun (after app root directory at Baidu Yun)
@@ -1761,11 +1765,11 @@ upload a file or directory (recursively)
 					if self.__remote_json['isdir']: # do this only for dir
 						rpath += '/' + lpathbase # rpath is guaranteed no '/' ended
 			self.pd("remote path is '{}'".format(rpath))
-			return self.__upload_file(lpath, rpath, ondup)
+			return self.__upload_file(lpath, rpath, ondup, rapiduploadonly)
 		elif os.path.isdir(lpath):
 			self.pd("Uploading directory '{}' recursively".format(lpath))
 			rpath = get_pcs_path(rpath)
-			return self.__upload_dir(lpath, rpath, ondup)
+			return self.__upload_dir(lpath, rpath, ondup, rapiduploadonly)
 		else:
 			perr("Error: invalid local path '{}' for uploading specified.".format(localpath))
 			return EParameter
