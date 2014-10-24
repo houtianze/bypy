@@ -91,6 +91,8 @@ To get help and a list of available commands:
 bypy.py
 ```
 
+To authorize for first time use, run any commands e.g. `bypy.py info` and follow the instructiongs (login etc). This is a one-time requirement only.
+
 To get more details about certain command:
 ```
 bypy.py help <command>
@@ -139,7 +141,6 @@ Add in "-d" parameter, the program will print some debug messages.
 **功能: 全面支持Unicode / 中文；失败重试；递归上/下载；目录比较; 哈希缓存.**
 
 界面是英文的，主要是因为这个是为了Raspberry Pi树莓派开发的。
-第一次运行的时候要通过百度的网页进行授权（一次就好）
 
 **重要：想要支持中文，你要把系统的区域编码设置为UTF-8。**
 
@@ -154,6 +155,8 @@ sudo pip install requests
 ```
 bypy.py
 ```
+
+第一次运行时需要授权，只需跑任何一个命令（比如 `bypy.py info`）然后跟着说明（登陆等）来授权即可。授权只需一次，一旦成功，以后不会再出现授权提示.
 
 更详细的了解某一个命令：
 ```
