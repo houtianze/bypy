@@ -1175,7 +1175,7 @@ class ByPy(object):
 		self.pd("Authorize JSON:")
 		self.pd(self.__json)
 		try:
-			with open(TokenFilePath, 'wb') as outfile:
+			with os.fdopen(os.open(TokenFilePath, os.O_WRONLY | os.O_CREAT, 0600),'wb') as outfile:
 				json.dump(self.__json, outfile)
 			return ENoError
 		except Exception:
