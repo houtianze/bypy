@@ -170,10 +170,27 @@ IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload 
 ServerAuth = True # change it to 'False' if you use your own appid
 GaeUrl = 'https://bypyoauth.appspot.com'
 OpenShiftUrl = 'https://bypy-tianze.rhcloud.com'
+JaeUrl = 'http://bypyoauth.jd-app.com'
 GaeRedirectUrl = GaeUrl + '/auth'
 GaeRefreshUrl = GaeUrl + '/refresh'
 OpenShiftRedirectUrl = OpenShiftUrl + '/auth'
 OpenShiftRefreshUrl = OpenShiftUrl + '/refresh'
+JaeRedirectUrl = JaeUrl + '/auth'
+JaeRefreshUrl = JaeUrl + '/refresh'
+
+AuthServerList = [
+	# url, rety?, message
+	(GaeRedirectUrl, False, "Authorizing with the GAE server ..."),
+	(OpenShiftRedirectUrl, True, "I think you are WALLed, so let's authorize with the OpenShift server ..."),
+	(JaeRedirectUrl, True, "OpenShift also failed. Last resort: authorizing with the JAE server (*** WARNING *** NON-encrypted http protocol) ..."),
+]
+
+RefreshServerList = [
+	# url, rety?, message
+	(GaeRefreshUrl, False, "Refreshing with the GAE server ..."),
+	(OpenShiftRefreshUrl, True, "I think you are WALLed, so let's refresh with the OpenShift server ..."),
+	(JaeRefreshUrl, True, "OpenShift also failed. Last resort: refreshing with the JAE server (*** WARNING *** NON-encrypted http protocol) ..."),
+]
 
 ApiKey = 'q8WE4EpCsau1oS0MplgMKNBn' # replace with your own ApiKey if you use your own appid
 SecretKey = '' # replace with your own SecretKey if you use your own appid
@@ -1206,15 +1223,18 @@ class ByPy(object):
 			'code' : auth_code,
 			'redirect_uri' : 'oob' }
 
-		result = self.__get(GaeRedirectUrl, pars, self.__server_auth_act, retry = False, addtoken = False)
-		if result != ENoError:
-			pr("I think you are WALLed, trying OpenShift server to auth...")
-			result = self.__get(OpenShiftRedirectUrl, pars, self.__server_auth_act, retry = True, addtoken = False)
-			if result != ENoError:
-				perr("Fatal: Both GAE & OpenShift server authorizations failed.")
+		result = None
+		for auth in AuthServerList:
+			(url, retry, msg) = auth
+			pr(msg)
+			result = self.__get(url, pars, self.__server_auth_act, retry = retry, addtoken = False)
+			if result == ENoError:
+				break
 
 		if result == ENoError:
 			pr("Successfully authorized")
+		else:
+			perr("Fatal: All server authorizations failed.")
 
 		return result
 
@@ -1264,13 +1284,19 @@ class ByPy(object):
 			pars = {
 				'grant_type' : 'refresh_token',
 				'refresh_token' : self.__json['refresh_token'] }
-			result = self.__get(GaeRefreshUrl, pars, self.__refresh_token_act, retry = False, addtoken = False)
-			if result != ENoError:
-				pr("I think you are WALLed, trying OpenShift server to refresh")
-				result = self.__get(OpenShiftRefreshUrl, pars, self.__refresh_token_act, retry = True, addtoken = False)
+
+			result = None
+			for refresh in RefreshServerList:
+				(url, retry, msg) = refresh
+				pr(msg)
+				result = self.__get(url, pars, self.__refresh_token_act, retry = retry, addtoken = False)
+				if result == ENoError:
+					break
 
 			if result == ENoError:
 				pr("Token successfully refreshed")
+			else:
+				perr("Token-refreshing on all the servers failed")
 
 			return result
 		else:
