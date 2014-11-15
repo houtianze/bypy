@@ -101,14 +101,6 @@ from os.path import expanduser
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
-# https://urllib3.readthedocs.org/en/latest/security.html
-# prevents the InsecureRequestWarning from appearing in rare case
-try:
-	import urllib3
-	urllib3.disable_warnings()
-except:
-	pass
-
 # Defines that should never be changed
 OneK = 1024
 OneM = OneK * OneK
@@ -208,6 +200,7 @@ HashCachePath = HomeDir + os.sep + '.bypy.pickle'
 #UserAgent = "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)"
 # According to seanlis@github, this User-Agent string affects the download.
 UserAgent = None
+DisableSslCheckOption = '--disable-ssl-check'
 
 # Baidu PCS URLs etc.
 OpenApiUrl = "https://openapi.baidu.com"
@@ -555,6 +548,15 @@ def joinpath(first, second, sep = os.sep):
 def donothing():
 	pass
 
+def disablesslcheck():
+	# https://urllib3.readthedocs.org/en/latest/security.html
+	# prevents the InsecureRequestWarning from appearing in rare case
+	try:
+		import urllib3
+		urllib3.disable_warnings()
+	except:
+		pass
+
 # https://stackoverflow.com/questions/10883399/unable-to-encode-decode-pprint-output
 class MyPrettyPrinter(pprint.PrettyPrinter):
 	def format(self, obj, context, maxlevels, level):
@@ -897,6 +899,7 @@ class ByPy(object):
 		incregex = '',
 		ondup = '',
 		followlink = True,
+		checkssl = True,
 		verbose = 0, debug = False):
 
 		self.__slice_size = slice_size
@@ -915,6 +918,11 @@ class ByPy(object):
 		else:
 			self.__ondup = 'O' # O - Overwrite* S - Skip P - Prompt
 		self.__followlink = followlink;
+
+		self.__checkssl = checkssl
+		if not checkssl:
+			disablesslcheck()
+
 		self.Verbose = verbose
 		self.Debug = debug
 
@@ -1089,6 +1097,10 @@ class ByPy(object):
 			if dumpex:
 				self.__dump_exception(ex, url, pars, r, act)
 			perr("Fatal Exception.\nQuitting...\n")
+			perr("If you see any 'InsecureRequestWarning' message in the error output, " + \
+				"I think in most of the cases, " + \
+				"you can disable the SSL check by running this program " + \
+				"with the '" + DisableSslCheckOption + "' option.")
 			onexit(result)
 			# we eat the exception, and use return code as the only
 			# error notification method, we don't want to mix them two
@@ -2793,6 +2805,7 @@ right after the '# PCS configuration constants' comment.
 		parser.add_argument("--include-regex", dest="incregex", default='', help="regular expression of files to include. if not specified (default), everything is included. for download, the regex applies to the remote files; for upload, the regex applies to the local files. to exclude files, think about your regex, some tips here: https://stackoverflow.com/questions/406230/regular-expression-to-match-string-not-containing-a-word [default: %(default)s]")
 		parser.add_argument("--on-dup", dest="ondup", default='overwrite', help="what to do when the same file / folder exists in the destination: 'overwrite', 'skip', 'prompt' [default: %(default)s]")
 		parser.add_argument("--no-symlink", dest="followlink", action="store_false", default=True, help="DON'T follow symbol links when uploading / syncing up [default: %(default)s]")
+		parser.add_argument(DisableSslCheckOption, dest="checkssl", action="store_false", default=True, help="DON'T verify host SSL cerificate [default: %(default)s]")
 
 		# action
 		parser.add_argument("-c", "--clean", dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean settings and hash cache [default: %(default)s]")
@@ -2887,6 +2900,7 @@ right after the '# PCS configuration constants' comment.
 					incregex = args.incregex,
 					ondup = args.ondup,
 					followlink = args.followlink,
+					checkssl = args.checkssl,
 					verbose = args.verbose, debug = args.debug)
 			uargs = []
 			for arg in args.command[1:]:
