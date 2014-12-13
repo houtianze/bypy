@@ -2195,6 +2195,12 @@ download a remote directory (recursively)
 		return ENoError
 
 	def __mkdir(self, rpath, **kwargs):
+		# TODO: this is a quick patch
+		# the code still works because Baidu Yun doesn't require
+		# parent directory to exist remotely to upload / create a file
+		if not self.__shallinclude('.', rpath, True):
+			return ENoError
+
 		self.pd("Making remote directory '{}'".format(rpath))
 
 		pars = {
