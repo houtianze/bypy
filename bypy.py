@@ -228,6 +228,18 @@ except:
 		"You can install it by running 'pip install requests'")
 	raise
 
+# https://urllib3.readthedocs.org/en/latest/security.html#certifi-with-urllib3
+try:
+	import urllib3
+	import certifi
+
+	http = urllib3.PoolManager(
+		cert_reqs='CERT_REQUIRED', # Force certificate check.
+		ca_certs=certifi.where(),  # Path to the Certifi bundle.
+	)
+except:
+	print("[Info] Package 'certifi' not found, normally this is *OK*. But if you encounter 'InsecureRequestWarning' later, you can try install 'certifi' by running 'pip install certifi' first, and then re-run this program, the 'InsecureRequestWarning' then should be gone.")
+
 requests_version =  requests.__version__.split('.')
 if int(requests_version[0]) < 1:
 	print("You Python Requests Library version is to lower than 1.\n" + \
