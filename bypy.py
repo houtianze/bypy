@@ -228,18 +228,6 @@ except:
 		"You can install it by running 'pip install requests'")
 	raise
 
-# https://urllib3.readthedocs.org/en/latest/security.html#certifi-with-urllib3
-try:
-	import urllib3
-	import certifi
-
-	http = urllib3.PoolManager(
-		cert_reqs='CERT_REQUIRED', # Force certificate check.
-		ca_certs=certifi.where(),  # Path to the Certifi bundle.
-	)
-except:
-	print("[Info] Package 'certifi' not found, normally this is *OK*. But if you encounter 'InsecureRequestWarning' later, you can try install 'certifi' by running 'pip install certifi' first, and then re-run this program, the 'InsecureRequestWarning' then should be gone.")
-
 requests_version =  requests.__version__.split('.')
 if int(requests_version[0]) < 1:
 	print("You Python Requests Library version is to lower than 1.\n" + \
@@ -559,15 +547,6 @@ def joinpath(first, second, sep = os.sep):
 
 def donothing():
 	pass
-
-def disablesslcheck():
-	# https://urllib3.readthedocs.org/en/latest/security.html
-	# prevents the InsecureRequestWarning from appearing in rare case
-	try:
-		import urllib3
-		urllib3.disable_warnings()
-	except:
-		pass
 
 # https://stackoverflow.com/questions/10883399/unable-to-encode-decode-pprint-output
 class MyPrettyPrinter(pprint.PrettyPrinter):
@@ -932,8 +911,6 @@ class ByPy(object):
 		self.__followlink = followlink;
 
 		self.__checkssl = checkssl
-		if not checkssl:
-			disablesslcheck()
 
 		self.Verbose = verbose
 		self.Debug = debug
@@ -1036,10 +1013,10 @@ class ByPy(object):
 
 			if method.upper() == 'GET':
 				r = requests.get(url,
-					params = parsnew, timeout = self.__timeout, verify = True, **kwargs)
+					params = parsnew, timeout = self.__timeout, verify = self.__checkssl, **kwargs)
 			elif method.upper() == 'POST':
 				r = requests.post(url,
-					params = parsnew, timeout = self.__timeout, verify = True, **kwargs)
+					params = parsnew, timeout = self.__timeout, verify = self.__checkssl, **kwargs)
 
 			# BUGFIX: DON'T do this, if we are downloading a big file, the program sticks and dies
 			#self.pd("Request Headers: {}".format(
