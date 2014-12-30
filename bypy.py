@@ -1036,10 +1036,10 @@ class ByPy(object):
 
 			if method.upper() == 'GET':
 				r = requests.get(url,
-					params = parsnew, timeout = self.__timeout, verify = False, **kwargs)
+					params = parsnew, timeout = self.__timeout, verify = True, **kwargs)
 			elif method.upper() == 'POST':
 				r = requests.post(url,
-					params = parsnew, timeout = self.__timeout, verify = False, **kwargs)
+					params = parsnew, timeout = self.__timeout, verify = True, **kwargs)
 
 			# BUGFIX: DON'T do this, if we are downloading a big file, the program sticks and dies
 			#self.pd("Request Headers: {}".format(
