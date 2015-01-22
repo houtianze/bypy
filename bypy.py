@@ -52,10 +52,20 @@ and then, change 'ServerAuth' to 'False'
 # https://stackoverflow.com/questions/11741574/how-to-set-the-default-encoding-to-utf-8-in-python
 # https://stackoverflow.com/questions/2276200/changing-default-encoding-of-python
 from __future__ import unicode_literals
-import os
+
+EIncorrectPythonVersion = 1
 import sys
+vi = sys.version_info
+if vi.major != 2 or vi.minor < 7:
+	print("Error: Incorrect Python version. " + \
+		"You need 2.7 or above (but not 3)")
+	sys.exit(EIncorrectPythonVersion)
+
 #reload(sys)
 #sys.setdefaultencoding(SystemEncoding)
+
+import os
+
 import locale
 SystemLanguageCode, SystemEncoding = locale.getdefaultlocale()
 if SystemEncoding and not sys.platform.startswith('win32'):
@@ -128,7 +138,7 @@ MaxSlicePieces = 1024
 
 # return (error) codes
 ENoError = 0 # plain old OK, fine, no error.
-EIncorrectPythonVersion = 1
+#EIncorrectPythonVersion = 1
 EApiNotConfigured = 10 # ApiKey, SecretKey and AppPcsPath not properly configured
 EArgument = 10 # invalid program command argument
 EAbort = 20 # aborted
@@ -212,12 +222,6 @@ TokenUrl = OAuthUrl + "/token"
 PcsUrl = 'https://pcs.baidu.com/rest/2.0/pcs/'
 CPcsUrl = 'https://c.pcs.baidu.com/rest/2.0/pcs/'
 DPcsUrl = 'https://d.pcs.baidu.com/rest/2.0/pcs/'
-
-vi = sys.version_info
-if vi.major != 2 or vi.minor < 7:
-	print("Error: Incorrect Python version. " + \
-		"You need 2.7 or above (but not 3)")
-	sys.exit(EIncorrectPythonVersion)
 
 try:
 	# non-standard python library, needs 'pip install requests'
