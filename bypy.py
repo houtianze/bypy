@@ -1051,7 +1051,7 @@ class ByPy(object):
 					self.pd("Request OK, processing action")
 				else:
 					self.pd("206 Partial Content")
-				result = act(r.json(), actargs)
+				result = act(json.loads(r), actargs)
 				if result == ENoError:
 					self.pd("Request all goes fine")
 			else:
