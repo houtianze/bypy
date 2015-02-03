@@ -1011,8 +1011,29 @@ class ByPy(object):
 			self.pd("Params: {}".format(pars))
 
 			if method.upper() == 'GET':
-				r = requests.get(url,
-					params = parsnew, timeout = self.__timeout, verify = self.__checkssl, **kwargs)
+				import pycurl
+				from StringIO import StringIO
+				url=url+'?'
+				for i in parsnew:
+					url=url+i+'='+parsnew[i]+'&'
+				kwnew = kwargs.copy()
+				headers=[]
+				for i in kwnew['headers']:
+					if not kwnew['headers'][i] is None:
+						headers.append(i+':'+kwnew['headers'][i])
+				abuffer = StringIO()
+				pyc=pycurl.Curl()
+				pyc.setopt(pyc.URL, url)
+				pyc.setopt(pycurl.HTTPHEADER, headers)
+				pyc.setopt(pyc.WRITEDATA, abuffer)
+				pyc.setopt(pyc.FOLLOWLOCATION, True)
+				pyc.perform()
+				sc =  pyc.getinfo(pyc.HTTP_CODE)
+				r = abuffer.getvalue()
+				abuffer.close()
+				pyc.close()
+#				r = requests.get(url,
+#					params = parsnew, timeout = self.__timeout, verify = self.__checkssl, **kwargs)
 			elif method.upper() == 'POST':
 				r = requests.post(url,
 					params = parsnew, timeout = self.__timeout, verify = self.__checkssl, **kwargs)
@@ -1020,7 +1041,7 @@ class ByPy(object):
 			# BUGFIX: DON'T do this, if we are downloading a big file, the program sticks and dies
 			#self.pd("Request Headers: {}".format(
 			#	pprint.pformat(r.request.headers)), 2)
-			sc = r.status_code
+			#sc = r.status_code
 			self.pd("HTTP Status Code: {}".format(sc))
 			# BUGFIX: DON'T do this, if we are downloading a big file, the program sticks and dies
 			#self.pd("Header returned: {}".format(pprint.pformat(r.headers)), 2)
@@ -1889,14 +1910,14 @@ try to create a file at PCS by combining slices, having MD5s specified
 		if rsize - offset < self.__dl_chunk_size:
 			expectedBytes = rsize - offset
 
-		if len(r.content) != expectedBytes:
+		if len(r) != expectedBytes:
 			return ERequestFailed
 		else:
 			with open(self.__current_file, 'r+b' if offset > 0 else 'wb') as f:
 				if offset > 0:
 					f.seek(offset)
 
-				f.write(r.content)
+				f.write(r)
 				pos = f.tell()
 				pprgr(pos, rsize, start_time, existing = self.__existing_size)
 				if pos - offset == expectedBytes:
