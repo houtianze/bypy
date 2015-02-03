@@ -817,7 +817,7 @@ class PathDictTree(dict):
 	def __str(self, prefix):
 		result = ''
 		for k, v in self.iteritems():
-			result += "{} - {}{} - size: {} - md5: {} \n".format(
+			result += "{} - {}/{} - size: {} - md5: {} \n".format(
 				v.type, prefix, k,
 				v.extra['size'] if 'size' in v.extra else '',
 				binascii.hexlify(v.extra['md5']) if 'md5' in v.extra else '')
