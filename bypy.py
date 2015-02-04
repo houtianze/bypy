@@ -981,7 +981,7 @@ class ByPy(object):
 			perr('Error parsing JSON Error Code from:\n{}'.format(rb(r.text)))
 			perr('Exception: {}'.format(traceback.format_exc()))
 
-	def __dump_exception(self, ex, url, pars, r, act):
+	def __dump_exception(self, ex, url, pars, r, sc, act):
 		if self.Debug or self.Verbose:
 			perr("Error accessing '{}'".format(url))
 			if ex and isinstance(ex, Exception) and self.Debug:
@@ -992,9 +992,9 @@ class ByPy(object):
 			perr("Function: {}".format(act.__name__))
 			perr("Website parameters: {}".format(pars))
 			if r:
-				perr("HTTP Status Code: {}".format(r.status_code))
+				perr("HTTP Status Code: {}".format(sc))
 				self.__print_error_json(r)
-				perr("Website returned: {}".format(rb(r.text)))
+				perr("Website returned: {}".format(rb(r)))
 
 	# always append / replace the 'access_token' parameter in the https request
 	def __request_work(self, url, pars, act, method, actargs = None, addtoken = True, dumpex = True, **kwargs):
@@ -1038,11 +1038,12 @@ class ByPy(object):
 			elif method.upper() == 'POST':
 				r = requests.post(url,
 					params = parsnew, timeout = self.__timeout, verify = self.__checkssl, **kwargs)
+				sc = r.status_code
+				r = r.content
 
 			# BUGFIX: DON'T do this, if we are downloading a big file, the program sticks and dies
 			#self.pd("Request Headers: {}".format(
 			#	pprint.pformat(r.request.headers)), 2)
-			#sc = r.status_code
 			self.pd("HTTP Status Code: {}".format(sc))
 			# BUGFIX: DON'T do this, if we are downloading a big file, the program sticks and dies
 			#self.pd("Header returned: {}".format(pprint.pformat(r.headers)), 2)
@@ -1092,20 +1093,20 @@ class ByPy(object):
 					ec == 31066): # sc == 403 (indeed 404) file does not exist
 					result = ec
 					if dumpex:
-						self.__dump_exception(None, url, pars, r, act)
+						self.__dump_exception(None, url, pars, r, sc, act)
 				else:
 					result = ERequestFailed
 					if dumpex:
-						self.__dump_exception(None, url, pars, r, act)
+						self.__dump_exception(None, url, pars, r, sc, act)
 		except (requests.exceptions.RequestException,
 				socket.error) as ex:
 			result = ERequestFailed
 			if dumpex:
-				self.__dump_exception(ex, url, pars, r, act)
+				self.__dump_exception(ex, url, pars, r, sc, act)
 		except Exception as ex: # shall i quit? i think so.
 			result = EFatal
 			if dumpex:
-				self.__dump_exception(ex, url, pars, r, act)
+				self.__dump_exception(ex, url, pars, r, sc, act)
 			perr("Fatal Exception.\nQuitting...\n")
 			perr("If you see any 'InsecureRequestWarning' message in the error output, " + \
 				"I think in most of the cases, " + \
