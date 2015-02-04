@@ -667,7 +667,10 @@ class cached(object):
 					cached.cacheloaded = True
 					if cached.verbose:
 						pr("Hash Cache File loaded.")
-				except (pickle.PickleError, EOFError, TypeError, ValueError):
+				except (
+					pickle.PickleError,
+					# the following is for dealing with corrupted cache file
+					EOFError, TypeError, ValueError):
 					perr("Fail to load the Hash Cache, no caching. Exception:\n{}".format(traceback.format_exc()))
 					cached.cache = {}
 			else:
