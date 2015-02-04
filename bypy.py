@@ -664,10 +664,11 @@ class cached(object):
 				try:
 					with open(HashCachePath, 'rb') as f:
 						cached.cache = pickle.load(f)
+						f.close()
 					cached.cacheloaded = True
 					if cached.verbose:
 						pr("Hash Cache File loaded.")
-				except pickle.PickleError:
+				except (pickle.PickleError, EOFError, TypeError, ValueError):
 					perr("Fail to load the Hash Cache, no caching. Exception:\n{}".format(traceback.format_exc()))
 					cached.cache = {}
 			else:
@@ -690,6 +691,7 @@ class cached(object):
 			try:
 				with open(HashCachePath, 'wb') as f:
 					pickle.dump(cached.cache, f)
+					f.close()
 				if cached.verbose:
 					pr("Hash Cache saved.")
 				saved = True
