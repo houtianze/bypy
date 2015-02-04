@@ -664,7 +664,6 @@ class cached(object):
 				try:
 					with open(HashCachePath, 'rb') as f:
 						cached.cache = pickle.load(f)
-						f.close()
 					cached.cacheloaded = True
 					if cached.verbose:
 						pr("Hash Cache File loaded.")
