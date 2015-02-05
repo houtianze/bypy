@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # encoding: utf-8
 # ===  IMPORTANT  ====
 # NOTE: In order to support non-ASCII file names,
@@ -1221,7 +1221,7 @@ class ByPy(object):
 		self.pd("Authorize JSON:")
 		self.pd(self.__json)
 		try:
-			with os.fdopen(os.open(TokenFilePath, os.O_WRONLY | os.O_CREAT, 0600),'wb') as outfile:
+			with os.fdopen(os.open(TokenFilePath, os.O_WRONLY | os.O_CREAT, 600),'wb') as outfile:
 				json.dump(self.__json, outfile)
 			return ENoError
 		except Exception:
