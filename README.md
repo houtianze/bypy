@@ -7,9 +7,9 @@ Copyright 2013 Hou Tianze (GitHub: houtianze, Twitter: @ibic, G+: +TianzeHou)
 
 ### Introduction
 
-Python client for Baidu Yun 百度云/百度网盘的Python客户端.
+百度云/百度网盘的Python客户端.
 
-This is a Python client for Baidu Yun (a.k.a PCS - Personal Cloud Storage).
+A Python client for Baidu  Personal Cloud Storage.
 
 This program uses the REST APIs to access the files at Baidu PCS. You can list, download, upload, compare, sync-up/down, etc.
 
@@ -28,9 +28,7 @@ This program uses the REST APIs to access the files at Baidu PCS. You can list, 
 * Directory comparison
 * Hash caching
 
-### Install
-
-#### Dependencies
+### Dependencies
 
 * python2-pycurl
 * python2-requests
@@ -50,7 +48,7 @@ To authorize for first time use, run any commands e.g. `bypy info` and follow th
 
 	bypy list
 
-#### sync up to the cloud (from the current directory)
+#### Sync up to the cloud (from the current directory)
 
 	bypy syncup
 
@@ -58,7 +56,7 @@ or
 
 	bypy upload
 
-#### sync down from the cloud (to the current directory)
+#### Sync down from the cloud (to the current directory)
 
 	bypy syncdown
 
@@ -66,7 +64,7 @@ or
 
 	bypy downdir /
 
-#### compare the current directory to (App's) root directory at Baidu PCS
+#### Compare the current directory to (App's) root directory at Baidu PCS
 
 	bypy compare
 
