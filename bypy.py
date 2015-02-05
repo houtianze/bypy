@@ -128,7 +128,7 @@ __updated__ = '2014-01-13'
 # ByPy default values
 DefaultSliceInMB = 20
 DefaultSliceSize = 20 * OneM
-DefaultDlChunkSize = 20 * OneM
+DefaultDlChunkSize = 1 * OneM
 RetryDelayInSec = 10
 
 # Baidu PCS constants
@@ -973,7 +973,7 @@ class ByPy(object):
 
 	def __print_error_json(self, r):
 		try:
-			dj = r.json()
+			dj = json.loads(r)
 			if 'error_code' in dj and 'error_msg' in dj:
 				ec = dj['error_code']
 				et = dj['error_msg']
@@ -989,7 +989,7 @@ class ByPy(object):
 			perr('Error parsing JSON Error Code from:\n{}'.format(rb(r.text)))
 			perr('Exception: {}'.format(traceback.format_exc()))
 
-	def __dump_exception(self, ex, url, pars, r, act):
+	def __dump_exception(self, ex, url, pars, r, sc, act):
 		if self.Debug or self.Verbose:
 			perr("Error accessing '{}'".format(url))
 			if ex and isinstance(ex, Exception) and self.Debug:
@@ -1000,9 +1000,9 @@ class ByPy(object):
 			perr("Function: {}".format(act.__name__))
 			perr("Website parameters: {}".format(pars))
 			if r:
-				perr("HTTP Status Code: {}".format(r.status_code))
+				perr("HTTP Status Code: {}".format(sc))
 				self.__print_error_json(r)
-				perr("Website returned: {}".format(rb(r.text)))
+				perr("Website returned: {}".format(rb(r)))
 
 	# always append / replace the 'access_token' parameter in the https request
 	def __request_work(self, url, pars, act, method, actargs = None, addtoken = True, dumpex = True, **kwargs):
@@ -1020,16 +1020,38 @@ class ByPy(object):
 			self.pd("Params: {}".format(pars))
 
 			if method.upper() == 'GET':
-				r = requests.get(url,
-					params = parsnew, timeout = self.__timeout, verify = self.__checkssl, **kwargs)
+				import pycurl
+				from StringIO import StringIO
+				url=url+'?'
+				for i in parsnew:
+					url=url+i+'='+parsnew[i]+'&'
+				kwnew = kwargs.copy()
+				headers=[]
+				for i in kwnew['headers']:
+					if not kwnew['headers'][i] is None:
+						headers.append(i+':'+kwnew['headers'][i])
+				abuffer = StringIO()
+				pyc=pycurl.Curl()
+				pyc.setopt(pyc.URL, url)
+				pyc.setopt(pycurl.HTTPHEADER, headers)
+				pyc.setopt(pyc.WRITEDATA, abuffer)
+				pyc.setopt(pyc.FOLLOWLOCATION, True)
+				pyc.perform()
+				sc =  pyc.getinfo(pyc.HTTP_CODE)
+				r = abuffer.getvalue()
+				abuffer.close()
+				pyc.close()
+#				r = requests.get(url,
+#					params = parsnew, timeout = self.__timeout, verify = self.__checkssl, **kwargs)
 			elif method.upper() == 'POST':
 				r = requests.post(url,
 					params = parsnew, timeout = self.__timeout, verify = self.__checkssl, **kwargs)
+				sc = r.status_code
+				r = r.content
 
 			# BUGFIX: DON'T do this, if we are downloading a big file, the program sticks and dies
 			#self.pd("Request Headers: {}".format(
 			#	pprint.pformat(r.request.headers)), 2)
-			sc = r.status_code
 			self.pd("HTTP Status Code: {}".format(sc))
 			# BUGFIX: DON'T do this, if we are downloading a big file, the program sticks and dies
 			#self.pd("Header returned: {}".format(pprint.pformat(r.headers)), 2)
@@ -1045,7 +1067,7 @@ class ByPy(object):
 			else:
 				ec = 0
 				try:
-					j = r.json()
+					j = json.loads(r)
 					ec = j['error_code']
 					# error print is done in __dump_exception()
 					# self.__print_error_json(r)
@@ -1079,20 +1101,20 @@ class ByPy(object):
 					ec == 31066): # sc == 403 (indeed 404) file does not exist
 					result = ec
 					if dumpex:
-						self.__dump_exception(None, url, pars, r, act)
+						self.__dump_exception(None, url, pars, r, sc, act)
 				else:
 					result = ERequestFailed
 					if dumpex:
-						self.__dump_exception(None, url, pars, r, act)
+						self.__dump_exception(None, url, pars, r, sc, act)
 		except (requests.exceptions.RequestException,
 				socket.error) as ex:
 			result = ERequestFailed
 			if dumpex:
-				self.__dump_exception(ex, url, pars, r, act)
+				self.__dump_exception(ex, url, pars, r, sc, act)
 		except Exception as ex: # shall i quit? i think so.
 			result = EFatal
 			if dumpex:
-				self.__dump_exception(ex, url, pars, r, act)
+				self.__dump_exception(ex, url, pars, r, sc, act)
 			perr("Fatal Exception.\nQuitting...\n")
 			perr("If you see any 'InsecureRequestWarning' message in the error output, " + \
 				"I think in most of the cases, " + \
@@ -1210,7 +1232,7 @@ class ByPy(object):
 			return EFileWrite
 
 	def __store_json(self, r):
-		return self.__store_json_only(r.json())
+		return self.__store_json_only(json.loads(r))
 
 	def __server_auth_act(self, r, args):
 		return self.__store_json(r)
@@ -1248,7 +1270,7 @@ class ByPy(object):
 		return result
 
 	def __device_auth_act(self, r, args):
-		dj = r.json()
+		dj = json.loads(r)
 		return self.__get_token(dj)
 
 	def __device_auth(self):
@@ -1317,7 +1339,7 @@ class ByPy(object):
 			return self.__post(TokenUrl, pars, self.__refresh_token_act)
 
 	def __quota_act(self, r, args):
-		j = r.json()
+		j = json.loads(r)
 		pr('Quota: ' + si_size(j['quota']))
 		pr('Used: ' + si_size(j['used']))
 		return ENoError
@@ -1416,7 +1438,7 @@ class ByPy(object):
 
 	def __get_file_info_act(self, r, args):
 		remotefile = args
-		j = r.json()
+		j = json.loads(r)
 		self.pd("List json: {}".format(j))
 		l = j['list']
 		for f in l:
@@ -1448,7 +1470,7 @@ class ByPy(object):
 
 	def __list_act(self, r, args):
 		(remotedir, fmt) = args
-		j = r.json()
+		j = json.loads(r)
 		pr("{} ({}):".format(remotedir, fmt))
 		for f in j['list']:
 			pr(self.__replace_list_format(fmt, f))
@@ -1510,7 +1532,7 @@ get information of the given path (dir / file) at Baidu Yun.
 			self.__meta_act, (rpath, fmt))
 
 	def __combine_file_act(self, r, args):
-		result = self.__verify_current_file(r.json(), False)
+		result = self.__verify_current_file(json.loads(r), False)
 		if result == ENoError:
 			self.pv("'{}' =C=> '{}' OK.".format(self.__current_file, args))
 		else:
@@ -1539,7 +1561,7 @@ get information of the given path (dir / file) at Baidu Yun.
 				data = { 'param' : json.dumps(param) } )
 
 	def __upload_slice_act(self, r, args):
-		j = r.json()
+		j = json.loads(r)
 		# slices must be verified and re-upload if MD5s don't match,
 		# otherwise, it makes the uploading slower at the end
 		rsmd5 = j['md5']
@@ -1619,7 +1641,7 @@ get information of the given path (dir / file) at Baidu Yun.
 		if self.__verify:
 			self.pd("Not strong-consistent, sleep 1 second before verification")
 			time.sleep(1)
-			return self.__verify_current_file(r.json(), True)
+			return self.__verify_current_file(json.loads(r), True)
 		else:
 			return ENoError
 
@@ -1645,7 +1667,7 @@ get information of the given path (dir / file) at Baidu Yun.
 		return self.__post(PcsUrl + 'file', pars, self.__rapidupload_file_act)
 
 	def __upload_one_file_act(self, r, args):
-		result = self.__verify_current_file(r.json(), False)
+		result = self.__verify_current_file(json.loads(r), False)
 		if result == ENoError:
 			self.pv("'{}' ==> '{}' OK.".format(self.__current_file, args))
 		else:
@@ -1842,7 +1864,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 	# no longer used
 	def __get_meta_act(self, r, args):
 		parse_ok = False
-		j = r.json()
+		j = json.loads(r)
 		if 'list' in j:
 			lj = j['list']
 			if len(lj) > 0:
@@ -1904,14 +1926,14 @@ try to create a file at PCS by combining slices, having MD5s specified
 		if rsize - offset < self.__dl_chunk_size:
 			expectedBytes = rsize - offset
 
-		if len(r.content) != expectedBytes:
+		if len(r) != expectedBytes:
 			return ERequestFailed
 		else:
 			with open(self.__current_file, 'r+b' if offset > 0 else 'wb') as f:
 				if offset > 0:
 					f.seek(offset)
 
-				f.write(r.content)
+				f.write(r)
 				pos = f.tell()
 				pprgr(pos, rsize, start_time, existing = self.__existing_size)
 				if pos - offset == expectedBytes:
@@ -2088,7 +2110,7 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 
 	def __walk_remote_dir_act(self, r, args):
 		dirjs, filejs = args
-		j = r.json()
+		j = json.loads(r)
 		#self.pd("Remote path content JSON: {}".format(j))
 		paths = j['list']
 		for path in paths:
@@ -2185,7 +2207,7 @@ download a remote directory (recursively)
 
 	def __mkdir_act(self, r, args):
 		if self.Verbose:
-			j = r.json()
+			j = json.loads(r)
 			pr("path, ctime, mtime, fs_id")
 			pr("{path}, {ctime}, {mtime}, {fs_id}".format(**j))
 
@@ -2215,7 +2237,7 @@ create a directory at Baidu Yun
 		return self.__mkdir(rpath)
 
 	def __move_act(self, r, args):
-		j = r.json()
+		j = json.loads(r)
 		list = j['extra']['list']
 		fromp = list[0]['from']
 		to = list[0]['to']
@@ -2248,7 +2270,7 @@ move a file / dir remotely at Baidu Yun
 		return self.__post(PcsUrl + 'file', pars, self.__move_act)
 
 	def __copy_act(self, r, args):
-		j = r.json()
+		j = json.loads(r)
 		list = j['extra']['list']
 		fromp = list['from']
 		to = list['to']
@@ -2277,7 +2299,7 @@ copy a file / dir remotely at Baidu Yun
 		return self.__post(PcsUrl + 'file', pars, self.__copy_act)
 
 	def __delete_act(self, r, args):
-		rid = r.json()['request_id']
+		rid = json.loads(r)['request_id']
 		if rid:
 			pr("Deletion request '{}' OK".format(rid))
 			pr("Usage 'list' command to confirm")
@@ -2311,7 +2333,7 @@ delete a file / dir remotely at Baidu Yun
 		return self.__delete(rpath)
 
 	def __search_act(self, r, args):
-		print_pcs_list(r.json())
+		print_pcs_list(json.loads(r))
 		return ENoError
 
 	def search(self, keyword, remotepath = None, recursive = True):
@@ -2333,7 +2355,7 @@ search for a file using keyword at Baidu Yun
 		return self.__get(PcsUrl + 'file', pars, self.__search_act)
 
 	def __listrecycle_act(self, r, args):
-		print_pcs_list(r.json())
+		print_pcs_list(json.loads(r))
 		return ENoError
 
 	def listrecycle(self, start = 0, limit = 1000):
@@ -2357,7 +2379,7 @@ list the recycle contents
 
 	def __restore_search_act(self, r, args):
 		path = args
-		flist = r.json()['list']
+		flist = json.loads(r)['list']
 		fsid = None
 		for f in flist:
 			if os.path.normpath(f['path'].lower()) == os.path.normpath(path.lower()):
