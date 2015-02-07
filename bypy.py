@@ -2808,7 +2808,7 @@ right after the '# PCS configuration constants' comment.
 		parser.add_argument("--include-regex", dest="incregex", default='', help="regular expression of files to include. if not specified (default), everything is included. for download, the regex applies to the remote files; for upload, the regex applies to the local files. to exclude files, think about your regex, some tips here: https://stackoverflow.com/questions/406230/regular-expression-to-match-string-not-containing-a-word [default: %(default)s]")
 		parser.add_argument("--on-dup", dest="ondup", default='overwrite', help="what to do when the same file / folder exists in the destination: 'overwrite', 'skip', 'prompt' [default: %(default)s]")
 		parser.add_argument("--no-symlink", dest="followlink", action="store_false", default=True, help="DON'T follow symbol links when uploading / syncing up [default: %(default)s]")
-		parser.add_argument(DisableSslCheckOption, dest="checkssl", action="store_false", default=True, help="DON'T verify host SSL cerificate [default: %(default)s]")
+		parser.add_argument(DisableSslCheckOption, dest="nocheckssl", action="store_false", default=False, help="DON'T verify host SSL cerificate [default: %(default)s]")
 
 		# action
 		parser.add_argument("-c", "--clean", dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean settings and hash cache [default: %(default)s]")
@@ -2903,7 +2903,7 @@ right after the '# PCS configuration constants' comment.
 					incregex = args.incregex,
 					ondup = args.ondup,
 					followlink = args.followlink,
-					checkssl = args.checkssl,
+					checkssl = not args.nocheckssl,
 					verbose = args.verbose, debug = args.debug)
 			uargs = []
 			for arg in args.command[1:]:
