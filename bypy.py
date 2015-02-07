@@ -121,7 +121,7 @@ OneE = OneP * OneK
 
 # special variables
 __all__ = []
-__version__ = 0.1
+__version__ = 1.0.6
 __date__ = '2013-10-25'
 __updated__ = '2014-01-13'
 
