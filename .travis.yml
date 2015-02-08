@@ -5,4 +5,8 @@ python:
 # e.g. pip install -r requirements.txt --use-mirrors
 install: pip install -r requirements.txt
 # command to run tests, e.g. python setup.py test
-script:  python setup.py test
+script:
+ - pyflakes bypy.py
+ - pyflakes setup.py
+ - pyflakes bypygui.pyw
+ - python setup.py test

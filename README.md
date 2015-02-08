@@ -2,6 +2,7 @@ bypy
 ====
 
 Python client for Baidu Yun 百度云/百度网盘的Python客户端
+![alt text](https://travis-ci.org/houtianze/bypy.svg "Build status")
 
 Copyright 2013 Hou Tianze (GitHub: houtianze, Twitter: @ibic, G+: +TianzeHou)
 
