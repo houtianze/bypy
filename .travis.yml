@@ -10,3 +10,7 @@ script:
  - pyflakes setup.py
  - pyflakes bypygui.pyw
  - python setup.py test
+notifications:
+  email:
+    on_success: never # default: change
+    on_failure: always # default: always
