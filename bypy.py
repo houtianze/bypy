@@ -121,7 +121,7 @@ OneE = OneP * OneK
 
 # special variables
 __all__ = []
-__version__ = '1.0.8'
+__version__ = '1.0.9'
 __date__ = '2013-10-25'
 __updated__ = '2014-01-13'
 
@@ -232,7 +232,7 @@ except:
 		"You can install it by running 'pip install requests'")
 	raise
 
-requests_version =  requests.__version__.split('.')
+requests_version = requests.__version__.split('.')
 if int(requests_version[0]) < 1:
 	print("You Python Requests Library version is to lower than 1.\n" + \
 		"You can run 'pip install requests' to upgrade it.")
@@ -551,6 +551,14 @@ def joinpath(first, second, sep = os.sep):
 
 def donothing():
 	pass
+
+# https://urllib3.readthedocs.org/en/latest/security.html#insecurerequestwarning
+def disable_urllib3_warning():
+	try:
+		import urllib3
+		urllib3.disable_warnings()
+	except:
+		pass
 
 # https://stackoverflow.com/questions/10883399/unable-to-encode-decode-pprint-output
 class MyPrettyPrinter(pprint.PrettyPrinter):
@@ -919,6 +927,8 @@ class ByPy(object):
 		self.__followlink = followlink;
 
 		self.__checkssl = checkssl
+		if not checkssl:
+			disable_urllib3_warning()
 
 		self.Verbose = verbose
 		self.Debug = debug
@@ -2692,7 +2702,8 @@ def onexit(retcode = ENoError):
 
 def sighandler(signum, frame):
 	pr("Signal {} received, Abort".format(signum))
-	pr("Frame:\n{}".format(frame))
+	pr("Stack:\n")
+	traceback.print_stack(frame)
 	onexit(EAbort)
 
 def main(argv=None): # IGNORE:C0111
