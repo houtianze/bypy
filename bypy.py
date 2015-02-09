@@ -121,7 +121,7 @@ OneE = OneP * OneK
 
 # special variables
 __all__ = []
-__version__ = '1.0.7'
+__version__ = '1.0.8'
 __date__ = '2013-10-25'
 __updated__ = '2014-01-13'
 
@@ -1089,14 +1089,15 @@ class ByPy(object):
 			result = ERequestFailed
 			if dumpex:
 				self.__dump_exception(ex, url, pars, r, act)
-		except Exception as ex: # shall i quit? i think so.
+		# SSLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed (_ssl.c:581)
+		# SSLError is a sub class of IOError
+		except (IOError, Exception) as ex: # shall i quit? i think so.
 			result = EFatal
-			if dumpex:
-				self.__dump_exception(ex, url, pars, r, act)
+			#if dumpex: # since it's fatal, we always print the error
+			self.__dump_exception(ex, url, pars, r, act)
 			perr("Fatal Exception.\nQuitting...\n")
-			perr("If you see any 'InsecureRequestWarning' message in the error output, " + \
-				"I think in most of the cases, " + \
-				"you can disable the SSL check by running this program " + \
+			perr("If you see any 'SSLError' or 'InsecureRequestWarning' message in the error output, " + \
+				"you can try disable the SSL check by running this program " + \
 				"with the '" + DisableSslCheckOption + "' option.")
 			onexit(result)
 			# we eat the exception, and use return code as the only
