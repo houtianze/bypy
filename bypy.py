@@ -2784,8 +2784,8 @@ right after the '# PCS configuration constants' comment.
 			formatter_class=RawDescriptionHelpFormatter, epilog=epilog)
 
 		# special
-		parser.add_argument("--TESTRUN", dest="TESTRUN", action="store_true", default=False, help="Perform python doctest [default: %(default)s]")
-		parser.add_argument("--PROFILE", dest="PROFILE", action="store_true", default=False, help="Profile the code [default: %(default)s]")
+		parser.add_argument("--TESTRUN", dest="TESTRUN", action="store_true", help="Perform python doctest")
+		parser.add_argument("--PROFILE", dest="PROFILE", action="store_true", help="Profile the code")
 
 		# help, version, program information etc
 		parser.add_argument('-V', '--version', action='version', version=program_version_message)
@@ -2802,13 +2802,13 @@ right after the '# PCS configuration constants' comment.
 		parser.add_argument("-s", "--slice", dest="slice", default=DefaultSliceSize, help="size of file upload slice (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultSliceInMB))
 		parser.add_argument("--chunk", dest="chunk", default=DefaultDlChunkSize, help="size of file download chunk (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultDlChunkSize / OneM))
 		parser.add_argument("-e", "--verify", dest="verify", action="store_true", default=False, help="Verify upload / download [default : %(default)s]")
-		parser.add_argument("-f", "--force-hash", dest="forcehash", action="store_true", default=False, help="force file MD5 / CRC32 calculation instead of using cached values [default: %(default)s]")
+		parser.add_argument("-f", "--force-hash", dest="forcehash", action="store_true", help="force file MD5 / CRC32 calculation instead of using cached value")
 		parser.add_argument("-l", "--list-file", dest="listfile", default=None, help="input list file (used by some of the commands only [default: %(default)s]")
 		parser.add_argument("--resume-download", dest="resumedl", default=True, help="resume instead of restarting when downloading if local file already exists [default: %(default)s]")
 		parser.add_argument("--include-regex", dest="incregex", default='', help="regular expression of files to include. if not specified (default), everything is included. for download, the regex applies to the remote files; for upload, the regex applies to the local files. to exclude files, think about your regex, some tips here: https://stackoverflow.com/questions/406230/regular-expression-to-match-string-not-containing-a-word [default: %(default)s]")
 		parser.add_argument("--on-dup", dest="ondup", default='overwrite', help="what to do when the same file / folder exists in the destination: 'overwrite', 'skip', 'prompt' [default: %(default)s]")
-		parser.add_argument("--no-symlink", dest="followlink", action="store_false", default=True, help="DON'T follow symbol links when uploading / syncing up [default: %(default)s]")
-		parser.add_argument(DisableSslCheckOption, dest="nocheckssl", action="store_false", default=False, help="DON'T verify host SSL cerificate [default: %(default)s]")
+		parser.add_argument("--no-symlink", dest="followlink", action="store_false", help="DON'T follow symbol links when uploading / syncing up")
+		parser.add_argument(DisableSslCheckOption, dest="checkssl", action="store_false", help="DON'T verify host SSL cerificate")
 
 		# action
 		parser.add_argument("-c", "--clean", dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean settings and hash cache [default: %(default)s]")
@@ -2903,7 +2903,7 @@ right after the '# PCS configuration constants' comment.
 					incregex = args.incregex,
 					ondup = args.ondup,
 					followlink = args.followlink,
-					checkssl = not args.nocheckssl,
+					checkssl = args.checkssl,
 					verbose = args.verbose, debug = args.debug)
 			uargs = []
 			for arg in args.command[1:]:
