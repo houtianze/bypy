@@ -115,7 +115,7 @@ OneE = OneP * OneK
 
 # special variables
 __all__ = []
-__version__ = '1.0.9'
+__version__ = '1.0.10'
 __date__ = '2013-10-25'
 __updated__ = '2014-01-13'
 
@@ -1093,12 +1093,15 @@ class ByPy(object):
 			result = EFatal
 			self.__dump_exception(ex, url, pars, r, act)
 			perr("\n\n== SSL Error ==\n" + \
-				"Somehow, we can't verify Baidu's SSL Certificate.\n" + \
+				"We couldn't verify Baidu's SSL Certificate.\n" + \
 				"\n** Workaround ***\n" + \
-				"If you are sure that there is no man-in-the-middle " + \
-				"(quite unlikely in my opinion), or don't mind at all, " + \
-				"you work-around this by re-running this program " + \
-				"with the '" + DisableSslCheckOption + "' option.")
+				"It's most likely that the system doesn't have " + \
+				"the corresponding CA certificate installed, " + \
+				"and you can work-around this by re-running this program " + \
+				"with the '" + DisableSslCheckOption + "' option.\n" + \
+				"\nBut if you are really concern about security, " + \
+				"you should add Baidu's certificate to your CA bundle " + \
+				"(search the internet for howtos, DON'T ask me :)" )
 			onexit(result)
 		except (requests.exceptions.RequestException,
 				socket.error) as ex:
