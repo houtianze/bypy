@@ -20,9 +20,6 @@
 '''
 bypy -- Python client for Baidu Yun
 ---
-Copyright 2013 Hou Tianze (GitHub: houtianze, Twitter: @ibic, G+: +TianzeHou)
-Licensed under the GPLv3
-https://www.gnu.org/licenses/gpl-3.0.txt
 
 bypy is a Baidu Yun client written in Python (2.7).
 (NOTE: You need to install the 'requests' library by running 'pip install requests')
@@ -34,14 +31,11 @@ It uses a server for OAuth authorization, to conceal the Application's Secret Ke
 Alternatively, you can create your own App at Baidu and replace the 'ApiKey' and 'SecretKey' with your copies,
 and then, change 'ServerAuth' to 'False'
 ---
-@author:     Hou Tianze (GitHub: houtianze, Twitter: @ibic, G+: +TianzeHou)
-
-@copyright:  2013 Hou Tianze. All rights reserved.
+@author:     Hou Tianze
 
 @license:    GPLv3
 
-@contact:    None
-@deffield    updated: Updated
+@contact:    GitHub: houtianze, Twitter: @ibic, G+: +TianzeHou
 '''
 
 # it takes days just to fix you, unicode ...
@@ -1094,21 +1088,27 @@ class ByPy(object):
 					result = ERequestFailed
 					if dumpex:
 						self.__dump_exception(None, url, pars, r, act)
+		except requests.exceptions.SSLError as ex:
+		# SSLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed
+			result = EFatal
+			self.__dump_exception(ex, url, pars, r, act)
+			perr("\n\n== SSL Error ==\n" + \
+				"Somehow, we can't verify Baidu's SSL Certificate.\n" + \
+				"\n** Workaround ***\n" + \
+				"If you are sure that there is no man-in-the-middle " + \
+				"(quite unlikely in my opinion), or don't mind at all, " + \
+				"you work-around this by re-running this program " + \
+				"with the '" + DisableSslCheckOption + "' option.")
+			onexit(result)
 		except (requests.exceptions.RequestException,
 				socket.error) as ex:
 			result = ERequestFailed
 			if dumpex:
 				self.__dump_exception(ex, url, pars, r, act)
-		# SSLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed (_ssl.c:581)
-		# SSLError is a sub class of IOError
-		except (IOError, Exception) as ex: # shall i quit? i think so.
+		except Exception as ex:
 			result = EFatal
-			#if dumpex: # since it's fatal, we always print the error
 			self.__dump_exception(ex, url, pars, r, act)
-			perr("Fatal Exception.\nQuitting...\n")
-			perr("If you see any 'SSLError' or 'InsecureRequestWarning' message in the error output, " + \
-				"you can try disable the SSL check by running this program " + \
-				"with the '" + DisableSslCheckOption + "' option.")
+			perr("Fatal Exception, no way to continue.\nQuitting...\n")
 			onexit(result)
 			# we eat the exception, and use return code as the only
 			# error notification method, we don't want to mix them two
