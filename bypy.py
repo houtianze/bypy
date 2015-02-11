@@ -1073,6 +1073,10 @@ class ByPy(object):
 				elif ec == IEMD5NotFound: # and sc == 404:
 					self.pd("MD5 not found, rapidupload failed")
 					result = ec
+				# superfile create failed
+				elif ec == 31081: # and sc == 404:
+					self.pd("blocks MD5 insufficient, rapidupload failed")
+					result = ec
 				# errors that make retrying meaningless
 				elif (
 					ec == 31061 or # sc == 400 file already exists
