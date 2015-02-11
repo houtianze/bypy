@@ -80,9 +80,15 @@ if not SystemEncoding:
 import codecs
 # no idea who is the asshole that screws the sys.stdout.encoding
 # the locale is 'UTF-8', sys.stdin.encoding is 'UTF-8',
-# BUT, sys.stdout.encoding is 'None' ...
+# BUT, sys.stdout.encoding is None ...
 if not (sys.stdout.encoding and sys.stdout.encoding.lower() == 'utf-8'):
-	sys.stdout = codecs.getwriter("utf-8")(sys.stdout)
+	encoding_to_use = sys.stdout.encoding
+	try:
+		codecs.lookup(encoding_to_use)
+		u'汉字'.encode(encoding_to_use)
+	except: # (LookupError, TypeError, UnicodeEncodeError):
+		encoding_to_use = 'utf-8'
+	sys.stdout = codecs.getwriter(encoding_to_use)(sys.stdout)
 import signal
 import time
 import shutil
