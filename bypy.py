@@ -1075,7 +1075,7 @@ class ByPy(object):
 					result = ec
 				# superfile create failed
 				elif ec == 31081: # and sc == 404:
-					self.pd("blocks MD5 insufficient, rapidupload failed")
+					self.pd("Failed to combine files from MD5 slices (superfile create failed)")
 					result = ec
 				# errors that make retrying meaningless
 				elif (
@@ -1092,11 +1092,19 @@ class ByPy(object):
 					result = ERequestFailed
 					if dumpex:
 						self.__dump_exception(None, url, pars, r, act)
-		except requests.exceptions.SSLError as ex:
-		# SSLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed
-			result = EFatal
-			self.__dump_exception(ex, url, pars, r, act)
-			perr("\n\n== SSL Error ==\n" + \
+		except (requests.exceptions.RequestException,
+				socket.error) as ex:
+			# If certificate check failed, no need to continue
+			# but prompt the user for work-around and quit
+			# why so kludge? because requests' SSLError doesn't set
+			# the errno and strerror due to using **kwargs,
+			# so we are forced to use string matching
+			if isinstance(ex, requests.exceptions.SSLError) \
+				and re.match(r'^\[Errno 1\].*error:14090086.*:certificate verify failed$', str(ex), re.I):
+				# [Errno 1] _ssl.c:504: error:14090086:SSL routines:SSL3_GET_SERVER_CERTIFICATE:certificate verify failed
+				result = EFatal
+				self.__dump_exception(ex, url, pars, r, act)
+				perr("\n\n== SSL Error ==\n" + \
 				"We couldn't verify Baidu's SSL Certificate.\n" + \
 				"\n** Workaround ***\n" + \
 				"It's most likely that the system doesn't have " + \
@@ -1106,12 +1114,12 @@ class ByPy(object):
 				"\nBut if you are really concern about security, " + \
 				"you should add Baidu's certificate to your CA bundle " + \
 				"(search the internet for howtos, DON'T ask me :)" )
-			onexit(result)
-		except (requests.exceptions.RequestException,
-				socket.error) as ex:
-			result = ERequestFailed
-			if dumpex:
-				self.__dump_exception(ex, url, pars, r, act)
+				onexit(result)
+			else:
+				result = ERequestFailed
+				if dumpex:
+					self.__dump_exception(ex, url, pars, r, act)
+
 		except Exception as ex:
 			result = EFatal
 			self.__dump_exception(ex, url, pars, r, act)
