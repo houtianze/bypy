@@ -121,7 +121,7 @@ OneE = OneP * OneK
 
 # special variables
 __all__ = []
-__version__ = '1.0.10'
+__version__ = '1.0.11'
 __date__ = '2013-10-25'
 __updated__ = '2014-01-13'
 
@@ -211,6 +211,9 @@ HashCachePath = HomeDir + os.sep + '.bypy.pickle'
 # According to seanlis@github, this User-Agent string affects the download.
 UserAgent = None
 DisableSslCheckOption = '--disable-ssl-check'
+CaCertsOption = '--cacerts'
+ByPyCerts = 'bypy.cacerts.pem'
+ByPyCertsAtHome = HomeDir + os.sep + '.' + ByPyCerts
 
 # Baidu PCS URLs etc.
 OpenApiUrl = "https://openapi.baidu.com"
@@ -555,7 +558,7 @@ def donothing():
 # https://urllib3.readthedocs.org/en/latest/security.html#insecurerequestwarning
 def disable_urllib3_warning():
 	try:
-		import urllib3
+		from requests import urllib3
 		urllib3.disable_warnings()
 	except:
 		pass
@@ -907,6 +910,7 @@ class ByPy(object):
 		ondup = '',
 		followlink = True,
 		checkssl = True,
+		cacerts = None,
 		verbose = 0, debug = False):
 
 		self.__slice_size = slice_size
@@ -927,8 +931,23 @@ class ByPy(object):
 		self.__followlink = followlink;
 
 		self.__checkssl = checkssl
+		# TODO: Once pem file code is ready, remove this temp solution
+		self.__checkssl = False
 		if not checkssl:
 			disable_urllib3_warning()
+		else:
+			# sort of undocumented by requests
+			# http://stackoverflow.com/questions/10667960/python-requests-throwing-up-sslerror
+			if cacerts is not None:
+				if os.path.isfile(cacerts):
+					self.__checkssl = cacerts
+				else:
+					perr("Invalid CA Bundle '{}' specified")
+
+			if self.__checkssl is True:
+				# use our own CA Bundle if possible
+				if os.path.isfile(ByPyCertsAtHome):
+					self.__checkssl = ByPyCerts
 
 		self.Verbose = verbose
 		self.Debug = debug
@@ -1110,21 +1129,40 @@ class ByPy(object):
 				# [Errno 1] _ssl.c:504: error:14090086:SSL routines:SSL3_GET_SERVER_CERTIFICATE:certificate verify failed
 				result = EFatal
 				self.__dump_exception(ex, url, pars, r, act)
-				perr("\n\n== SSL Error ==\n" + \
+				perr("\n\n== Baidu's Certificate Verification Failure ==\n" + \
 				"We couldn't verify Baidu's SSL Certificate.\n" + \
-				"\n** Workaround ***\n" + \
 				"It's most likely that the system doesn't have " + \
-				"the corresponding CA certificate installed, " + \
-				"and you can work-around this by re-running this program " + \
-				"with the '" + DisableSslCheckOption + "' option.\n" + \
-				"\nBut if you are really concern about security, " + \
-				"you should add Baidu's certificate to your CA bundle " + \
-				"(search the internet for howtos, DON'T ask me :)" )
+				"the corresponding CA certificate installed.\n" + \
+				"There are two ways of solving this:\n" + \
+				"Either) Run this prog with the '" + CaCertsOption + \
+				" <path to " + ByPyCerts + "> argument " + \
+				"(" + ByPyCerts + " comes along with this prog). " + \
+				"This is the secure way." + \
+				" However, it won't after 2020-02-08 when " + \
+				" the certificat expires.\n" + \
+				"Or) Run this prog with the '" + DisableSslCheckOption + \
+				"' argument. This supresses the CA cert check " + \
+				"and always works.\n")
 				onexit(result)
-			else:
-				result = ERequestFailed
-				if dumpex:
-					self.__dump_exception(ex, url, pars, r, act)
+
+			# why so kludge? because requests' SSLError doesn't set
+			# the errno and strerror due to using **kwargs,
+			# so we are forced to use string matching
+			if isinstance(ex, requests.exceptions.SSLError) \
+				and re.match(r'^\[Errno 1\].*error:14090086.*:certificate verify failed$', str(ex), re.I):
+				# [Errno 1] _ssl.c:504: error:14090086:SSL routines:SSL3_GET_SERVER_CERTIFICATE:certificate verify failed
+				perr("\n*** We probably don't have Baidu's CA Certificate ***\n" + \
+				"This in fact doesn't matter most of the time.\n\n" + \
+				"However, if you are _really_ concern about it, you can:\n" + \
+				"Either) Run this prog with the '" + CaCertsOption + \
+				" <path to bypy.cacerts.pem>' " + \
+				"argument. This is the secure way.\n" + \
+				"Or) Run this prog with the '" + DisableSslCheckOption + \
+				"' argument. This suppresses the CA cert check.\n")
+
+			result = ERequestFailed
+			if dumpex:
+				self.__dump_exception(ex, url, pars, r, act)
 
 		except Exception as ex:
 			result = EFatal
@@ -2842,6 +2880,7 @@ right after the '# PCS configuration constants' comment.
 		parser.add_argument("--on-dup", dest="ondup", default='overwrite', help="what to do when the same file / folder exists in the destination: 'overwrite', 'skip', 'prompt' [default: %(default)s]")
 		parser.add_argument("--no-symlink", dest="followlink", action="store_false", help="DON'T follow symbol links when uploading / syncing up")
 		parser.add_argument(DisableSslCheckOption, dest="checkssl", action="store_false", help="DON'T verify host SSL cerificate")
+		parser.add_argument(CaCertsOption, dest="cacerts", help="Specify the path for CA Bundle [default: %(default)s]")
 
 		# action
 		parser.add_argument("-c", "--clean", dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean settings and hash cache [default: %(default)s]")
@@ -2937,6 +2976,7 @@ right after the '# PCS configuration constants' comment.
 					ondup = args.ondup,
 					followlink = args.followlink,
 					checkssl = args.checkssl,
+					cacerts = args.cacerts,
 					verbose = args.verbose, debug = args.debug)
 			uargs = []
 			for arg in args.command[1:]:
