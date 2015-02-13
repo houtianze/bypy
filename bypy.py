@@ -1015,7 +1015,7 @@ class ByPy(object):
 					msg = "Error code: {}\nError Description: {}".format(ec, et)
 				pf(msg)
 		except Exception:
-			perr('Error parsing JSON Error Code from:\n{}'.format(rb(r.text)))
+			perr('Error parsing JSON Error Code from:\n{}'.format(rb(r.text[:1024])))
 			perr('Exception: {}'.format(traceback.format_exc()))
 
 	def __dump_exception(self, ex, url, pars, r, act):
@@ -1031,7 +1031,7 @@ class ByPy(object):
 			if r:
 				perr("HTTP Status Code: {}".format(r.status_code))
 				self.__print_error_json(r)
-				perr("Website returned: {}".format(rb(r.text)))
+				perr("Website returned: {}".format(rb(r.text[:1024])))
 
 	# always append / replace the 'access_token' parameter in the https request
 	def __request_work(self, url, pars, act, method, actargs = None, addtoken = True, dumpex = True, **kwargs):
@@ -1062,7 +1062,7 @@ class ByPy(object):
 			self.pd("HTTP Status Code: {}".format(sc))
 			# BUGFIX: DON'T do this, if we are downloading a big file, the program sticks and dies
 			#self.pd("Header returned: {}".format(pprint.pformat(r.headers)), 2)
-			#self.pd("Website returned: {}".format(rb(r.text)), 3)
+			#self.pd("Website returned: {}".format(rb(r.text[:1024])), 3)
 			if sc == requests.codes.ok or sc == 206: # 206 Partial Content
 				if sc == requests.codes.ok:
 					self.pd("Request OK, processing action")
