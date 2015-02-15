@@ -91,6 +91,10 @@ bypy.py compare
 - 运行时添加`-ddd`，还会会显示HTTP通讯信息（**警告：非常多**）
 
 
+经验分享
+---
+请移步至[wiki](../../wiki)，方便分享/交流。
+
 ===
 Introduction
 ---
@@ -174,52 +178,10 @@ Debug
 - Add in `-d` parameter, it will print some debug messages.
 - Add in `-ddd`, it will display HTTP messages as well (**Warning: A lot**）
 
-
-
-
+Tips / Sharing
 ---
-If you encounter `UnicodeDecodeError` while syncing up/down a directory, it's probably due the encoding of the directory / file names not being UTF-8 (especially if these files are copied from Windows to Unix / Linux). You can fix this using the `convmv` utility (to be issued in the directory to sync):
-```
-convmv -f GBK -t UTF-8 -r * (to see what renamings are going to happen)
-convmv -f GBK -t UTF-8 --notest -r * (performing the actual renaming)
-```
-Thanks to [@zm1990s](https://github.com/zm1990s) for providing this fix. (The orginal post from him is at [#62](../../issues/62), his blog post detailing the `convmv` usage is here: http://blog.sina.com.cn/s/blog_4b3646350100kugp.html All are in Chinese though)
+Please go to [wiki](../../wiki)
 
-如果同步/比较是出现`UnicodeDecodeError`错误，很可能是因为目录/文件名编码不是UTF-8（特别是在文件是从Windows拷贝到Unix / Linux的情况下），解决方案是用`convmv`工具来修正编码，在要同步/比较的目录下输入如下命令:
-```
-convmv -f GBK -t UTF-8 -r * （查看将会将文件改名）
-convmv -f GBK -t UTF-8 --notest -r * （实际的改名操作）
-```
-感谢 [@zm1990s](https://github.com/zm1990s) 提供解决方案. 他原帖在这里：[#62](../../issues/62)，博客具体讲述`convmv`用法的文章在这里： http://blog.sina.com.cn/s/blog_4b3646350100kugp.html
-
----
-About a bug of Baidu that's affecting syncup。
-
-Please refer to [#43](../../issues/43) 和 [#47](../../issues/47)
-
-Basically: After a big file uploaded using slices and then combined, Baidu will return the wrong MD5. This will affect comparision (as MD5 is used to assert if the files local and remote are equal), thus will force syncup / syncdown transfer a second time.
-
-**Workaround: syncup twice (For the second time, the big files are "rapidly uploaded", which is very fast. Small files that are the same will be skipped. After this, Baidu will return the correct MD5)**
-
-
-关于百度的一个bug造成的syncup的一点问题。
-
-参见 [#43](../../issues/43) 和 [#47](../../issues/47)
-
-简单说就是：大文件分片上传合并后，百度会返回错误的MD5值。这会导致文件比较失败（本地和远程同样的大文件被认为是不同的文件，因为拿到MD5不一样），进而导致syncup / syncdown重复上传下载。
-
-**曲线解决方法：syncup两次。（第二次大文件算是秒传，很快的；小文件不会再传。然后百度云端返回的MD5值都是正确的了）**
-
-
-
-
-
-
----
-**Add in [wiki](../../wiki), for easier sharing / communicating.**
-
-**加入了[wiki](../../wiki)，方便分享/交流。**
-
----
+===
 Copyright 2013 - 2015: Hou Tianze (GitHub: houtianze)
 License: GPL v3
