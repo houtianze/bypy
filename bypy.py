@@ -21,6 +21,9 @@
 bypy -- Python client for Baidu Yun
 ---
 
+https://github.com/houtianze/bypy
+---
+
 bypy is a Baidu Yun client written in Python (2.7).
 (NOTE: You need to install the 'requests' library by running 'pip install requests')
 
@@ -121,7 +124,7 @@ OneE = OneP * OneK
 
 # special variables
 __all__ = []
-__version__ = '1.0.12'
+__version__ = '1.0.13'
 __date__ = '2013-10-25'
 __updated__ = '2014-01-13'
 
