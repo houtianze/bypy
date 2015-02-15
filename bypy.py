@@ -362,6 +362,35 @@ def pprgrc(finish, total, start_time = None, existing = 0,
 
 pprgr = pprgrc
 
+# marshalling
+def str2bool(s):
+	if isinstance(s, basestring):
+		if s:
+			sc = s.lower()[0]
+			if sc == 't' or sc == 'y' or (sc >= '1' and sc <= '9'):
+				return True
+			else:
+				return False
+		else:
+			return False
+	else:
+		# don't change
+		return s
+
+def str2int(s):
+	if isinstance(s, basestring):
+		return int(s)
+	else:
+		# don't change
+		return s
+
+def str2float(s):
+	if isinstance(s, basestring):
+		return float(s)
+	else:
+		# don't change
+		return s
+
 def si_size(num, precision = 3):
 	''' DocTests:
 	>>> si_size(1000)
@@ -2498,7 +2527,7 @@ search for a file using keyword at Baidu Yun
 			'method' : 'search',
 			'path' : rpath,
 			'wd' : keyword,
-			're' : '1' if recursive else '0'}
+			're' : '1' if str2bool(recursive) else '0'}
 
 		self.pd("Searching: '{}'".format(rpath))
 		return self.__get(PcsUrl + 'file', pars, self.__search_act)
@@ -2515,8 +2544,8 @@ list the recycle contents
 		'''
 		pars = {
 			'method' : 'listrecycle',
-			'start' : start,
-			'limit' : limit }
+			'start' : str2int(start),
+			'limit' : str2int(limit) }
 
 		self.pd("Listing recycle '{}'")
 		return self.__get(PcsUrl + 'file', pars, self.__listrecycle_act)
@@ -2733,7 +2762,7 @@ if not specified, it defaults to the root directory
 				if subresult != ENoError:
 					result = subresult
 
-		if deletelocal:
+		if str2bool(deletelocal):
 			for l in local:
 				# use os.path.isfile()/isdir() instead of l[0], because we need to check file/dir existence.
 				# as we may have removed the parent dir previously during the iteration
@@ -2799,7 +2828,7 @@ if not specified, it defaults to the root directory
 				if subresult != ENoError:
 					result = subresult
 
-		if deleteremote:
+		if str2bool(deleteremote):
 			# i think the list is built top-down, so directories appearing later are either
 			# children or another set of directories
 			pp = '\\' # previous path, setting to '\\' make sure it won't be found in the first step
