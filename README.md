@@ -3,7 +3,6 @@ bypy - Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网�
 ====
 
 [![alt text](https://travis-ci.org/houtianze/bypy.svg "Build status")](https://travis-ci.org/houtianze/bypy)
-
 [![Join the chat at https://gitter.im/houtianze/bypy](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/houtianze/bypy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ===
