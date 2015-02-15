@@ -121,7 +121,7 @@ OneE = OneP * OneK
 
 # special variables
 __all__ = []
-__version__ = '1.0.11'
+__version__ = '1.0.12'
 __date__ = '2013-10-25'
 __updated__ = '2014-01-13'
 
@@ -157,6 +157,7 @@ EMaxRetry = 140
 ERequestFailed = 150 # request failed
 ECacheNotLoaded = 160
 EMigrationFailed = 170
+EDownloadCerts = 180
 EFatal = -1 # No way to continue
 
 # internal errors
@@ -209,8 +210,8 @@ HomeDir = expanduser('~')
 ConfigDir = HomeDir + os.sep + '.bypy'
 TokenFilePath = ConfigDir + os.sep + 'bypy.json'
 HashCachePath = ConfigDir + os.sep + 'bypy.pickle'
-ByPyCerts = 'bypy.cacerts.pem'
-ByPyCertsAtHome = HomeDir + os.sep + ByPyCerts
+ByPyCertsFile = 'bypy.cacerts.pem'
+ByPyCertsPath = ConfigDir + os.sep + ByPyCertsFile
 #UserAgent = 'Mozilla/5.0'
 #UserAgent = "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)"
 # According to seanlis@github, this User-Agent string affects the download.
@@ -489,7 +490,7 @@ def copyfile(src, dst):
 	try:
 		shutil.copyfile(src, dst)
 	except (shutil.Error, IOError) as ex:
-		perr("Fail to copy '{}' to '{}'.\nException:{}\nStack:{}\n".format(
+		perr("Fail to copy '{}' to '{}'.\nException:\n{}\nStack:{}\n".format(
 			src, dst, ex, traceback.format_exc()))
 		result = EFailToCreateLocalFile
 
@@ -740,7 +741,7 @@ class cached(object):
 				saved = True
 				cached.dirty = False
 			except Exception:
-				perr("Failed to save Hash Cache. Exception:\n".format(traceback.format_exc()))
+				perr("Failed to save Hash Cache. Exception:\n{}".format(traceback.format_exc()))
 
 		else:
 			if cached.verbose:
@@ -957,6 +958,26 @@ class ByPy(object):
 
 		return result
 
+	@staticmethod
+	def getcertfile():
+		result = ENoError
+		if not os.path.exists(ByPyCertsPath):
+			if os.path.exists(ByPyCertsFile):
+				result = copyfile(ByPyCertsFile, ByPyCertsPath)
+			else:
+				try:
+					# perform a simple download from github
+					urllib.urlretrieve(
+					'https://raw.githubusercontent.com/houtianze/bypy/master/bypy.cacerts.pem', ByPyCertsPath)
+				except IOError as ex:
+					perr("Fail download CA Certs to '{}'.\n" + \
+						"Exception:\n{}\nStack:{}\n".format(
+						ByPyCertsPath, ex, traceback.format_exc()))
+
+					result = EDownloadCerts	
+
+		return result
+
 	def __init__(self,
 		slice_size = DefaultSliceSize,
 		dl_chunk_size = DefaultDlChunkSize,
@@ -978,7 +999,9 @@ class ByPy(object):
 		if sr != ENoError:
 			# bail out
 			perr("Failed to migrate old settings.")
-			onexit(sr)
+			onexit(EMigrationFailed)
+		# it doesn't matter if it failed, we can disable SSL verification anyway
+		ByPy.getcertfile()
 
 		self.__slice_size = slice_size
 		self.__dl_chunk_size = dl_chunk_size
@@ -998,11 +1021,11 @@ class ByPy(object):
 		self.__followlink = followlink;
 
 		self.__checkssl = checkssl
-		# TODO: Once pem file code is ready, remove this temp solution
-		self.__checkssl = False
-		if not checkssl:
-			disable_urllib3_warning()
-		else:
+
+		self.Verbose = verbose
+		self.Debug = debug
+
+		if self.__checkssl:
 			# sort of undocumented by requests
 			# http://stackoverflow.com/questions/10667960/python-requests-throwing-up-sslerror
 			if cacerts is not None:
@@ -1011,13 +1034,24 @@ class ByPy(object):
 				else:
 					perr("Invalid CA Bundle '{}' specified")
 
+			# falling through here means no customized CA Certs specified
 			if self.__checkssl is True:
 				# use our own CA Bundle if possible
-				if os.path.isfile(ByPyCertsAtHome):
-					self.__checkssl = ByPyCerts
+				if os.path.isfile(ByPyCertsPath):
+					self.__checkssl = ByPyCertsPath
+				else:
+					# Well, disable cert verification
+					pwarn(
+"** SSL Certificate Verification has been disabled **\n\n" + \
+"If you are confident that your CA Bundle can verify " + \
+"Baidu PCS's certs, you can run the prog with the '" + CaCertsOption + \
+" <your ca cert path>' argument to enable SSL cert verification.\n\n" + \
+"However, most of the time, you can ignore this warning, " + \
+"you are going to send sensitive data to the cloud plainly right?")
+					self.__checkssl = False
 
-		self.Verbose = verbose
-		self.Debug = debug
+		if not checkssl:
+			disable_urllib3_warning()
 
 		# the prophet said: thou shalt initialize
 		self.__existing_size = 0
@@ -1083,13 +1117,13 @@ class ByPy(object):
 				pf(msg)
 		except Exception:
 			perr('Error parsing JSON Error Code from:\n{}'.format(rb(r.text)))
-			perr('Exception: {}'.format(traceback.format_exc()))
+			perr('Exception:\n{}'.format(traceback.format_exc()))
 
 	def __dump_exception(self, ex, url, pars, r, act):
 		if self.Debug or self.Verbose:
 			perr("Error accessing '{}'".format(url))
 			if ex and isinstance(ex, Exception) and self.Debug:
-				perr("Exception: {}".format(ex))
+				perr("Exception:\n{}".format(ex))
 			tb = traceback.format_exc()
 			if tb:
 				pr(tb)
@@ -1202,11 +1236,11 @@ class ByPy(object):
 				"the corresponding CA certificate installed.\n" + \
 				"There are two ways of solving this:\n" + \
 				"Either) Run this prog with the '" + CaCertsOption + \
-				" <path to " + ByPyCerts + "> argument " + \
-				"(" + ByPyCerts + " comes along with this prog). " + \
-				"This is the secure way." + \
-				" However, it won't after 2020-02-08 when " + \
-				" the certificat expires.\n" + \
+				" <path to " + ByPyCertsPath + "> argument " + \
+				"(" + ByPyCertsPath + " comes along with this prog). " + \
+				"This is the secure way. " + \
+				"However, it won't work after 2020-02-08 when " + \
+				"the certificat expires.\n" + \
 				"Or) Run this prog with the '" + DisableSslCheckOption + \
 				"' argument. This supresses the CA cert check " + \
 				"and always works.\n")
