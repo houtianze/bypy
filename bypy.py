@@ -156,6 +156,7 @@ EFileNotFound = 130
 EMaxRetry = 140
 ERequestFailed = 150 # request failed
 ECacheNotLoaded = 160
+EMigrationFailed = 170
 EFatal = -1 # No way to continue
 
 # internal errors
@@ -204,16 +205,18 @@ AppPcsPathLen = len(AppPcsPath)
 
 # Program setting constants
 HomeDir = expanduser('~')
-TokenFilePath = HomeDir + os.sep + '.bypy.json'
-HashCachePath = HomeDir + os.sep + '.bypy.pickle'
+# os.path.join() may not handle unicode well
+ConfigDir = HomeDir + os.sep + '.bypy'
+TokenFilePath = ConfigDir + os.sep + 'bypy.json'
+HashCachePath = ConfigDir + os.sep + 'bypy.pickle'
+ByPyCerts = 'bypy.cacerts.pem'
+ByPyCertsAtHome = HomeDir + os.sep + ByPyCerts
 #UserAgent = 'Mozilla/5.0'
 #UserAgent = "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)"
 # According to seanlis@github, this User-Agent string affects the download.
 UserAgent = None
 DisableSslCheckOption = '--disable-ssl-check'
 CaCertsOption = '--cacerts'
-ByPyCerts = 'bypy.cacerts.pem'
-ByPyCertsAtHome = HomeDir + os.sep + '.' + ByPyCerts
 
 # Baidu PCS URLs etc.
 OpenApiUrl = "https://openapi.baidu.com"
@@ -481,6 +484,28 @@ def get_pcs_path(path):
 	return (AppPcsPath + '/' + path.strip('/')).rstrip('/')
 
 # guarantee no-exception
+def copyfile(src, dst):
+	result = ENoError
+	try:
+		shutil.copyfile(src, dst)
+	except (shutil.Error, IOError) as ex:
+		perr("Fail to copy '{}' to '{}'.\nException:{}\nStack:{}\n".format(
+			src, dst, ex, traceback.format_exc()))
+		result = EFailToCreateLocalFile
+
+	return result
+
+def movefile(src, dst):
+	result = ENoError
+	try:
+		shutil.move(src, dst)
+	except (shutil.Error, OSError) as ex:
+		perr("Fail to move '{}' to '{}'.\nException:\n{}\nStack:\n{}\n".format(
+			src, dst, ex, traceback.format_exc()))
+		result = EFailToCreateLocalFile
+
+	return result
+
 def removefile(path, verbose = False):
 	result = ENoError
 	try:
@@ -488,8 +513,9 @@ def removefile(path, verbose = False):
 			pr("Removing local file '{}'".format(path))
 		if path:
 			os.remove(path)
-	except Exception:
-		perr("Fail to remove local fle '{}'.\nException:{}\n".format(path, traceback.format_exc()))
+	except Exception as ex:
+		perr("Fail to remove local fle '{}'.\nException:\n{}\nStack:{}\n".format(
+			path, ex, traceback.format_exc()))
 		result = EFailToDeleteFile
 
 	return result
@@ -501,22 +527,26 @@ def removedir(path, verbose = False):
 			pr("Removing local directory '{}'".format(path))
 		if path:
 			shutil.rmtree(path)
-	except Exception:
-		perr("Fail to remove local directory '{}'.\nException:{}\n".format(path, traceback.format_exc()))
+	except Exception as ex:
+		perr("Fail to remove local directory '{}'.\nException:\n{}\nStack:{}\n".format(
+			path, ex, traceback.format_exc()))
 		result = EFailToDeleteDir
 
 	return result
 
-def makedir(path, verbose = False):
+def makedir(path, mode = 0777, verbose = False):
 	result = ENoError
-	try:
-		if verbose:
-			pr("Creating local directory '{}'".format(path))
-		if not (not path or path == '.'):
-			os.makedirs(path)
-	except os.error:
-		perr("Failed at creating local dir '{}'.\nException:\n'{}'".format(path, traceback.format_exc()))
-		result = EFailToCreateLocalDir
+
+	if verbose:
+		pr("Creating local directory '{}'".format(path))
+
+	if path and not os.path.exists(path):
+		try:
+			os.makedirs(path, mode)
+		except os.error as ex:
+			perr("Failed at creating local dir '{}'.\nException:\n{}\nStack:{}\n".format(
+				path, ex, traceback.format_exc()))
+			result = EFailToCreateLocalDir
 
 	return result
 
@@ -558,8 +588,8 @@ def donothing():
 # https://urllib3.readthedocs.org/en/latest/security.html#insecurerequestwarning
 def disable_urllib3_warning():
 	try:
-		from requests import urllib3
-		urllib3.disable_warnings()
+		import requests.packages.urllib3
+		requests.packages.urllib3.disable_warnings()
 	except:
 		pass
 
@@ -897,6 +927,36 @@ class ByPy(object):
 		'$$' : (lambda json: '$')
 	}
 
+	# Old setting locations, should be moved to ~/.bypy to be clean
+	OldTokenFilePath = HomeDir + os.sep + '.bypy.json'
+	OldHashCachePath = HomeDir + os.sep + '.bypy.pickle'
+
+	@staticmethod
+	def migratesettings():
+		result = ENoError
+
+		filesToMove = [
+			[ByPy.OldTokenFilePath, TokenFilePath],
+			[ByPy.OldHashCachePath, HashCachePath]
+		]
+
+		result = makedir(ConfigDir, 0700) and result # make it secretive
+		# this directory must exist
+		if result != ENoError:
+			perr("Fail to create config directory '{}'".format(ConfigDir))
+			return result
+
+		for tomove in filesToMove:
+			oldfile = tomove[0]
+			newfile = tomove[1]
+			if os.path.exists(oldfile):
+				dst = newfile
+				if os.path.exists(newfile):
+					dst = TokenFilePath + '.old'
+				result = movefile(oldfile, dst) and result
+
+		return result
+
 	def __init__(self,
 		slice_size = DefaultSliceSize,
 		dl_chunk_size = DefaultDlChunkSize,
@@ -912,6 +972,13 @@ class ByPy(object):
 		checkssl = True,
 		cacerts = None,
 		verbose = 0, debug = False):
+
+		# handle backward compatibility
+		sr = ByPy.migratesettings()
+		if sr != ENoError:
+			# bail out
+			perr("Failed to migrate old settings.")
+			onexit(sr)
 
 		self.__slice_size = slice_size
 		self.__dl_chunk_size = dl_chunk_size
