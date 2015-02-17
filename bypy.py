@@ -1917,7 +1917,7 @@ get information of the given path (dir / file) at Baidu Yun.
 				if fileresult != ENoError:
 					result = fileresult # we still continue
 			else:
-				pinfo("Remote file '{}' exists but is different, skip uploading".format(rfile))
+				pinfo("Remote file '{}' exists and is the same, skip uploading".format(rfile))
 				# next / continue
 
 		return result
