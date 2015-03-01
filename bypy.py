@@ -2452,10 +2452,10 @@ move a file / dir remotely at Baidu Yun
 
 	def __copy_act(self, r, args):
 		j = r.json()
-		list = j['extra']['list']
-		fromp = list['from']
-		to = list['to']
-		self.pd("Remote copy: '{}' =cc=> '{}' OK".format(fromp, to))
+		for list in j['extra']['list']:
+			fromp = list['from']
+			to = list['to']
+			self.pd("Remote copy: '{}' =cc=> '{}' OK".format(fromp, to))
 
 		return ENoError
 
