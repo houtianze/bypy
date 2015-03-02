@@ -10,6 +10,7 @@ script:
  - pyflakes setup.py
  - pyflakes bypygui.pyw
  - python setup.py test
+ - python -m doctest -v bypy.py
 notifications:
   email:
     on_success: change # default: change

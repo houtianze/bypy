@@ -182,5 +182,5 @@ Tips / Sharing
 Please go to [wiki](../../wiki)
 
 ===
-Copyright 2013 - 2015: Hou Tianze (GitHub: houtianze)
-License: GPL v3
+Copyright 2013 - 2015: Hou Tianze (GitHub: houtianze, Twitter: @ibic, G+: +TianzeHou)
+License: MIT

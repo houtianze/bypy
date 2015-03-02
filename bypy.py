@@ -36,7 +36,7 @@ and then, change 'ServerAuth' to 'False'
 ---
 @author:     Hou Tianze
 
-@license:    GPLv3
+@license:    MIT
 
 @contact:    GitHub: houtianze, Twitter: @ibic, G+: +TianzeHou
 '''
@@ -124,9 +124,7 @@ OneE = OneP * OneK
 
 # special variables
 __all__ = []
-__version__ = '1.0.13'
-__date__ = '2013-10-25'
-__updated__ = '2014-01-13'
+__version__ = '1.0.14'
 
 # ByPy default values
 DefaultSliceInMB = 20
@@ -354,9 +352,9 @@ def pprgrc(finish, total, start_time = None, existing = 0,
 		remainf = totalf - float(finish)
 		elapsed = now - start_time
 		speed = human_speed(finishf / elapsed)
-		eta = 'ETA: ' + human_time(elapsed * remainf / finishf) + \
+		eta = 'ETA: ' + human_time_short(elapsed * remainf / finishf) + \
 				' (' + speed + ', ' + \
-				human_time(elapsed) + ' gone)'
+				human_time_short(elapsed) + ' gone)'
 	msg = '\r' + prefix + '[' + segth * '=' + (seg - segth) * '_' + ']' + \
 		" {}% ({}/{})".format(percent, si_size(finish), si_size(total)) + \
 		' ' + eta + suffix
@@ -481,6 +479,46 @@ def human_time(seconds):
 			result += str(t[1]) + t[0]
 
 	return result
+
+def limit_unit(timestr, num = 2):
+	''' DocTests:
+	>>> limit_unit('1m2s', 1)
+	u'1m'
+	>>> limit_unit('1m2s')
+	u'1m2s'
+	>>> limit_unit('1m2s', 4)
+	u'1m2s'
+	>>> limit_unit('1d2h3m2s')
+	u'1d2h'
+	>>> limit_unit('1d2h3m2s', 1)
+	u'1d'
+	'''
+	l = len(timestr)
+	i = 0
+	p = 0
+	while i < num and p <= l:
+		at = 0
+		while p < l:
+			c = timestr[p]
+			if at == 0:
+				if c.isdigit():
+					p += 1
+				else:
+					at += 1
+			elif at == 1:
+				if not c.isdigit():
+					p += 1
+				else:
+					at += 1
+			else:
+				break
+
+		i += 1
+
+	return timestr[:p]
+
+def human_time_short(seconds):
+	return limit_unit(human_time(seconds))
 
 def human_speed(speed, precision = 0):
 	''' DocTests:
@@ -2937,8 +2975,7 @@ def main(argv=None): # IGNORE:C0111
 
 	#program_name = os.path.basename(sys.argv[0])
 	program_version = "v%s" % __version__
-	program_build_date = str(__updated__)
-	program_version_message = '%%(prog)s %s (%s)' % (program_version, program_build_date)
+	program_version_message = '%%(prog)s %s' % (program_version )
 	program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
 	program_longdesc = __import__('__main__').__doc__.split("---\n")[1]
 
