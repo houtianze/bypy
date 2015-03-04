@@ -1088,6 +1088,7 @@ class ByPy(object):
 			self.__ondup = ondup[0].upper()
 		else:
 			self.__ondup = 'O' # O - Overwrite* S - Skip P - Prompt
+		self.__isrev = False
 		self.__followlink = followlink;
 
 		self.__checkssl = checkssl
@@ -1767,6 +1768,8 @@ get information of the given path (dir / file) at Baidu Yun.
 			'method' : 'createsuperfile',
 			'path' : remotepath,
 			'ondup' : ondup }
+		if self.__isrev and ondup != 'newcopy':
+			pars['is_revision'] = 1
 
 		# always print this, so that we can use these data to combine file later
 		pr("Combining the following MD5 slices:")
@@ -1880,6 +1883,8 @@ get information of the given path (dir / file) at Baidu Yun.
 			'slice-md5' : slicemd5str,
 			'content-crc32' : crcstr,
 			'ondup' : ondup }
+		if self.__isrev and ondup != 'newcopy':
+			pars['is_revision'] = 1
 
 		self.pd("RapidUploading Length: {} MD5: {}, Slice-MD5: {}, CRC: {}".format(
 			self.__current_file_size, md5str, slicemd5str, crcstr))
@@ -1899,6 +1904,8 @@ get information of the given path (dir / file) at Baidu Yun.
 			'method' : 'upload',
 			'path' : remotepath,
 			'ondup' : ondup }
+		if self.__isrev and ondup != 'newcopy':
+			pars['is_revision'] = 1
 
 		with open(localpath, "rb") as f:
 			return self.__post(CPcsUrl + 'file',
@@ -1938,9 +1945,11 @@ get information of the given path (dir / file) at Baidu Yun.
 			rfile = rdir + '/' + name.replace('\\', '/')
 			# if the corresponding file matches at Baidu Yun, then don't upload
 			upload = True
+			self.__isrev = False
 			self.__remote_json = {}
 			subresult = self.__get_file_info(rfile, dumpex = False)
 			if subresult == ENoError: # same-name remote file exists
+				self.__isrev = True
 				if ENoError == self.__verify_current_file(self.__remote_json, False):
 					# the two files are the same
 					upload = False
@@ -2036,6 +2045,8 @@ upload a file or directory (recursively)
 				if subresult == ENoError: # remove path exists, check is dir or file
 					if self.__remote_json['isdir']: # do this only for dir
 						rpath += '/' + lpathbase # rpath is guaranteed no '/' ended
+					else: # rpath is a file
+						self.__isrev = True
 			self.pd("remote path is '{}'".format(rpath))
 			return self.__upload_file(lpath, rpath, ondup)
 		elif os.path.isdir(lpath):
