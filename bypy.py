@@ -124,7 +124,7 @@ OneE = OneP * OneK
 
 # special variables
 __all__ = []
-__version__ = '1.0.14'
+__version__ = '1.0.15'
 
 # ByPy default values
 DefaultSliceInMB = 20
@@ -2256,7 +2256,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 		ldir, file = os.path.split(localfile)
 		if ldir and not os.path.exists(ldir):
-			result = makedir(ldir, self.Verbose)
+			result = makedir(ldir, verbose = self.Verbose)
 			if result != ENoError:
 				perr("Fail to make directory '{}'".format(ldir))
 				return result
@@ -2375,7 +2375,7 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 
 		if result == ENoError:
 			if localdir and not os.path.exists(localdir):
-				result = makedir(localdir, self.Verbose)
+				result = makedir(localdir, verbose = self.Verbose)
 
 		return result
 
@@ -2782,7 +2782,7 @@ if not specified, it defaults to the root directory
 					result = subresult
 			elif t == 'FD':
 				result = removefile(lcpath, self.Verbose)
-				subresult = makedir(lcpath, self.Verbose)
+				subresult = makedir(lcpath, verbose = self.Verbose)
 				if subresult != ENoError:
 					result = subresult
 			else: # " t == 'F' " must be true
@@ -2799,7 +2799,7 @@ if not specified, it defaults to the root directory
 				if subresult != ENoError:
 					result = subresult
 			else: # " t == 'D' " must be true
-				subresult = makedir(lcpath, self.Verbose)
+				subresult = makedir(lcpath, verbose = self.Verbose)
 				if subresult != ENoError:
 					result = subresult
 
