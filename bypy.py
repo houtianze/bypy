@@ -124,7 +124,7 @@ OneE = OneP * OneK
 
 # special variables
 __all__ = []
-__version__ = '1.0.16'
+__version__ = '1.0.17'
 
 # ByPy default values
 DefaultSliceInMB = 20
@@ -1088,6 +1088,7 @@ class ByPy(object):
 			self.__ondup = ondup[0].upper()
 		else:
 			self.__ondup = 'O' # O - Overwrite* S - Skip P - Prompt
+		# TODO: whether this works is still to be tried out
 		self.__isrev = False
 		self.__followlink = followlink;
 
