@@ -124,7 +124,7 @@ OneE = OneP * OneK
 
 # special variables
 __all__ = []
-__version__ = '1.0.15'
+__version__ = '1.0.16'
 
 # ByPy default values
 DefaultSliceInMB = 20
@@ -605,7 +605,7 @@ def removedir(path, verbose = False):
 
 	return result
 
-def makedir(path, mode = 0777, verbose = False):
+def makedir(path, mode = 0o777, verbose = False):
 	result = ENoError
 
 	if verbose:
@@ -1011,7 +1011,7 @@ class ByPy(object):
 			[ByPy.OldHashCachePath, HashCachePath]
 		]
 
-		result = makedir(ConfigDir, 0700) and result # make it secretive
+		result = makedir(ConfigDir, 0o700) and result # make it secretive
 		# this directory must exist
 		if result != ENoError:
 			perr("Fail to create config directory '{}'".format(ConfigDir))
@@ -1441,9 +1441,12 @@ class ByPy(object):
 		self.pd("access token: " + self.__access_token)
 		self.pd("Authorize JSON:")
 		self.pd(self.__json)
+		tokenmode = 0o600
 		try:
-			with os.fdopen(os.open(TokenFilePath, os.O_WRONLY | os.O_CREAT, 0600),'wb') as outfile:
+			with open(TokenFilePath, 'wb') as outfile:
 				json.dump(self.__json, outfile)
+
+			os.chmod(TokenFilePath, tokenmode)
 			return ENoError
 		except Exception:
 			perr("Exception occured while trying to store access token:\n" \
