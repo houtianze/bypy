@@ -39,6 +39,8 @@ cd 到clone的目录，运行：
 简单的图形界面：
 `./bypygui.pyw`
 
+要找多线程图形界面的，这个貌似不错：[bcloud](../../../../LiuLang/bcloud)
+
 基本操作
 ---
 显示使用帮助和所有命令（英文）:
@@ -126,6 +128,7 @@ You will see all the commands and parameters it supports
 Simple GUI:
 `./bypygui.pyw`
 
+For advanced GUI with parallel downloading capbility, this seems a good choice: [bcloud](../../../../LiuLang/bcloud)
 
 Getting started
 ---
