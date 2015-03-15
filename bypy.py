@@ -92,6 +92,7 @@ if not (sys.stdout.encoding and sys.stdout.encoding.lower() == 'utf-8'):
 	except: # (LookupError, TypeError, UnicodeEncodeError):
 		encoding_to_use = 'utf-8'
 	sys.stdout = codecs.getwriter(encoding_to_use)(sys.stdout)
+	sys.stderr = codecs.getwriter(encoding_to_use)(sys.stderr)
 import signal
 import time
 import shutil
@@ -3098,6 +3099,7 @@ right after the '# PCS configuration constants' comment.
 		pr("App root path at Baidu Yun '{}'".format(AppPcsPath))
 		pr("sys.stdin.encoding = {}".format(sys.stdin.encoding))
 		pr("sys.stdout.encoding = {}".format(sys.stdout.encoding))
+		pr("sys.stderr.encoding = {}".format(sys.stderr.encoding))
 
 		if args.verbose > 0:
 			pr("Verbose level = {}".format(args.verbose))
