@@ -1342,6 +1342,7 @@ class ByPy(object):
 			result = EFatal
 			self.__dump_exception(ex, url, pars, r, act)
 			perr("Fatal Exception, no way to continue.\nQuitting...\n")
+			perr("If the error is reproducible, run the program with `-dv` arguments again to get more info.\n")
 			onexit(result)
 			# we eat the exception, and use return code as the only
 			# error notification method, we don't want to mix them two
