@@ -1093,6 +1093,8 @@ class ByPy(object):
 		self.__isrev = False
 		self.__followlink = followlink;
 
+		# TODO: properly fix this InsecurePlatformWarning
+		checkssl = False
 		self.__checkssl = checkssl
 
 		self.Verbose = verbose
