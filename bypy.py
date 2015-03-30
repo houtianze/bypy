@@ -1460,6 +1460,12 @@ class ByPy(object):
 			return EFileWrite
 
 	def __store_json(self, r):
+		try:
+			r.json()
+		except Exception:
+			perr("Failed to decode JSON:\n" \
+				"Exception:\n{}".format(traceback.format_exc()))
+			return EInvalidJson
 		return self.__store_json_only(r.json())
 
 	def __server_auth_act(self, r, args):
