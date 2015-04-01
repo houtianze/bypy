@@ -53,7 +53,7 @@ from __future__ import unicode_literals
 EIncorrectPythonVersion = 1
 import sys
 vi = sys.version_info
-if vi.major != 2 or vi.minor < 7:
+if not hasattr(sys.version_info, 'major') or vi.major != 2 or vi.minor < 7:
 	print("Error: Incorrect Python version. " + \
 		"You need 2.7 or above (but not 3)")
 	sys.exit(EIncorrectPythonVersion)
