@@ -343,8 +343,12 @@ ask = askc
 def pprgrc(finish, total, start_time = None, existing = 0,
 		prefix = '', suffix = '', seg = 20):
 	# we don't want this goes to the log, so we use stderr
-	segth = seg * finish // total
-	percent = 100 * finish // total
+	if total > 0:
+		segth = seg * finish // total
+		percent = 100 * finish // total
+	else:
+		segth = seg
+		percent = 100
 	eta = ''
 	now = time.time()
 	if start_time is not None and percent > 5 and finish > 0:
@@ -2201,8 +2205,10 @@ try to create a file at PCS by combining slices, having MD5s specified
 			if nextoffset < rsize:
 				headers = { "Range" : "bytes={}-{}".format(
 					offset, nextoffset - 1) }
-			else:
+			elif offset > 0:
 				headers = { "Range" : "bytes={}-".format(offset) }
+			else:
+				headers = {}
 
 			subresult = self.__get(DPcsUrl + 'file', pars,
 				self.__downchunks_act, (rfile, offset, rsize, start_time), headers = headers)
