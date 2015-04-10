@@ -1206,8 +1206,9 @@ class ByPy(object):
 			perr("Website parameters: {}".format(pars))
 			if r:
 				perr("HTTP Status Code: {}".format(r.status_code))
-				self.__print_error_json(r)
-				perr("Website returned: {}".format(rb(r.text)))
+				if (r.status_code != 200 and r.status_code != 206) or (not (pars.has_key('method') and pars['method'] == 'download') and url.find('method=download') == -1 and url.find('baidupcs.com/file/') == -1):
+					self.__print_error_json(r)
+					perr("Website returned: {}".format(rb(r.text)))
 
 	# always append / replace the 'access_token' parameter in the https request
 	def __request_work(self, url, pars, act, method, actargs = None, addtoken = True, dumpex = True, **kwargs):
