@@ -232,6 +232,12 @@ PcsUrl = 'https://pcs.baidu.com/rest/2.0/pcs/'
 CPcsUrl = 'https://c.pcs.baidu.com/rest/2.0/pcs/'
 DPcsUrl = 'https://d.pcs.baidu.com/rest/2.0/pcs/'
 
+# mutable, actual ones used, capital ones are supposed to be immutable
+# this is introduced to support mirrors
+pcsurl  = PcsUrl
+cpcsurl = CPcsUrl
+dpcsurl = DPcsUrl
+
 try:
 	# non-standard python library, needs 'pip install requests'
 	import requests
@@ -1099,6 +1105,12 @@ class ByPy(object):
 
 		# TODO: properly fix this InsecurePlatformWarning
 		checkssl = False
+		# using a mirror, which has name mismatch SSL error,
+		# so need to disable SSL check
+		if pcsurl != PcsUrl:
+			# TODO: print a warning
+			checkssl = False
+
 		self.__checkssl = checkssl
 
 		self.Verbose = verbose
@@ -1603,7 +1615,7 @@ class ByPy(object):
 		''' Usage: quota/info - displays the quota information '''
 		pars = {
 			'method' : 'info' }
-		return self.__get(PcsUrl + 'quota', pars, self.__quota_act)
+		return self.__get(pcsurl + 'quota', pars, self.__quota_act)
 
 	# return:
 	#   0: local and remote files are of same size
@@ -1702,7 +1714,7 @@ class ByPy(object):
 				'by' : 'name', # sort in case we can use binary-search, etc in the futrue.
 				'order' : 'asc' }
 
-			return self.__get(PcsUrl + 'file', pars, self.__get_file_info_act, remotefile, **kwargs)
+			return self.__get(pcsurl + 'file', pars, self.__get_file_info_act, remotefile, **kwargs)
 		else:
 			perr("Invalid remotefile '{}' specified.".format(remotefile))
 			return EArgument
@@ -1747,7 +1759,7 @@ class ByPy(object):
 			'by' : sort,
 			'order' : order }
 
-		return self.__get(PcsUrl + 'file', pars, self.__list_act, (rpath, fmt))
+		return self.__get(pcsurl + 'file', pars, self.__list_act, (rpath, fmt))
 
 	def __meta_act(self, r, args):
 		return self.__list_act(r, args)
@@ -1767,7 +1779,7 @@ get information of the given path (dir / file) at Baidu Yun.
 		pars = {
 			'method' : 'meta',
 			'path' : rpath }
-		return self.__get(PcsUrl + 'file', pars,
+		return self.__get(pcsurl + 'file', pars,
 			self.__meta_act, (rpath, fmt))
 
 	def __combine_file_act(self, r, args):
@@ -1796,7 +1808,7 @@ get information of the given path (dir / file) at Baidu Yun.
 			pr(m)
 
 		param = { 'block_list' : self.__slice_md5s }
-		return self.__post(PcsUrl + 'file',
+		return self.__post(pcsurl + 'file',
 				pars, self.__combine_file_act,
 				remotepath,
 				data = { 'param' : json.dumps(param) } )
@@ -1820,7 +1832,7 @@ get information of the given path (dir / file) at Baidu Yun.
 			'method' : 'upload',
 			'type' : 'tmpfile'}
 
-		return self.__post(CPcsUrl + 'file',
+		return self.__post(cpcsurl + 'file',
 				pars, self.__upload_slice_act, remotepath,
 				# wants to be proper? properness doesn't work (search this sentence for more occurence)
 				#files = { 'file' : (os.path.basename(self.__current_file), self.__current_slice) } )
@@ -1907,7 +1919,7 @@ get information of the given path (dir / file) at Baidu Yun.
 
 		self.pd("RapidUploading Length: {} MD5: {}, Slice-MD5: {}, CRC: {}".format(
 			self.__current_file_size, md5str, slicemd5str, crcstr))
-		return self.__post(PcsUrl + 'file', pars, self.__rapidupload_file_act)
+		return self.__post(pcsurl + 'file', pars, self.__rapidupload_file_act)
 
 	def __upload_one_file_act(self, r, args):
 		result = self.__verify_current_file(r.json(), False)
@@ -1927,7 +1939,7 @@ get information of the given path (dir / file) at Baidu Yun.
 			pars['is_revision'] = 1
 
 		with open(localpath, "rb") as f:
-			return self.__post(CPcsUrl + 'file',
+			return self.__post(cpcsurl + 'file',
 				pars, self.__upload_one_file_act, remotepath,
 				# wants to be proper? properness doesn't work
 				# there seems to be a bug at Baidu's handling of http text:
@@ -2135,7 +2147,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 			'method' : 'meta',
 			'path' : remotefile }
 		return self.__get(
-			PcsUrl + 'file', pars,
+			pcsurl + 'file', pars,
 			self.__get_meta_act)
 
 	# NO LONGER IN USE
@@ -2211,7 +2223,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 			else:
 				headers = {}
 
-			subresult = self.__get(DPcsUrl + 'file', pars,
+			subresult = self.__get(dpcsurl + 'file', pars,
 				self.__downchunks_act, (rfile, offset, rsize, start_time), headers = headers)
 			if subresult != ENoError:
 				return subresult
@@ -2356,7 +2368,7 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 			'path' : get_pcs_path(remotefile),
 			'type' : fmt }
 
-		return self.__get(PcsUrl + 'file', pars,
+		return self.__get(pcsurl + 'file', pars,
 			self.__streaming_act, (localpipe, chunk), stream = True)
 
 	def __walk_remote_dir_act(self, r, args):
@@ -2382,7 +2394,7 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 		# Python parameters are by-reference and mutable, so they are 'out' by default
 		dirjs = []
 		filejs = []
-		result = self.__get(PcsUrl + 'file', pars, self.__walk_remote_dir_act, (dirjs, filejs))
+		result = self.__get(pcsurl + 'file', pars, self.__walk_remote_dir_act, (dirjs, filejs))
 		self.pd("Remote dirs: {}".format(dirjs))
 		self.pd("Remote files: {}".format(filejs))
 		if result == ENoError:
@@ -2476,7 +2488,7 @@ download a remote directory (recursively)
 		pars = {
 			'method' : 'mkdir',
 			'path' : rpath }
-		return self.__post(PcsUrl + 'file', pars, self.__mkdir_act, **kwargs)
+		return self.__post(pcsurl + 'file', pars, self.__mkdir_act, **kwargs)
 
 
 	def mkdir(self, remotepath):
@@ -2518,7 +2530,7 @@ move a file / dir remotely at Baidu Yun
 			'to' : top }
 
 		self.pd("Remote moving: '{}' =mm=> '{}'".format(fromp, to))
-		return self.__post(PcsUrl + 'file', pars, self.__move_act)
+		return self.__post(pcsurl + 'file', pars, self.__move_act)
 
 	def __copy_act(self, r, args):
 		j = r.json()
@@ -2547,7 +2559,7 @@ copy a file / dir remotely at Baidu Yun
 			'to' : top }
 
 		self.pd("Remote copying '{}' =cc=> '{}'".format(frompp, top))
-		return self.__post(PcsUrl + 'file', pars, self.__copy_act)
+		return self.__post(pcsurl + 'file', pars, self.__copy_act)
 
 	def __delete_act(self, r, args):
 		rid = r.json()['request_id']
@@ -2566,7 +2578,7 @@ copy a file / dir remotely at Baidu Yun
 			'path' : rpath }
 
 		self.pd("Remote deleting: '{}'".format(rpath))
-		return self.__post(PcsUrl + 'file', pars, self.__delete_act)
+		return self.__post(pcsurl + 'file', pars, self.__delete_act)
 
 	# aliases
 	def remove(self, remotepath):
@@ -2603,7 +2615,7 @@ search for a file using keyword at Baidu Yun
 			're' : '1' if str2bool(recursive) else '0'}
 
 		self.pd("Searching: '{}'".format(rpath))
-		return self.__get(PcsUrl + 'file', pars, self.__search_act)
+		return self.__get(pcsurl + 'file', pars, self.__search_act)
 
 	def __listrecycle_act(self, r, args):
 		print_pcs_list(r.json())
@@ -2621,7 +2633,7 @@ list the recycle contents
 			'limit' : str2int(limit) }
 
 		self.pd("Listing recycle '{}'")
-		return self.__get(PcsUrl + 'file', pars, self.__listrecycle_act)
+		return self.__get(pcsurl + 'file', pars, self.__listrecycle_act)
 
 	def __restore_act(self, r, args):
 		path = args
@@ -2641,7 +2653,7 @@ list the recycle contents
 			pars = {
 				'method' : 'restore',
 				'fs_id' : fsid }
-			return self.__post(PcsUrl + 'file', pars, self.__restore_act, path)
+			return self.__post(pcsurl + 'file', pars, self.__restore_act, path)
 		else:
 			perr("'{}' not found in the recycle bin".format(path))
 
@@ -2656,7 +2668,7 @@ restore a file from the recycle bin
 			'method' : 'listrecycle' }
 
 		self.pd("Searching for fs_id to restore")
-		return self.__get(PcsUrl + 'file', pars, self.__restore_search_act, rpath)
+		return self.__get(pcsurl + 'file', pars, self.__restore_search_act, rpath)
 
 	def __proceed_local_gather(self, dirlen, walk):
 		#names.sort()
@@ -3083,6 +3095,7 @@ right after the '# PCS configuration constants' comment.
 		parser.add_argument("--no-symlink", dest="followlink", action="store_false", help="DON'T follow symbol links when uploading / syncing up")
 		parser.add_argument(DisableSslCheckOption, dest="checkssl", action="store_false", help="DON'T verify host SSL cerificate")
 		parser.add_argument(CaCertsOption, dest="cacerts", help="Specify the path for CA Bundle [default: %(default)s]")
+		parser.add_argument("--mirror", dest="mirror", default=None, help="Specify the pc mirror (e.g. bj.baidupcs.com. Open 'https://pcs.baidu.com/rest/2.0/pcs/manage?method=listhost' to get the list) to use.")
 
 		# action
 		parser.add_argument("-c", "--clean", dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean settings and hash cache [default: %(default)s]")
@@ -3092,6 +3105,14 @@ right after the '# PCS configuration constants' comment.
 
 		# Process arguments
 		args = parser.parse_args()
+
+		if args.mirror:
+			global pcsurl
+			global cpcsurl
+			global dpcsurl
+			pcsurl = re.sub(r'//.*?/', '//' + args.mirror + '/', pcsurl)
+			cpcsurl = pcsurl
+			dpcsurl = pcsurl
 
 		try:
 			slice_size = interpret_size(args.slice)
