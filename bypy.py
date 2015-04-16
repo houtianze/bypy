@@ -2886,7 +2886,12 @@ if not specified, it defaults to the root directory
 			if self.shalloverwrite("Do you want to overwrite '{}' at Baidu Yun? [y/N]".format(p)):
 				# this path is before get_pcs_path() since delete() expects so.
 				#result = self.delete(rpartialdir + '/' + p)
-				result = self.__delete(rcpath)
+				#result = self.__delete(rcpath)
+				self.pd("diff type: {}".format(t))
+				self.__isrev = True
+				if t != 'F':
+					result = self.move(remotedir + '/' + p, remotedir + '/' + p + '.moved_by_bypy.' + time.strftime("%Y%m%d%H%M%S"))
+					self.__isrev = False
 				if t == 'F' or t == 'FD':
 					subresult = self.__upload_file(lcpath, rcpath)
 					if subresult != ENoError:
@@ -2904,6 +2909,8 @@ if not specified, it defaults to the root directory
 			#lcpath = os.path.join(localdir, p) # local complete path
 			lcpath = joinpath(localdir, p) # local complete path
 			rcpath = rpath + '/' + p # remote complete path
+			self.pd("local type: {}".format(t))
+			self.__isrev = False
 			if t == 'F':
 				subresult = self.__upload_file(lcpath, rcpath)
 				if subresult != ENoError:
