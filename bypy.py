@@ -233,6 +233,7 @@ TokenUrl = OAuthUrl + "/token"
 PcsUrl = 'https://pcs.baidu.com/rest/2.0/pcs/'
 CPcsUrl = 'https://c.pcs.baidu.com/rest/2.0/pcs/'
 DPcsUrl = 'https://d.pcs.baidu.com/rest/2.0/pcs/'
+PanAPIUrl = 'http://pan.baidu.com/api/'
 
 # mutable, actual ones used, capital ones are supposed to be immutable
 # this is introduced to support mirrors
@@ -1306,6 +1307,16 @@ class ByPy(object):
 				elif ec == 31081: # and sc == 404:
 					self.pd("Failed to combine files from MD5 slices (superfile create failed)")
 					result = ec
+				# topath already exists
+				elif ec == 31196: # and sc == 403:
+					self.pd("UnzipCopy destination already exists.")
+					result = act(r, actargs)
+				# file copy failed
+				elif ec == 31197: # and sc == 503:
+					result = act(r, actargs)
+				# file size exceeds limit
+				elif ec == 31199: # and sc == 403:
+					result = act(r, actargs)
 				# errors that make retrying meaningless
 				elif (
 					ec == 31061 or # sc == 400 file already exists
@@ -1835,6 +1846,147 @@ get information of the given path (dir / file) at Baidu Yun.
 				pars, self.__combine_file_act,
 				remotepath,
 				data = { 'param' : json.dumps(param) } )
+
+	def unzip(self, remotepath, subpath = '/', start = 0, limit = 1000):
+		''' Usage: unzip <remotepath> [<subpath> [<start> [<limit>]]]'''
+		rpath = get_pcs_path(remotepath)
+		return self.__panapi_unzip_file(rpath, subpath, start, limit);
+
+	def __panapi_unzip_file_act(self, r, args):
+		j = r.json()
+		self.pd("Unzip response: {}".format(j))
+		if j['errno'] == 0:
+			if 'time' in j:
+				perr("Extraction not completed yet: '{}'...".format(args['path']))
+				return ERequestFailed
+			elif 'list' in j:
+				for e in j['list']:
+					pr("{}\t{}\t{}".format(ls_type(e['isdir'] == 1), e['file_name'], e['size']))
+		return ENoError
+
+	def __panapi_unzip_file(self, rpath, subpath, start, limit):
+		pars = {
+			'path' : rpath,
+			'start' : start,
+			'limit' : limit,
+			'subpath' : '/' + subpath.strip('/') }
+
+		self.pd("Unzip request: {}".format(pars))
+		return self.__get(PanAPIUrl + 'unzip?app_id=250528',
+				pars, self.__panapi_unzip_file_act, cookies = self.__pancookies, actargs = pars )
+
+	def extract(self, remotepath, subpath, saveaspath = None):
+		''' Usage: extract <remotepath> <subpath> [<saveaspath>]'''
+		rpath = get_pcs_path(remotepath)
+		topath = get_pcs_path(saveaspath)
+		if not saveaspath:
+			topath = os.path.dirname(rpath) + '/' + subpath
+		return self.__panapi_unzipcopy_file(rpath, subpath, topath)
+
+	def __panapi_unzipcopy_file_act(self, r, args):
+		j = r.json()
+		self.pd("UnzipCopy response: {}".format(j))
+		if 'path' in j:
+			self.pv("Remote extract: '{}#{}' =xx=> '{}' OK.".format(args['path'], args['subpath'], j[u'path']))
+			return ENoError
+		elif 'error_code' in j:
+			if j['error_code'] == 31196:
+				perr("Remote extract: '{}#{}' =xx=> '{}' FAILED. File already exists.".format(args['path'], args['subpath'], args['topath']))
+				subresult = self.__delete(args['topath'])
+				if subresult == ENoError:
+					return self.__panapi_unzipcopy_file(args['path'], args['subpath'], args['topath'])
+				else:
+					return ERequestFailed
+			elif j['error_code'] == 31199:
+				perr("Remote extract: '{}#{}' =xx=> '{}' FAILED. File too large.".format(args['path'], args['subpath'], args['topath']))
+				return EMaxRetry
+			else:
+				perr("Remote extract: '{}#{}' =xx=> '{}' FAILED. Unknown error {}: {}.".format(args['path'], args['subpath'], args['topath'], j['error_code'], j['error_msg']))
+		return EMaxRetry
+
+	def __panapi_unzipcopy_file(self, rpath, subpath, topath):
+		pars = {
+			'app_id' : 250528,
+			'method' : 'unzipcopy',
+			'path' : rpath,
+			'subpath' : '/' + subpath.strip('/'),
+			'topath' : topath }
+
+		self.pd("UnzipCopy request: {}".format(pars))
+		return self.__get(pcsurl + 'file',
+				pars, self.__panapi_unzipcopy_file_act, addtoken = False, cookies = self.__pancookies, actargs = pars )
+
+	def revision(self, remotepath):
+		''' Usage: revision <remotepath> '''
+		rpath = get_pcs_path(remotepath)
+		return self.__panapi_revision_list(rpath)
+
+	def history(self, remotepath):
+		''' Usage: history <remotepath> '''
+		return self.revision(remotepath)
+
+	def __panapi_revision_list_act(self, r, args):
+		j = r.json()
+		self.pd("RevisionList response: {}".format(j))
+		if j['errno'] == 0:
+			if 'list' in j:
+				for e in j['list']:
+					pr("{}\t{}\t{}".format(e['revision'], e['size'], ls_time(e['revision'] / 1e6)))
+			return ENoError
+		if j['errno'] == -6: # invalid BDUSS
+			pr("BDUSS has expired.")
+			return IEBDUSSExpired
+		if j['errno'] == -9:
+			pr("File '{}' not exists.".format(args['path']))
+			return EFileNotFound
+		return ENoError
+
+	def __panapi_revision_list(self, rpath):
+		pars = {
+			'path' : rpath,
+			'desc' : 1 }
+
+		self.pd("RevisionList request: {}".format(pars))
+		return self.__post(PanAPIUrl + 'revision/list?app_id=250528',
+				{}, self.__panapi_revision_list_act, pars, data = pars, cookies = self.__pancookies )
+
+	def revert(self, remotepath, revision, dir = None):
+		''' Usage: revert <remotepath> revisionid [dir]'''
+		rpath = get_pcs_path(remotepath)
+		dir = get_pcs_path(dir)
+		if not dir:
+			dir = os.path.dirname(rpath)
+		return self.__panapi_revision_revert(rpath, revision, dir)
+
+	def __panapi_revision_revert_act(self, r, args):
+		j = r.json()
+		self.pd("RevisionRevert response: {}".format(j))
+		if j['errno'] == 0:
+			self.pv("Remote revert: '{}#{}' =rr=> '{}' OK.".format(args['path'], args['revision'], j['path']))
+			return ENoError
+		if j['errno'] == -6: # invalid BDUSS
+			pr("BDUSS has expired.")
+			return IEBDUSSExpired
+		if j['errno'] == -9:
+			pr("File '{}' not exists.".format(args['path']))
+			return EFileNotFound
+		if j['errno'] == 10:
+			pr("Reverting '{}' in process...".format(args['path']))
+			return ERequestFailed
+		return ENoError
+
+	def __panapi_revision_revert(self, rpath, revision, dir = None):
+		if not dir:
+			dir = os.path.dirname(rpath)
+		pars = {
+			'revision' : revision,
+			'path' : rpath,
+			'type' : 2,
+			'dir' : dir }
+
+		self.pd("RevisionRevert request: {}".format(pars))
+		return self.__post(PanAPIUrl + 'revision/revert?app_id=250528',
+				{}, self.__panapi_revision_revert_act, pars, data = pars, cookies = self.__pancookies )
 
 	def __upload_slice_act(self, r, args):
 		j = r.json()
