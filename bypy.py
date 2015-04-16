@@ -164,6 +164,7 @@ EFatal = -1 # No way to continue
 
 # internal errors
 IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload the whole file.
+IEBDUSSExpired = -6
 
 # PCS configuration constants
 # ==== NOTE ====
@@ -212,6 +213,7 @@ HomeDir = expanduser('~')
 ConfigDir = HomeDir + os.sep + '.bypy'
 TokenFilePath = ConfigDir + os.sep + 'bypy.json'
 HashCachePath = ConfigDir + os.sep + 'bypy.pickle'
+BDUSSPath = ConfigDir + os.sep + 'bypy.bduss'
 ByPyCertsFile = 'bypy.cacerts.pem'
 ByPyCertsPath = ConfigDir + os.sep + ByPyCertsFile
 #UserAgent = 'Mozilla/5.0'
@@ -1148,6 +1150,8 @@ class ByPy(object):
 		self.__existing_size = 0
 		self.__json = {}
 		self.__access_token = ''
+		self.__bduss = ''
+		self.__pancookies = {}
 		self.__remote_json = {}
 		self.__slice_md5s = []
 
@@ -1173,6 +1177,9 @@ class ByPy(object):
 					"You need to authorize this program before using any PCS functions.\n" + \
 					"Quitting...\n")
 				onexit(result)
+
+		if not self.__load_local_bduss():
+			self.pv("BDUSS not found at '{}'.".format(BDUSSPath))
 
 	def pv(self, msg, **kwargs):
 		if self.Verbose:
@@ -1291,6 +1298,10 @@ class ByPy(object):
 				elif ec == IEMD5NotFound: # and sc == 404:
 					self.pd("MD5 not found, rapidupload failed")
 					result = ec
+				# user not exists
+				elif ec == 31045: # and sc == 403:
+					self.pd("BDUSS has expired")
+					result = IEBDUSSExpired
 				# superfile create failed
 				elif ec == 31081: # and sc == 404:
 					self.pd("Failed to combine files from MD5 slices (superfile create failed)")
@@ -1484,6 +1495,18 @@ class ByPy(object):
 				"Exception:\n{}".format(traceback.format_exc()))
 			return EInvalidJson
 		return self.__store_json_only(r.json())
+
+	def __load_local_bduss(self):
+		try:
+			with open(BDUSSPath, 'rb') as infile:
+				self.__bduss = infile.readline().strip()
+				self.pd("BDUSS loaded: {}".format(self.__bduss))
+				self.__pancookies = {'BDUSS': self.__bduss}
+				return True
+		except IOError:
+			self.pd('Error loading BDUSS:')
+			self.pd(traceback.format_exc())
+			return False
 
 	def __server_auth_act(self, r, args):
 		return self.__store_json(r)
