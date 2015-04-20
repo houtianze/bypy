@@ -1228,8 +1228,8 @@ class ByPy(object):
 				pr(tb)
 			perr("Function: {}".format(act.__name__))
 			perr("Website parameters: {}".format(pars))
-			if r:
-				perr("HTTP Status Code: {}".format(r.status_code))
+			if hasattr(r, 'status_code'):
+				perr("HTTP Response Status Code: {}".format(r.status_code))
 				if (r.status_code != 200 and r.status_code != 206) or (not (pars.has_key('method') and pars['method'] == 'download') and url.find('method=download') == -1 and url.find('baidupcs.com/file/') == -1):
 					self.__print_error_json(r)
 					perr("Website returned: {}".format(rb(r.text)))
