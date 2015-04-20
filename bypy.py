@@ -91,6 +91,7 @@ if not (sys.stdout.encoding and sys.stdout.encoding.lower() == 'utf-8'):
 		u'汉字'.encode(encoding_to_use)
 	except: # (LookupError, TypeError, UnicodeEncodeError):
 		encoding_to_use = 'utf-8'
+		sys.exc_clear()
 	sys.stdout = codecs.getwriter(encoding_to_use)(sys.stdout)
 	sys.stderr = codecs.getwriter(encoding_to_use)(sys.stderr)
 import signal
