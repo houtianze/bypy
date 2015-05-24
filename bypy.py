@@ -178,26 +178,26 @@ IEBDUSSExpired = -6
 ServerAuth = True # change it to 'False' if you use your own appid
 GaeUrl = 'https://bypyoauth.appspot.com'
 OpenShiftUrl = 'https://bypy-tianze.rhcloud.com'
-JaeUrl = 'http://bypyoauth.jd-app.com'
+HerokuUrl = 'https://bypyoauth.herokuapp.com/'
 GaeRedirectUrl = GaeUrl + '/auth'
 GaeRefreshUrl = GaeUrl + '/refresh'
 OpenShiftRedirectUrl = OpenShiftUrl + '/auth'
 OpenShiftRefreshUrl = OpenShiftUrl + '/refresh'
-JaeRedirectUrl = JaeUrl + '/auth'
-JaeRefreshUrl = JaeUrl + '/refresh'
+HerokuRedirectUrl = HerokuUrl + '/auth'
+HerokuRefreshUrl = HerokuUrl + '/refresh'
 
 AuthServerList = [
 	# url, rety?, message
 	(GaeRedirectUrl, False, "Authorizing with the GAE server ..."),
 	(OpenShiftRedirectUrl, True, "I think you are WALLed, so let's authorize with the OpenShift server ..."),
-	(JaeRedirectUrl, True, "OpenShift also failed. Last resort: authorizing with the JAE server (*** WARNING *** NON-encrypted http protocol) ..."),
+	(HerokuRedirectUrl, True, "OpenShift also failed. Last resort: authorizing with the Heroku server ..."),
 ]
 
 RefreshServerList = [
 	# url, rety?, message
 	(GaeRefreshUrl, False, "Refreshing with the GAE server ..."),
 	(OpenShiftRefreshUrl, True, "I think you are WALLed, so let's refresh with the OpenShift server ..."),
-	(JaeRefreshUrl, True, "OpenShift also failed. Last resort: refreshing with the JAE server (*** WARNING *** NON-encrypted http protocol) ..."),
+	(HerokuRefreshUrl, True, "OpenShift also failed. Last resort: refreshing with the Heroku server ..."),
 ]
 
 ApiKey = 'q8WE4EpCsau1oS0MplgMKNBn' # replace with your own ApiKey if you use your own appid
