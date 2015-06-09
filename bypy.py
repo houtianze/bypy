@@ -1500,13 +1500,15 @@ class ByPy(object):
 			return EFileWrite
 
 	def __store_json(self, r):
+		j = {}
 		try:
-			r.json()
+			j = r.json()
 		except Exception:
 			perr("Failed to decode JSON:\n" \
 				"Exception:\n{}".format(traceback.format_exc()))
+			perr("Error response:\n{}".format(r.text));
 			return EInvalidJson
-		return self.__store_json_only(r.json())
+		return self.__store_json_only(j)
 
 	def __load_local_bduss(self):
 		try:
