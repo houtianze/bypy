@@ -539,10 +539,10 @@ def human_num(num, precision = 0, filler = ''):
 
 def human_size(num, precision = 3):
 	''' DocTests:
-	>>> human_size(1000)
+	>>> human_size(1000, 0)
 	u'1000B'
 	>>> human_size(1025)
-	u'1.001KB'
+	u'1.001kB'
 	'''
 	return human_num(num, precision) + 'B'
 
