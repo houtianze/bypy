@@ -111,6 +111,7 @@ import re
 import cPickle as pickle
 import pprint
 import socket
+import math
 #from collections import OrderedDict
 from os.path import expanduser
 from argparse import ArgumentParser
@@ -123,10 +124,23 @@ OneG = OneM * OneK
 OneT = OneG * OneK
 OneP = OneT * OneK
 OneE = OneP * OneK
+OneZ = OneE * OneK
+OneY = OneZ * OneK
+SIPrefixNames = [ '', 'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y' ]
+
+SIPrefixTimes = {
+	'K' : OneK,
+	'M' : OneM,
+	'G' : OneG,
+	'T' : OneT,
+	'E' : OneE,
+	'Z' : OneZ,
+	'Y' : OneY }
+
 
 # special variables
 __all__ = []
-__version__ = '1.0.17'
+__version__ = '1.0.18'
 
 # ByPy default values
 DefaultSliceInMB = 20
@@ -371,14 +385,20 @@ def pprgrc(finish, total, start_time = None, existing = 0,
 				' (' + speed + ', ' + \
 				human_time_short(elapsed) + ' gone)'
 	msg = '\r' + prefix + '[' + segth * '=' + (seg - segth) * '_' + ']' + \
-		" {}% ({}/{})".format(percent, si_size(finish), si_size(total)) + \
+		" {}% ({}/{})".format(percent, human_size(finish), human_size(total)) + \
 		' ' + eta + suffix
 	sys.stderr.write(msg + ' ') # space is used as a clearer
 	sys.stderr.flush()
 
 pprgr = pprgrc
 
-# marshalling
+def remove_backslash(s):
+	return s.replace(r'\/', r'/')
+
+def rb(s):
+	return s.replace(r'\/', r'/')
+
+# marshaling
 def str2bool(s):
 	if isinstance(s, basestring):
 		if s:
@@ -406,69 +426,6 @@ def str2float(s):
 	else:
 		# don't change
 		return s
-
-def si_size(num, precision = 3):
-	''' DocTests:
-	>>> si_size(1000)
-	u'1000B'
-	>>> si_size(1025)
-	u'1.001KB'
-	'''
-	numa = abs(num)
-	if numa < OneK:
-		return str(num) + 'B'
-	elif numa < OneM:
-		return str(round(float(num) / float(OneK), precision)) + 'KB'
-	elif numa < OneG:
-		return str(round(float(num) / float(OneM), precision)) + 'MB'
-	elif numa < OneT:
-		return str(round(float(num) / float(OneG), precision)) + 'GB'
-	elif numa < OneP:
-		return str(round(float(num) / float(OneT), precision)) + 'TB'
-	elif numa < OneE:
-		return str(round(float(num) / float(OneP), precision)) + 'PB'
-	else :
-		return str(num) + 'B'
-
-si_table = {
-	'K' : OneK,
-	'M' : OneM,
-	'G' : OneG,
-	'T' : OneT,
-	'E' : OneE }
-
-def interpret_size(si):
-	'''
-	>>> interpret_size(10)
-	10
-	>>> interpret_size('10')
-	10
-	>>> interpret_size('10b')
-	10
-	>>> interpret_size('10k')
-	10240
-	>>> interpret_size('10K')
-	10240
-	>>> interpret_size('10kb')
-	10240
-	>>> interpret_size('10kB')
-	10240
-	>>> interpret_size('a10')
-	Traceback (most recent call last):
-	ValueError
-	>>> interpret_size('10a')
-	Traceback (most recent call last):
-	KeyError: 'A'
-	'''
-	m = re.match(r"\s*(\d+)\s*([ac-z]?)(b?)\s*$", str(si), re.I)
-	if m:
-		if not m.group(2) and m.group(3):
-			times = 1
-		else:
-			times = si_table[m.group(2).upper()] if m.group(2) else 1
-		return int(m.group(1)) * times
-	else:
-		raise ValueError
 
 def human_time(seconds):
 	''' DocTests:
@@ -535,27 +492,62 @@ def limit_unit(timestr, num = 2):
 def human_time_short(seconds):
 	return limit_unit(human_time(seconds))
 
-def human_speed(speed, precision = 0):
-	''' DocTests:
+def interpret_size(si):
 	'''
+	>>> interpret_size(10)
+	10
+	>>> interpret_size('10')
+	10
+	>>> interpret_size('10b')
+	10
+	>>> interpret_size('10k')
+	10240
+	>>> interpret_size('10K')
+	10240
+	>>> interpret_size('10kb')
+	10240
+	>>> interpret_size('10kB')
+	10240
+	>>> interpret_size('a10')
+	Traceback (most recent call last):
+	ValueError
+	>>> interpret_size('10a')
+	Traceback (most recent call last):
+	KeyError: 'A'
+	'''
+	m = re.match(r"\s*(\d+)\s*([ac-z]?)(b?)\s*$", str(si), re.I)
+	if m:
+		if not m.group(2) and m.group(3):
+			times = 1
+		else:
+			times = SIPrefixTimes[m.group(2).upper()] if m.group(2) else 1
+		return int(m.group(1)) * times
+	else:
+		raise ValueError
+
+def human_num(num, precision = 0, filler = ''):
 	# https://stackoverflow.com/questions/15263597/python-convert-floating-point-number-to-certain-precision-then-copy-to-string/15263885#15263885
 	numfmt = '{{:.{}f}}'.format(precision)
-	if speed < OneK:
-		return numfmt.format(speed) + 'B/s'
-	elif speed < OneM:
-		return numfmt.format(speed / float(OneK)) + 'KB/s'
-	elif speed < OneG:
-		return numfmt.format(speed / float(OneM)) + 'MB/s'
-	elif speed < OneT:
-		return numfmt.format(speed / float(OneG)) + 'GB/s'
-	else:
-		return 'HAHA'
+	exp = math.log(num, OneK)
+	expint = math.floor(exp)
+	maxsize = len(SIPrefixNames) - 1
+	if expint > maxsize:
+		pwarn("Ridiculously large number '{}' pased to 'human_num()'".format(num))
+		expint = maxsize
+	unit = SIPrefixNames[expint]
+	return numfmt.format(num / float(OneK ** expint)) + filler + unit
 
-def remove_backslash(s):
-	return s.replace(r'\/', r'/')
+def human_size(num, precision = 3):
+	''' DocTests:
+	>>> human_size(1000)
+	u'1000B'
+	>>> human_size(1025)
+	u'1.001KB'
+	'''
+	return human_num(num, precision) + 'B'
 
-def rb(s):
-	return s.replace(r'\/', r'/')
+def human_speed(speed, precision = 0):
+	return human_num(speed, precision) + 'B/s'
 
 # no leading, trailing '/'
 # remote path rule:
@@ -1077,6 +1069,7 @@ class ByPy(object):
 		followlink = True,
 		checkssl = True,
 		cacerts = None,
+		rapiduploadonly = False,
 		verbose = 0, debug = False):
 
 		# handle backward compatibility
@@ -1116,6 +1109,7 @@ class ByPy(object):
 			checkssl = False
 
 		self.__checkssl = checkssl
+		self.__rapiduploadonly = rapiduploadonly
 
 		self.Verbose = verbose
 		self.Debug = debug
@@ -1628,8 +1622,8 @@ class ByPy(object):
 
 	def __quota_act(self, r, args):
 		j = r.json()
-		pr('Quota: ' + si_size(j['quota']))
-		pr('Used: ' + si_size(j['used']))
+		pr('Quota: ' + human_size(j['quota']))
+		pr('Used: ' + human_size(j['used']))
 		return ENoError
 
 	def help(self, command): # this comes first to make it easy to spot
@@ -2134,7 +2128,7 @@ get information of the given path (dir / file) at Baidu Yun.
 				files = { 'file' : ('file', f) })
 
 	#TODO: upload empty directories as well?
-	def __walk_upload(self, localpath, remotepath, ondup, walk, rapiduploadonly = False):
+	def __walk_upload(self, localpath, remotepath, ondup, walk):
 		(dirpath, dirnames, filenames) = walk
 
 		rdir = os.path.relpath(dirpath, localpath)
@@ -2169,7 +2163,7 @@ get information of the given path (dir / file) at Baidu Yun.
 						upload = False
 
 			if upload:
-				fileresult = self.__upload_file(lfile, rfile, ondup, rapiduploadonly)
+				fileresult = self.__upload_file(lfile, rfile, ondup)
 				if fileresult != ENoError:
 					result = fileresult # we still continue
 			else:
@@ -2178,14 +2172,14 @@ get information of the given path (dir / file) at Baidu Yun.
 
 		return result
 
-	def __upload_dir(self, localpath, remotepath, ondup = 'overwrite', rapiduploadonly = False):
+	def __upload_dir(self, localpath, remotepath, ondup = 'overwrite'):
 		self.pd("Uploading directory '{}' to '{}'".format(localpath, remotepath))
 		# it's so minor that we don't care about the return value
 		self.__mkdir(remotepath, dumpex = False)
 		for walk in os.walk(localpath, followlinks=self.__followlink):
-			self.__walk_upload(localpath, remotepath, ondup, walk, rapiduploadonly)
+			self.__walk_upload(localpath, remotepath, ondup, walk)
 
-	def __upload_file(self, localpath, remotepath, ondup = 'overwrite', rapiduploadonly = False):
+	def __upload_file(self, localpath, remotepath, ondup = 'overwrite'):
 		# TODO: this is a quick patch
 		if not self.__shallinclude(localpath, remotepath, True):
 			# since we are not going to upload it, there is no error
@@ -2201,10 +2195,7 @@ get information of the given path (dir / file) at Baidu Yun.
 			if result == ENoError:
 				self.pv("RapidUpload: '{}' =R=> '{}' OK.".format(localpath, remotepath))
 			else:
-				#ignore this file if --rapid-upload-only true is given
-				if rapiduploadonly:
-					self.pv("'{}' can't be rapidly uploaded, ignore it due to argument --rapid-upload-only true is given.".format(localpath))
-				else:
+				if not self.__rapiduploadonly:
 					self.pd("'{}' can't be RapidUploaded, now trying normal uploading.".format(
 						self.__current_file))
 					# rapid upload failed, we have to upload manually
@@ -2221,14 +2212,17 @@ get information of the given path (dir / file) at Baidu Yun.
 						perr("Error: size of file '{}' - {} is too big".format(
 							self.__current_file,
 							self.__current_file_size))
+				else:
+					self.pv("'{}' can't be rapidly uploaded, so it's skipped since we are in the rapid-upload-only mode.".format(localpath))
 
 			return result
-		else: # very small file, must be uploaded manually and no slicing is needed
+		elif not self.__rapiduploadonly:
+			# very small file, must be uploaded manually and no slicing is needed
 			self.pd("'{}' is small and being non-slicing uploaded.".format(self.__current_file))
 			return self.__upload_one_file(localpath, remotepath, ondup)
 
-	def upload(self, localpath = '', remotepath = '', ondup = "overwrite", rapiduploadonly = False):
-		''' Usage: upload [localpath] [remotepath] [ondup] [rapiduploadonly] - \
+	def upload(self, localpath = '', remotepath = '', ondup = "overwrite"):
+		''' Usage: upload [localpath] [remotepath] [ondup] - \
 upload a file or directory (recursively)
     localpath - local path, is the current directory '.' if not specified
     remotepath - remote path at Baidu Yun (after app root directory at Baidu Yun)
@@ -2261,11 +2255,11 @@ upload a file or directory (recursively)
 					else: # rpath is a file
 						self.__isrev = True
 			self.pd("remote path is '{}'".format(rpath))
-			return self.__upload_file(lpath, rpath, ondup, rapiduploadonly)
+			return self.__upload_file(lpath, rpath, ondup)
 		elif os.path.isdir(lpath):
 			self.pd("Uploading directory '{}' recursively".format(lpath))
 			rpath = get_pcs_path(rpath)
-			return self.__upload_dir(lpath, rpath, ondup, rapiduploadonly)
+			return self.__upload_dir(lpath, rpath, ondup)
 		else:
 			perr("Error: invalid local path '{}' for uploading specified.".format(localpath))
 			return EParameter
@@ -3118,7 +3112,6 @@ if not specified, it defaults to the root directory
 
 		return result
 
-
 	def dumpcache(self):
 		''' Usage: dumpcache - display file hash cache'''
 		if cached.cacheloaded:
@@ -3285,6 +3278,7 @@ right after the '# PCS configuration constants' comment.
 		parser.add_argument(DisableSslCheckOption, dest="checkssl", action="store_false", help="DON'T verify host SSL cerificate")
 		parser.add_argument(CaCertsOption, dest="cacerts", help="Specify the path for CA Bundle [default: %(default)s]")
 		parser.add_argument("--mirror", dest="mirror", default=None, help="Specify the PCS mirror (e.g. bj.baidupcs.com. Open 'https://pcs.baidu.com/rest/2.0/pcs/manage?method=listhost' to get the list) to use.")
+		parser.add_argument("--rapid-upload-only", dest="rapiduploadonly", action="store_true", help="Only upload large files that can be rapidly uploaded")
 
 		# action
 		parser.add_argument("-c", "--clean", dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean settings and hash cache [default: %(default)s]")
@@ -3343,7 +3337,7 @@ right after the '# PCS configuration constants' comment.
 "You can first try to run 'bypy.py cleancache' to slim the file.\n"
 "But if the file size won't reduce (this warning persists),"
 " you may consider deleting / moving the Hash Cache file '{0}'\n"
-"*** WARNING ***\n\n\n").format(HashCachePath, si_size(cachesize)))
+"*** WARNING ***\n\n\n").format(HashCachePath, human_size(cachesize)))
 
 		if args.clean >= 1:
 			result = removefile(TokenFilePath, args.verbose)
@@ -3390,6 +3384,7 @@ right after the '# PCS configuration constants' comment.
 					followlink = args.followlink,
 					checkssl = args.checkssl,
 					cacerts = args.cacerts,
+					rapiduploadonly = args.rapiduploadonly,
 					verbose = args.verbose, debug = args.debug)
 			uargs = []
 			for arg in args.command[1:]:
