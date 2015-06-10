@@ -1267,6 +1267,9 @@ class ByPy(object):
 				result = act(r, actargs)
 				if result == ENoError:
 					self.pd("Request all goes fine")
+			elif sc == 404 and r.url.find('http://bcscdn.baidu.com/bcs-cdn/wenxintishi') == 0: # = "error_code":31390,"error_msg":"Illegal File"
+				self.pd("File is blacklisted ('wenxintishi'). Skipping.")
+				result = EFileNotFound
 			else:
 				ec = 0
 				try:
