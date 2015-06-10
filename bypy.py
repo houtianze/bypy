@@ -140,7 +140,7 @@ SIPrefixTimes = {
 
 # special variables
 __all__ = []
-__version__ = '1.0.18'
+__version__ = '1.0.19'
 
 # ByPy default values
 DefaultSliceInMB = 20
@@ -529,7 +529,7 @@ def human_num(num, precision = 0, filler = ''):
 	# https://stackoverflow.com/questions/15263597/python-convert-floating-point-number-to-certain-precision-then-copy-to-string/15263885#15263885
 	numfmt = '{{:.{}f}}'.format(precision)
 	exp = math.log(num, OneK)
-	expint = math.floor(exp)
+	expint = int(math.floor(exp))
 	maxsize = len(SIPrefixNames) - 1
 	if expint > maxsize:
 		pwarn("Ridiculously large number '{}' pased to 'human_num()'".format(num))
