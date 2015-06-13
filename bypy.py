@@ -528,7 +528,7 @@ def interpret_size(si):
 def human_num(num, precision = 0, filler = ''):
 	# https://stackoverflow.com/questions/15263597/python-convert-floating-point-number-to-certain-precision-then-copy-to-string/15263885#15263885
 	numfmt = '{{:.{}f}}'.format(precision)
-	exp = math.log(num, OneK)
+	exp = math.log(num, OneK) if num > 0 else 0
 	expint = int(math.floor(exp))
 	maxsize = len(SIPrefixNames) - 1
 	if expint > maxsize:
