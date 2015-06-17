@@ -2407,6 +2407,8 @@ try to create a file at PCS by combining slices, having MD5s specified
 					offset, nextoffset - 1) }
 			elif offset > 0:
 				headers = { "Range" : "bytes={}-".format(offset) }
+			elif rsize >= 1: # offset == 0
+				headers = { "Range" : "bytes=0-".format(rsize - 1) }
 			else:
 				headers = {}
 
