@@ -235,6 +235,8 @@ ByPyCertsPath = ConfigDir + os.sep + ByPyCertsFile
 #UserAgent = "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)"
 # According to seanlis@github, this User-Agent string affects the download.
 UserAgent = None
+CleanOptionShort= '-c'
+CleanOptionLong= '--clean'
 DisableSslCheckOption = '--disable-ssl-check'
 CaCertsOption = '--cacerts'
 
@@ -1512,6 +1514,18 @@ class ByPy(object):
 			perr("Failed to decode JSON:\n" \
 				"Exception:\n{}".format(traceback.format_exc()))
 			perr("Error response:\n{}".format(r.text));
+			pinfo('-' * 64)
+			pinfo("""This is most likely caused by authorization errors.
+Possible causes:
+ - You didn't run this program for a long time (more than a month).
+ - You changed your Baidu password after authorizing this program.
+ - You didn't give this program the 'netdisk' access while authorizing.
+ - ...
+Possible fixes:
+ 1. Remove the authorization token by running with the parameter '{}', and then re-run this program.
+ 2. If (1) still doesn't solve the problem, you may have to go to:
+    https://passport.baidu.com/accountbind
+    and remove the authorization of this program, and then re-run this program.""".format(CleanOptionShort))
 			return EInvalidJson
 		return self.__store_json_only(j)
 
@@ -3298,7 +3312,7 @@ right after the '# PCS configuration constants' comment.
 		parser.add_argument("--rapid-upload-only", dest="rapiduploadonly", action="store_true", help="Only upload large files that can be rapidly uploaded")
 
 		# action
-		parser.add_argument("-c", "--clean", dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean settings and hash cache [default: %(default)s]")
+		parser.add_argument(CleanOptionShort, CleanOptionLong, dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean settings and hash cache [default: %(default)s]")
 
 		# the MAIN parameter - what command to perform
 		parser.add_argument("command", nargs='*', help = "operations (quota / list)")
