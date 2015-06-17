@@ -2408,7 +2408,11 @@ try to create a file at PCS by combining slices, having MD5s specified
 			elif offset > 0:
 				headers = { "Range" : "bytes={}-".format(offset) }
 			elif rsize >= 1: # offset == 0
-				headers = { "Range" : "bytes=0-".format(rsize - 1) }
+				# Fix chunked + gzip response,
+				# seems we need to specify the Range for the first chunk as well:
+				# https://github.com/houtianze/bypy/pull/161
+				#headers = { "Range" : "bytes=0-".format(rsize - 1) }
+				headers = { "Range" : "bytes=0-{}".format(rsize - 1) }
 			else:
 				headers = {}
 
