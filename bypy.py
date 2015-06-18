@@ -140,7 +140,7 @@ SIPrefixTimes = {
 
 # special variables
 __all__ = []
-__version__ = '1.0.19'
+__version__ = '1.0.20'
 
 # ByPy default values
 DefaultSliceInMB = 20
@@ -3233,7 +3233,9 @@ def main(argv=None): # IGNORE:C0111
 	#program_name = os.path.basename(sys.argv[0])
 	program_version = "v%s" % __version__
 	program_version_message = '%%(prog)s %s' % (program_version )
-	program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
+	shortdesc = __import__('__main__').__doc__.split("\n")[1]
+	shortdesc = program_version_message + ' -- ' + shortdesc.split('--')[1]
+	program_shortdesc = shortdesc
 	program_longdesc = __import__('__main__').__doc__.split("---\n")[1]
 
 	try:
