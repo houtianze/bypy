@@ -2246,7 +2246,7 @@ get information of the given path (dir / file) at Baidu Yun.
 			self.pd("'{}' is small and being non-slicing uploaded.".format(self.__current_file))
 			return self.__upload_one_file(localpath, remotepath, ondup)
 
-	def upload(self, localpath = '', remotepath = '', ondup = "overwrite"):
+	def upload(self, localpath = u'', remotepath = '', ondup = "overwrite"):
 		''' Usage: upload [localpath] [remotepath] [ondup] - \
 upload a file or directory (recursively)
     localpath - local path, is the current directory '.' if not specified
@@ -3008,7 +3008,7 @@ if not specified, it defaults to the root directory.
 		pr("Local only: {}".format(len(local)));
 		pr("Remote only: {}".format(len(remote)));
 
-	def syncdown(self, remotedir = '', localdir = '', deletelocal = False):
+	def syncdown(self, remotedir = '', localdir = u'', deletelocal = False):
 		''' Usage: syncdown [remotedir] [localdir] [deletelocal] - \
 sync down from the remote direcotry to the local directory
   remotedir - the remote directory at Baidu Yun (after app's direcotry) to sync from. \
@@ -3071,7 +3071,7 @@ if not specified, it defaults to the root directory
 
 		return result
 
-	def syncup(self, localdir = '', remotedir = '', deleteremote = False):
+	def syncup(self, localdir = u'', remotedir = '', deleteremote = False):
 		''' Usage: syncup [localdir] [remotedir] [deleteremote] - \
 sync up from the local direcotry to the remote directory
   localdir - the local directory to sync from if not specified, it defaults to the current directory.
