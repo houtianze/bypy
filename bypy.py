@@ -1263,10 +1263,10 @@ class ByPy(object):
 			#self.pd("Website returned: {}".format(rb(r.text)), 3)
 			if sc == requests.codes.ok or sc == 206: # 206 Partial Content
 				if sc == requests.codes.ok:
-					if not (hasattr(pars, 'method') and pars['method'] == 'download'):
+					if not (pars.has_key('method') and pars['method'] == 'download'):
 						try:
 							j = r.json()
-							if hasattr(j, 'error_code') and j['error_code'] == 0 and hasattr(j, 'error_msg') and j['error_msg'] == 'no error': # __walk_remote_dir_act() KeyError: u'list'
+							if j.has_key('error_code') and j['error_code'] == 0 and j.has_key('error_msg') and j['error_msg'] == u'no error': # __walk_remote_dir_act() KeyError: u'list'
 								self.pd("Unexpected response: {}".format(j))
 								return ERequestFailed
 						except Exception:
