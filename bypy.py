@@ -2591,7 +2591,7 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 
 		return ENoError
 
-	def __walk_remote_dir(self, remotepath, proceed, args = None):
+	def __walk_remote_dir(self, remotepath, proceed, args = None, tweak_for_syncup = False):
 		pars = {
 			'method' : 'list',
 			'path' : remotepath,
@@ -2611,6 +2611,9 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 					subresult, remotepath))
 				result = subresult # we continue
 			for dirj in dirjs:
+				if tweak_for_syncup and self.__local_dir_contents.get(os.path.relpath(dirj['path'], remotepath)) == None:
+					self.pd("Skipping '{}'. No same-name local dir/file exists.".format(os.path.relpath(dirj['path'], remotepath)))
+					continue
 				subresult = self.__walk_remote_dir(dirj['path'], proceed, args)
 				if subresult != ENoError:
 					self.pd("Error: {} while sub-walking remote dirs'{}'".format(
@@ -2918,13 +2921,13 @@ restore a file from the recycle bin
 
 		return ENoError
 
-	def __gather_remote_dir(self, rdir):
+	def __gather_remote_dir(self, rdir, tweak_for_syncup = False):
 		self.__remote_dir_contents = PathDictTree()
-		self.__walk_remote_dir(rdir, self.__proceed_remote_gather, rdir)
+		self.__walk_remote_dir(rdir, self.__proceed_remote_gather, rdir, tweak_for_syncup)
 		self.pd("---- Remote Dir Contents ---")
 		self.pd(self.__remote_dir_contents)
 
-	def __compare(self, remotedir = None, localdir = None):
+	def __compare(self, remotedir = None, localdir = None, tweak_for_syncup = False):
 		if not localdir:
 			localdir = '.'
 
@@ -2932,7 +2935,7 @@ restore a file from the recycle bin
 		self.__gather_local_dir(localdir)
 		self.pv("Done")
 		self.pv("Gathering remote directory ...")
-		self.__gather_remote_dir(remotedir)
+		self.__gather_remote_dir(remotedir, tweak_for_syncup)
 		self.pv("Done")
 		self.pv("Comparing ...")
 		# list merge, where Python shines
@@ -3082,7 +3085,7 @@ if not specified, it defaults to the root directory
 		result = ENoError
 		rpath = get_pcs_path(remotedir)
 		#rpartialdir = remotedir.rstrip('/ ')
-		same, diff, local, remote = self.__compare(rpath, localdir)
+		same, diff, local, remote = self.__compare(rpath, localdir, True)
 		# clear the way
 		for d in diff:
 			t = d[0] # type
