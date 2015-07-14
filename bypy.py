@@ -106,6 +106,7 @@ import httplib
 import urllib
 import json
 import hashlib
+import base64
 import binascii
 import re
 import cPickle as pickle
@@ -2432,6 +2433,10 @@ try to create a file at PCS by combining slices, having MD5s specified
 				headers = { "Range" : "bytes=0-{}".format(rsize - 1) }
 			else:
 				headers = {}
+
+			if headers.has_key('Range'):
+				self.pd("headers['Range'][6:]: {} {}".format(headers['Range'][6:], base64.standard_b64encode(headers['Range'][6:])))
+				pars['ru'] = base64.standard_b64encode(headers['Range'][6:])
 
 			subresult = self.__get(dpcsurl + 'file', pars,
 				self.__downchunks_act, (rfile, offset, rsize, start_time), headers = headers)
