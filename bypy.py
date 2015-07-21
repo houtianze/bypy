@@ -88,7 +88,7 @@ if not (sys.stdout.encoding and sys.stdout.encoding.lower() == 'utf-8'):
 	encoding_to_use = sys.stdout.encoding
 	try:
 		codecs.lookup(encoding_to_use)
-		u'汉字'.encode(encoding_to_use)
+		u'\u6c49\u5b57'.encode(encoding_to_use) # u'汉字'
 	except: # (LookupError, TypeError, UnicodeEncodeError):
 		encoding_to_use = 'utf-8'
 		sys.exc_clear()
@@ -2591,7 +2591,7 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 
 		return ENoError
 
-	def __walk_remote_dir(self, remotepath, proceed, args = None, tweak_for_syncup = False):
+	def __walk_remote_dir(self, remotepath, proceed, args = None, skip_remote_only_dirs = False):
 		pars = {
 			'method' : 'list',
 			'path' : remotepath,
@@ -2611,10 +2611,11 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 					subresult, remotepath))
 				result = subresult # we continue
 			for dirj in dirjs:
-				if tweak_for_syncup and args != None and args.startswith('/apps') and self.__local_dir_contents.get(posixpath.relpath(dirj['path'], args)) == None:
-					self.pd("Skipping '{}'. No same-name local dir/file exists.".format(dirj['path']))
+				crpath = dirj['path'] # crpath - current remote path
+				if skip_remote_only_dirs and self.__local_dir_contents.get(posixpath.relpath(crpath, remotepath)) == None:
+					self.pd("Skipping remote-only sub-directory '{}'.".format(crpath))
 					continue
-				subresult = self.__walk_remote_dir(dirj['path'], proceed, args, tweak_for_syncup)
+				subresult = self.__walk_remote_dir(crpath, proceed, args, skip_remote_only_dirs)
 				if subresult != ENoError:
 					self.pd("Error: {} while sub-walking remote dirs'{}'".format(
 						subresult, dirjs))
@@ -2921,13 +2922,13 @@ restore a file from the recycle bin
 
 		return ENoError
 
-	def __gather_remote_dir(self, rdir, tweak_for_syncup = False):
+	def __gather_remote_dir(self, rdir, skip_remote_only_dirs = False):
 		self.__remote_dir_contents = PathDictTree()
-		self.__walk_remote_dir(rdir, self.__proceed_remote_gather, rdir, tweak_for_syncup)
+		self.__walk_remote_dir(rdir, self.__proceed_remote_gather, rdir, skip_remote_only_dirs)
 		self.pd("---- Remote Dir Contents ---")
 		self.pd(self.__remote_dir_contents)
 
-	def __compare(self, remotedir = None, localdir = None, tweak_for_syncup = False):
+	def __compare(self, remotedir = None, localdir = None, skip_remote_only_dirs = False):
 		if not localdir:
 			localdir = '.'
 
@@ -2935,7 +2936,7 @@ restore a file from the recycle bin
 		self.__gather_local_dir(localdir)
 		self.pv("Done")
 		self.pv("Gathering remote directory ...")
-		self.__gather_remote_dir(remotedir, tweak_for_syncup)
+		self.__gather_remote_dir(remotedir, skip_remote_only_dirs, skip_remote_only_dirs)
 		self.pv("Done")
 		self.pv("Comparing ...")
 		# list merge, where Python shines
@@ -2979,14 +2980,16 @@ restore a file from the recycle bin
 		self.pv("Done")
 		return commonsame, commondiff, localonly, remoteonly
 
-	def compare(self, remotedir = None, localdir = None):
+	def compare(self, remotedir = None, localdir = None, skip_remote_only_dirs = False):
 		''' Usage: compare [remotedir] [localdir] - \
 compare the remote direcotry with the local directory
   remotedir - the remote directory at Baidu Yun (after app's direcotry). \
 if not specified, it defaults to the root directory.
   localdir - the local directory, if not specified, it defaults to the current directory.
+  skip_remote_only_dirs - skip remote-only sub-directories (faster if the remote \
+directory is much larger than the local one). it defaults to False.
 		'''
-		same, diff, local, remote = self.__compare(get_pcs_path(remotedir), localdir)
+		same, diff, local, remote = self.__compare(get_pcs_path(remotedir), localdir, str2bool(skip_remote_only_dirs))
 
 		pr("==== Same files ===")
 		for c in same:
