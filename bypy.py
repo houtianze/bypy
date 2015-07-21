@@ -2434,6 +2434,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 			else:
 				headers = {}
 
+			# this _may_ solve #163: { "error_code":31326, "error_msg":"anti hotlinking"}
 			if headers.has_key('Range'):
 				self.pd("headers['Range'][6:]: {} {}".format(headers['Range'][6:], base64.standard_b64encode(headers['Range'][6:])))
 				pars['ru'] = base64.standard_b64encode(headers['Range'][6:])
