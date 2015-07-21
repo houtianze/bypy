@@ -2617,7 +2617,7 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 				crpath = dirj['path'] # crpath - current remote path
 				# TODO: rename 'args' to 'rootremotepath'?
 				if skip_remote_only_dirs and \
-					args != None and args.startswith('/apps') and \
+					args != None and isinstance(args, basestring) and args.startswith('/apps') and \
 					self.__local_dir_contents.get(posixpath.relpath(crpath, args)) == None:
 					self.pd("Skipping remote-only sub-directory '{}'.".format(crpath))
 					continue
@@ -3106,12 +3106,12 @@ if not specified, it defaults to the root directory
 			if self.shalloverwrite("Do you want to overwrite '{}' at Baidu Yun? [y/N]".format(p)):
 				# this path is before get_pcs_path() since delete() expects so.
 				#result = self.delete(rpartialdir + '/' + p)
-				#result = self.__delete(rcpath)
-				self.pd("diff type: {}".format(t))
-				self.__isrev = True
-				if t != 'F':
-					result = self.move(remotedir + '/' + p, remotedir + '/' + p + '.moved_by_bypy.' + time.strftime("%Y%m%d%H%M%S"))
-					self.__isrev = False
+				result = self.__delete(rcpath)
+#				self.pd("diff type: {}".format(t))
+#				self.__isrev = True
+#				if t != 'F':
+#					result = self.move(remotedir + '/' + p, remotedir + '/' + p + '.moved_by_bypy.' + time.strftime("%Y%m%d%H%M%S"))
+#					self.__isrev = False
 				if t == 'F' or t == 'FD':
 					subresult = self.__upload_file(lcpath, rcpath)
 					if subresult != ENoError:
