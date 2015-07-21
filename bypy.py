@@ -2615,9 +2615,13 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 				result = subresult # we continue
 			for dirj in dirjs:
 				crpath = dirj['path'] # crpath - current remote path
-				if skip_remote_only_dirs and self.__local_dir_contents.get(posixpath.relpath(crpath, remotepath)) == None:
+				# TODO: rename 'args' to 'rootremotepath'?
+				if skip_remote_only_dirs and \
+					args != None and args.startswith('/apps') and \
+					self.__local_dir_contents.get(posixpath.relpath(crpath, args)) == None:
 					self.pd("Skipping remote-only sub-directory '{}'.".format(crpath))
 					continue
+
 				subresult = self.__walk_remote_dir(crpath, proceed, args, skip_remote_only_dirs)
 				if subresult != ENoError:
 					self.pd("Error: {} while sub-walking remote dirs'{}'".format(
