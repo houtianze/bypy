@@ -2939,7 +2939,7 @@ restore a file from the recycle bin
 		self.__gather_local_dir(localdir)
 		self.pv("Done")
 		self.pv("Gathering remote directory ...")
-		self.__gather_remote_dir(remotedir, skip_remote_only_dirs, skip_remote_only_dirs)
+		self.__gather_remote_dir(remotedir, skip_remote_only_dirs)
 		self.pv("Done")
 		self.pv("Comparing ...")
 		# list merge, where Python shines
