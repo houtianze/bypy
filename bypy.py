@@ -2902,6 +2902,9 @@ restore a file from the recycle bin
 		for name in filenames:
 			#fullname = os.path.join(dirpath, name)
 			fullname = joinpath(dirpath, name)
+                        # ignore broken symbolic links
+                        if not os.path.exists(fullname):
+                                continue
 			files.append((name, getfilesize(fullname), md5(fullname)))
 
 		reldir = dirpath[dirlen:].replace('\\', '/')
