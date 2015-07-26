@@ -230,9 +230,9 @@ ByPyCertsPath = ConfigDir + os.sep + ByPyCertsFile
 #UserAgent = 'Mozilla/5.0'
 #UserAgent = "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)"
 # According to seanlis@github, this User-Agent string affects the download.
-#UserAgent = None
-# TODO: Does this User-Agent emulation work?
-UserAgent = 'netdisk;5.2.7.2;PC;PC-Windows;6.2.9200;WindowsBaiduYunGuanJia'
+UserAgent = None
+# TODO: Does the following User-Agent emulation work?
+#UserAgent = 'netdisk;5.2.7.2;PC;PC-Windows;6.2.9200;WindowsBaiduYunGuanJia'
 CleanOptionShort= '-c'
 CleanOptionLong= '--clean'
 DisableSslCheckOption = '--disable-ssl-check'
@@ -1412,7 +1412,9 @@ class ByPy(object):
 		kwnew = kwargs.copy()
 		if 'headers' not in kwnew:
 			kwnew['headers'] = { 'User-Agent': UserAgent }
-		else:
+
+		# Now, allow to User-Agent to be set in the caller, instead of always using the default UserAgent value.
+		if 'User-Agent' not in kwnew['headers']:
 			kwnew['headers']['User-Agent'] = UserAgent
 
 		while True:
@@ -2438,6 +2440,8 @@ try to create a file at PCS by combining slices, having MD5s specified
 			if headers.has_key('Range'):
 				self.pd("headers['Range'][6:]: {} {}".format(headers['Range'][6:], base64.standard_b64encode(headers['Range'][6:])))
 				pars['ru'] = base64.standard_b64encode(headers['Range'][6:])
+
+			headers['User-Agent'] = 'netdisk;5.2.7.2;PC;PC-Windows;6.2.9200;WindowsBaiduYunGuanJia'
 
 			subresult = self.__get(dpcsurl + 'file', pars,
 				self.__downchunks_act, (rfile, offset, rsize, start_time), headers = headers, cookies = self.__pancookies)
