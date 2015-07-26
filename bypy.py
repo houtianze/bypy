@@ -203,17 +203,12 @@ HerokuRefreshUrl = HerokuUrl + '/refresh'
 
 AuthServerList = [
 	# url, rety?, message
-	(GaeRedirectUrl, False, "Authorizing with the GAE server ..."),
-	(OpenShiftRedirectUrl, True, "I think you are WALLed, so let's authorize with the OpenShift server ..."),
-	(HerokuRedirectUrl, True, "OpenShift also failed. Last resort: authorizing with the Heroku server ..."),
+	(OpenShiftRedirectUrl, False, "Authorizing/refreshing with the OpenShift server ..."),
+	(HerokuRedirectUrl, True, "OpenShift server failed, authorizing/refreshing with the Heroku server ..."),
+	(GaeRedirectUrl, False, "Heroku server failed. Last resort: authorizing/refreshing with the GAE server ..."),
 ]
 
-RefreshServerList = [
-	# url, rety?, message
-	(GaeRefreshUrl, False, "Refreshing with the GAE server ..."),
-	(OpenShiftRefreshUrl, True, "I think you are WALLed, so let's refresh with the OpenShift server ..."),
-	(HerokuRefreshUrl, True, "OpenShift also failed. Last resort: refreshing with the Heroku server ..."),
-]
+RefreshServerList = AuthServerList
 
 ApiKey = 'q8WE4EpCsau1oS0MplgMKNBn' # replace with your own ApiKey if you use your own appid
 SecretKey = '' # replace with your own SecretKey if you use your own appid
