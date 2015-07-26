@@ -235,7 +235,9 @@ ByPyCertsPath = ConfigDir + os.sep + ByPyCertsFile
 #UserAgent = 'Mozilla/5.0'
 #UserAgent = "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)"
 # According to seanlis@github, this User-Agent string affects the download.
-UserAgent = None
+#UserAgent = None
+# TODO: Does this User-Agent emulation work?
+UserAgent = 'netdisk;5.2.7.2;PC;PC-Windows;6.2.9200;WindowsBaiduYunGuanJia'
 CleanOptionShort= '-c'
 CleanOptionLong= '--clean'
 DisableSslCheckOption = '--disable-ssl-check'
@@ -2413,6 +2415,9 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 		pars = {
 			'method' : 'download',
+			'app_id': 250528,
+			'check_blue' : '1',
+			'ec' : '1',
 			'path' : rfile }
 
 		offset = start
@@ -2440,7 +2445,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 				pars['ru'] = base64.standard_b64encode(headers['Range'][6:])
 
 			subresult = self.__get(dpcsurl + 'file', pars,
-				self.__downchunks_act, (rfile, offset, rsize, start_time), headers = headers)
+				self.__downchunks_act, (rfile, offset, rsize, start_time), headers = headers, cookies = self.__pancookies)
 			if subresult != ENoError:
 				return subresult
 
