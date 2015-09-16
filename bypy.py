@@ -2604,7 +2604,7 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 
 		return ENoError
 
-	def __walk_remote_dir(self, remotepath, proceed, args = None, skip_remote_only_dirs = False):
+	def __walk_remote_dir_recur(self, remotepath, proceed, remoterootpath, args = None, skip_remote_only_dirs = False):
 		pars = {
 			'method' : 'list',
 			'path' : remotepath,
@@ -2625,20 +2625,21 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 				result = subresult # we continue
 			for dirj in dirjs:
 				crpath = dirj['path'] # crpath - current remote path
-				# TODO: rename 'args' to 'rootremotepath'?
-				if skip_remote_only_dirs and \
-					args != None and isinstance(args, basestring) and args.startswith('/apps') and \
-					self.__local_dir_contents.get(posixpath.relpath(crpath, args)) == None:
+				if skip_remote_only_dirs and remoterootpath != None and \
+					self.__local_dir_contents.get(posixpath.relpath(crpath, remoterootpath)) == None:
 					self.pd("Skipping remote-only sub-directory '{}'.".format(crpath))
 					continue
 
-				subresult = self.__walk_remote_dir(crpath, proceed, args, skip_remote_only_dirs)
+				subresult = self.__walk_remote_dir_recur(crpath, proceed, remoterootpath, args, skip_remote_only_dirs)
 				if subresult != ENoError:
 					self.pd("Error: {} while sub-walking remote dirs'{}'".format(
 						subresult, dirjs))
 					result = subresult
 
 		return result
+
+	def __walk_remote_dir(self, remotepath, proceed, args = None, skip_remote_only_dirs = False):
+		return self.__walk_remote_dir_recur(remotepath, proceed, remotepath, args, skip_remote_only_dirs)
 
 	def __prepare_local_dir(self, localdir):
 		result = ENoError
