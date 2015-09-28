@@ -3245,7 +3245,8 @@ def main(argv=None): # IGNORE:C0111
 		pass
 	else:
 		signal.signal(signal.SIGBUS, sighandler)
-		signal.signal(signal.SIGHUP, sighandler)
+		# ignore the signal when a user logouts the terminal
+		signal.signal(signal.SIGHUP, signal.SIG_IGN)
 		# https://stackoverflow.com/questions/108183/how-to-prevent-sigpipes-or-handle-them-properly
 		signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 		signal.signal(signal.SIGQUIT, sighandler)
