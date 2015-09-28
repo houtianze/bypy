@@ -1033,7 +1033,7 @@ class ByPy(object):
 			if os.path.exists(oldfile):
 				dst = newfile
 				if os.path.exists(newfile):
-					dst = TokenFilePath + '.old'
+					dst = dst + '.old'
 				result = movefile(oldfile, dst) and result
 
 		return result
