@@ -3245,7 +3245,8 @@ def main(argv=None): # IGNORE:C0111
 		pass
 	else:
 		signal.signal(signal.SIGBUS, sighandler)
-		signal.signal(signal.SIGHUP, sighandler)
+                #SIGHUP should not be cached, otherwise this tool can not continue to run when terminal disconnected
+		#signal.signal(signal.SIGHUP, sighandler)
 		# https://stackoverflow.com/questions/108183/how-to-prevent-sigpipes-or-handle-them-properly
 		signal.signal(signal.SIGPIPE, signal.SIG_IGN)
 		signal.signal(signal.SIGQUIT, sighandler)
