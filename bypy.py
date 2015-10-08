@@ -2081,6 +2081,8 @@ get information of the given path (dir / file) at Baidu Yun.
 					else:
 						self.__slice_md5s = []
 						break
+				if ec != ENoError:
+					break
 				i += 1
 
 		if ec != ENoError:
