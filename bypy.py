@@ -3,7 +3,7 @@
 # ===  IMPORTANT  ====
 # NOTE: In order to support non-ASCII file names,
 #       your system's locale MUST be set to 'utf-8'
-# CAVEAT: DOESN'T work with proxy, the underlying reason being
+# CAVEAT: DOESN'T seem to work with proxy, the underlying reason being
 #         the 'requests' package used for http communication doesn't seem
 #         to work properly with proxies, reason unclear.
 # NOTE: It seems Baidu doesn't handle MD5 quite right after combining files,
@@ -18,146 +18,30 @@
 # TODO: Use batch functions for better performance
 
 '''
-bypy -- Python client for Baidu Yun
+Python client for Baidu Yun (https://github.com/houtianze/bypy)
 ---
-
-https://github.com/houtianze/bypy
----
-
-bypy is a Baidu Yun client written in Python (2.7).
-(NOTE: You need to install the 'requests' library by running 'pip install requests')
 
 It offers some file operations like: list, download, upload, syncup, syncdown, etc.
 The main purpose is to utilize Baidu Yun in Linux environment (e.g. Raspberry Pi)
 
-It uses a server for OAuth authorization, to conceal the Application's Secret Key.
-Alternatively, you can create your own App at Baidu and replace the 'ApiKey' and 'SecretKey' with your copies,
-and then, change 'ServerAuth' to 'False'
 ---
-@author:     Hou Tianze
-
+@author:     Hou Tianze (GitHub: houtianze) and contributors
 @license:    MIT
-
-@contact:    GitHub: houtianze, Twitter: @ibic, G+: +TianzeHou
 '''
 
-# it takes days just to fix you, unicode ...
-# some references
-# https://stackoverflow.com/questions/4374455/how-to-set-sys-stdout-encoding-in-python-3
-# https://stackoverflow.com/questions/492483/setting-the-correct-encoding-when-piping-stdout-in-python
-# http://drj11.wordpress.com/2007/05/14/python-how-is-sysstdoutencoding-chosen/
-# https://stackoverflow.com/questions/11741574/how-to-set-the-default-encoding-to-utf-8-in-python
-# https://stackoverflow.com/questions/2276200/changing-default-encoding-of-python
+# from __future__ imports must occur at the beginning of the file
 from __future__ import unicode_literals
 
-EIncorrectPythonVersion = 1
-import sys
-vi = sys.version_info
-if not hasattr(sys.version_info, 'major') or vi.major != 2 or vi.minor < 7:
-	print("Error: Incorrect Python version. " + \
-		"You need 2.7 or above (but not 3)")
-	sys.exit(EIncorrectPythonVersion)
+### special variables that say about this module
+__version__ = '1.2.0'
 
-#reload(sys)
-#sys.setdefaultencoding(SystemEncoding)
-
-import os
-
-import locale
-SystemLanguageCode, SystemEncoding = locale.getdefaultlocale()
-if SystemEncoding and not sys.platform.startswith('win32'):
-	sysenc = SystemEncoding.upper()
-	if sysenc != 'UTF-8' and sysenc != 'UTF8':
-		err = "You MUST set system locale to 'UTF-8' to support unicode file names.\n" + \
-			"Current locale is '{}'".format(SystemEncoding)
-		ex = Exception(err)
-		print(err)
-		raise ex
-
-if not SystemEncoding:
-	# ASSUME UTF-8 encoding, if for whatever reason,
-	# we can't get the default system encoding
-	print("*WARNING*: Cannot detect the system encoding, assume it's 'UTF-8'")
-	SystemEncoding = 'utf-8'
-
-import codecs
-# no idea who is the asshole that screws the sys.stdout.encoding
-# the locale is 'UTF-8', sys.stdin.encoding is 'UTF-8',
-# BUT, sys.stdout.encoding is None ...
-if not (sys.stdout.encoding and sys.stdout.encoding.lower() == 'utf-8'):
-	encoding_to_use = sys.stdout.encoding
-	try:
-		codecs.lookup(encoding_to_use)
-		u'\u6c49\u5b57'.encode(encoding_to_use) # u'汉字'
-	except: # (LookupError, TypeError, UnicodeEncodeError):
-		encoding_to_use = 'utf-8'
-		sys.exc_clear()
-	sys.stdout = codecs.getwriter(encoding_to_use)(sys.stdout)
-	sys.stderr = codecs.getwriter(encoding_to_use)(sys.stderr)
-import signal
-import time
-import shutil
-import posixpath
-#import types
-import traceback
-import inspect
-import logging
-import httplib
-import urllib
-import json
-import hashlib
-import base64
-import binascii
-import re
-import cPickle as pickle
-import pprint
-import socket
-import math
-#from collections import OrderedDict
-from os.path import expanduser
-from argparse import ArgumentParser
-from argparse import RawDescriptionHelpFormatter
-
-# Defines that should never be changed
-OneK = 1024
-OneM = OneK * OneK
-OneG = OneM * OneK
-OneT = OneG * OneK
-OneP = OneT * OneK
-OneE = OneP * OneK
-OneZ = OneE * OneK
-OneY = OneZ * OneK
-SIPrefixNames = [ '', 'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y' ]
-
-SIPrefixTimes = {
-	'K' : OneK,
-	'M' : OneM,
-	'G' : OneG,
-	'T' : OneT,
-	'E' : OneE,
-	'Z' : OneZ,
-	'Y' : OneY }
-
-
-# special variables
-__all__ = []
-__version__ = '1.0.20'
-
-# ByPy default values
-DefaultSliceInMB = 20
-DefaultSliceSize = 20 * OneM
-DefaultDlChunkSize = 20 * OneM
-RetryDelayInSec = 10
-
-# Baidu PCS constants
-MinRapidUploadFileSize = 256 * OneK
-MaxSliceSize = 2 * OneG
-MaxSlicePieces = 1024
-
-# return (error) codes
+### return (error) codes
+# they are put at the top because:
+# 1. they have zero dependencies
+# 2. can be referred in any abort later, e.g. return error on import faliures
 ENoError = 0 # plain old OK, fine, no error.
-#EIncorrectPythonVersion = 1
-EApiNotConfigured = 10 # ApiKey, SecretKey and AppPcsPath not properly configured
+EIncorrectPythonVersion = 1
+#EApiNotConfigured = 10 # Deprecated: ApiKey, SecretKey and AppPcsPath not properly configured
 EArgument = 10 # invalid program command argument
 EAbort = 20 # aborted
 EException = 30 # unhandled exception occured
@@ -177,20 +61,163 @@ ECacheNotLoaded = 160
 EMigrationFailed = 170
 EDownloadCerts = 180
 EFatal = -1 # No way to continue
-
 # internal errors
 IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload the whole file.
-IEBDUSSExpired = -6
 
-# PCS configuration constants
+### imports
+# version check must pass before any further action
+import sys
+if sys.version_info[0] != 2 or sys.version_info[1] < 7:
+	print("Error: Incorrect Python version. You need 2.7 or above (but not 3)")
+	sys.exit(EIncorrectPythonVersion)
+import os
+import locale
+import codecs
+SystemLanguageCode, SystemEncoding = locale.getdefaultlocale()
+if SystemEncoding and not sys.platform.startswith('win32'):
+	sysenc = SystemEncoding.upper()
+	if sysenc != 'UTF-8' and sysenc != 'UTF8':
+		err = "WARNING: System locale is not 'UTF-8'.\n" \
+			  "Files with non-ASCII names may not be handled correctly.\n" \
+			  "You should set your System Locale to 'UTF-8'.\n" \
+			  "Current locale is '{}'\n".format(SystemEncoding)
+		print(err)
+		# ex = Exception(err)
+		# raise ex
+if not SystemEncoding:
+	# ASSUME UTF-8 encoding, if for whatever reason,
+	# we can't get the default system encoding
+	SystemEncoding = 'utf-8'
+	print("WARNING: Can't detect the system encoding, assume it's 'UTF-8'\n" \
+		  "Files with non-ASCII names may not be handled correctly.\n" )
+# no idea who screws the sys.stdout.encoding
+# the locale is 'UTF-8', sys.stdin.encoding is 'UTF-8',
+# BUT, sys.stdout.encoding is None ...
+if not (sys.stdout.encoding and sys.stdout.encoding.lower() == 'utf-8'):
+	encoding_to_use = sys.stdout.encoding
+	try:
+		codecs.lookup(encoding_to_use)
+		u'\u6c49\u5b57'.encode(encoding_to_use) # u'汉字'
+		print("Encoding for stdout / stderr: {}".format(encoding_to_use))
+	except: # (LookupError, TypeError, UnicodeEncodeError):
+		encoding_to_use = 'utf-8'
+		sys.exc_clear()
+		print("WARNING: Can't detect encoding for stdout / stderr, assume it's 'UTF-8'.\n"
+			  "Files with non-ASCII names may not be handled correctly.\n")
+	sys.stdout = codecs.getwriter(encoding_to_use)(sys.stdout)
+	sys.stderr = codecs.getwriter(encoding_to_use)(sys.stderr)
+
+import signal
+import time
+import shutil
+import posixpath
+import traceback
+import inspect
+import logging
+# unify Python 2 and 3
+if sys.version_info[0] == 2:
+	import urllib2 as ulr
+	import urllib as ulp
+	import httplib
+else:
+	import urllib.request as ulr
+	import urllib.parse as ulp
+	import http.client as httplib
+import json
+import hashlib
+import base64
+import binascii
+import re
+import cPickle as pickle
+import pprint
+import socket
+import math
+#from collections import OrderedDict
+from os.path import expanduser
+from argparse import ArgumentParser
+from argparse import RawDescriptionHelpFormatter
+## non-standard python library, needs 'pip install ...'
+try:
+	import requests
+except:
+	print("Fail to import the 'requests' library\n"
+		  "You need to install the Requests library\n"
+		  "You can install it by running 'pip install requests[security]'")
+	raise
+
+# there was a WantWriteError uncaught exception for Urllib3:
+# https://github.com/shazow/urllib3/pull/412
+# it was fixed here:
+# https://github.com/shazow/urllib3/pull/413
+# commit:
+# https://github.com/shazow/urllib3/commit/a89dda000ed144efeb6be4e0b417c0465622fe3f
+# and this was included in this commit in the Requests library
+# https://github.com/kennethreitz/requests/commit/7aa6c62d6d917e11f81b166d1d6c9e60340783ac
+# which was included in version 2.5.0 or above
+# so minimum 2.5.0 is required
+requests_version = requests.__version__.split('.')
+if int(requests_version[0]) < 2 or (requests_version[0] == 2 and requests_version[1] < 5):
+	print("Your version of Python Requests library is too low (minimum version 2.5.0 is required).\n"
+		  "You can run 'pip install -U requests[security]' to upgrade it to the latest version.")
+	raise
+
+#### Definitions that are real world constants
+OneK = 1024
+OneM = OneK * OneK
+OneG = OneM * OneK
+OneT = OneG * OneK
+OneP = OneT * OneK
+OneE = OneP * OneK
+OneZ = OneE * OneK
+OneY = OneZ * OneK
+SIPrefixNames = [ '', 'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y' ]
+
+SIPrefixTimes = {
+	'K' : OneK,
+	'M' : OneM,
+	'G' : OneG,
+	'T' : OneT,
+	'E' : OneE,
+	'Z' : OneZ,
+	'Y' : OneY }
+
+#### Baidu PCS constants
 # ==== NOTE ====
 # I use server auth, because it's the only possible method to protect the SecretKey.
-# If you don't like that and want to perform local authorization using 'Device' method, you need to:
-# - Change to: ServerAuth = False
-# - Paste your own ApiKey and SecretKey.
+# If you want to perform local authorization using 'Device' method instead, you just need:
+# - Paste your own ApiKey and SecretKey. (An non-NONE or non-empty SecretKey means using local auth
 # - Change the AppPcsPath to your own App's directory at Baidu PCS
 # Then you are good to go
-ServerAuth = True # change it to 'False' if you use your own appid
+ApiKey = 'q8WE4EpCsau1oS0MplgMKNBn' # replace with your own ApiKey if you use your own appid
+SecretKey = '' # replace with your own SecretKey if you use your own appid
+# NOTE: no trailing '/'
+AppPcsPath = '/apps/bypy' # change this to the App's direcotry you specified when creating the app
+AppPcsPathLen = len(AppPcsPath)
+
+## Baidu PCS URLs etc.
+OpenApiUrl = "https://openapi.baidu.com"
+OpenApiVersion = "2.0"
+OAuthUrl = OpenApiUrl + "/oauth/" + OpenApiVersion
+ServerAuthUrl = OAuthUrl + "/authorize"
+DeviceAuthUrl = OAuthUrl + "/device/code"
+TokenUrl = OAuthUrl + "/token"
+PcsDomain = 'pcs.baidu.com'
+RestApiPath = '/rest/2.0/pcs/'
+PcsUrl = 'https://' + PcsDomain + RestApiPath
+CPcsUrl = 'https://c.pcs.baidu.com/rest/2.0/pcs/'
+DPcsUrl = 'https://d.pcs.baidu.com/rest/2.0/pcs/'
+# mutable, the actual ones used, capital ones are supposed to be immutable
+# this is introduced to support mirrors
+pcsurl  = PcsUrl
+cpcsurl = CPcsUrl
+dpcsurl = DPcsUrl
+
+## Baidu PCS constants
+MinRapidUploadFileSize = 256 * OneK
+MaxSliceSize = 2 * OneG
+MaxSlicePieces = 1024
+
+### Auth servers
 GaeUrl = 'https://bypyoauth.appspot.com'
 OpenShiftUrl = 'https://bypy-tianze.rhcloud.com'
 HerokuUrl = 'https://bypyoauth.herokuapp.com'
@@ -200,86 +227,62 @@ OpenShiftRedirectUrl = OpenShiftUrl + '/auth'
 OpenShiftRefreshUrl = OpenShiftUrl + '/refresh'
 HerokuRedirectUrl = HerokuUrl + '/auth'
 HerokuRefreshUrl = HerokuUrl + '/refresh'
-
 AuthServerList = [
 	# url, rety?, message
 	(OpenShiftRedirectUrl, False, "Authorizing/refreshing with the OpenShift server ..."),
 	(HerokuRedirectUrl, True, "OpenShift server failed, authorizing/refreshing with the Heroku server ..."),
 	(GaeRedirectUrl, False, "Heroku server failed. Last resort: authorizing/refreshing with the GAE server ..."),
 ]
-
 RefreshServerList = AuthServerList
 
-ApiKey = 'q8WE4EpCsau1oS0MplgMKNBn' # replace with your own ApiKey if you use your own appid
-SecretKey = '' # replace with your own SecretKey if you use your own appid
-if not SecretKey:
-	ServerAuth = True
-# NOTE: no trailing '/'
-AppPcsPath = '/apps/bypy' # change this to the App's direcotry you specified when creating the app
-AppPcsPathLen = len(AppPcsPath)
+### public static properties
+HelpMarker = "Usage:"
 
-# Program setting constants
+### ByPy config constants
+## directories, for setting, cache, etc
 HomeDir = expanduser('~')
 # os.path.join() may not handle unicode well
 ConfigDir = HomeDir + os.sep + '.bypy'
 TokenFilePath = ConfigDir + os.sep + 'bypy.json'
 HashCachePath = ConfigDir + os.sep + 'bypy.pickle'
-BDUSSPath = ConfigDir + os.sep + 'bypy.bduss'
 ByPyCertsFile = 'bypy.cacerts.pem'
 ByPyCertsPath = ConfigDir + os.sep + ByPyCertsFile
+# Old setting locations, should be moved to ~/.bypy to be clean
+OldTokenFilePath = HomeDir + os.sep + '.bypy.json'
+OldHashCachePath = HomeDir + os.sep + '.bypy.pickle'
+## default config values
+# TODO: Does the following User-Agent emulation help?
 #UserAgent = 'Mozilla/5.0'
 #UserAgent = "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)"
-# According to seanlis@github, this User-Agent string affects the download.
-UserAgent = None
-# TODO: Does the following User-Agent emulation work?
 #UserAgent = 'netdisk;5.2.7.2;PC;PC-Windows;6.2.9200;WindowsBaiduYunGuanJia'
+# According to xslidian, this User-Agent string affects the download.
+UserAgent = None
+DefaultSliceInMB = 20
+DefaultSliceSize = 20 * OneM
+DefaultDlChunkSize = 20 * OneM
+RetryDelayInSec = 10
+## global variables
+# the previous time stdout was flushed, maybe we just flush every time, or maybe this way performs better
+# http://stackoverflow.com/questions/230751/how-to-flush-output-of-python-print
+last_stdout_flush = time.time()
+#last_stdout_flush = 0
+PrintFlushPeriodInSec = 5.0
+# save cache if more than 10 minutes passed
+last_cache_save = time.time()
+CacheSavePeriodInSec = 10 * 60.0
+## program switches
 CleanOptionShort= '-c'
 CleanOptionLong= '--clean'
 DisableSslCheckOption = '--disable-ssl-check'
 CaCertsOption = '--cacerts'
 
-# Baidu PCS URLs etc.
-OpenApiUrl = "https://openapi.baidu.com"
-OpenApiVersion = "2.0"
-OAuthUrl = OpenApiUrl + "/oauth/" + OpenApiVersion
-ServerAuthUrl = OAuthUrl + "/authorize"
-DeviceAuthUrl = OAuthUrl + "/device/code"
-TokenUrl = OAuthUrl + "/token"
-PcsUrl = 'https://pcs.baidu.com/rest/2.0/pcs/'
-CPcsUrl = 'https://c.pcs.baidu.com/rest/2.0/pcs/'
-DPcsUrl = 'https://d.pcs.baidu.com/rest/2.0/pcs/'
-PanAPIUrl = 'http://pan.baidu.com/api/'
-
-# mutable, actual ones used, capital ones are supposed to be immutable
-# this is introduced to support mirrors
-pcsurl  = PcsUrl
-cpcsurl = CPcsUrl
-dpcsurl = DPcsUrl
-
-try:
-	# non-standard python library, needs 'pip install requests'
-	import requests
-except:
-	print("Fail to import the 'requests' library\n" + \
-		"You need to install the 'requests' python library\n" + \
-		"You can install it by running 'pip install requests'")
-	raise
-
-requests_version = requests.__version__.split('.')
-if int(requests_version[0]) < 1:
-	print("You Python Requests Library version is to lower than 1.\n" + \
-		"You can run 'pip install requests' to upgrade it.")
-	raise
-# non-standard python library, needs 'pip install requesocks'
-#import requesocks as requests # if you need socks proxy
-
-# when was your last time flushing a toilet?
-__last_flush = time.time()
-#__last_flush = 0
-PrintFlushPeriodInSec = 5.0
-# save cache if more than 10 minutes passed
-last_cache_save = time.time()
-CacheSavePeriodInSec = 10 * 60.0
+# unicode in Python 2.x is such a nuisance, some references
+# https://stackoverflow.com/questions/4374455/how-to-set-sys-stdout-encoding-in-python-3
+# https://stackoverflow.com/questions/492483/setting-the-correct-encoding-when-piping-stdout-in-python
+# http://drj11.wordpress.com/2007/05/14/python-how-is-sysstdoutencoding-chosen/
+# https://stackoverflow.com/questions/11741574/how-to-set-the-default-encoding-to-utf-8-in-python
+# https://stackoverflow.com/questions/2276200/changing-default-encoding-of-python
+# strings are unicode by default now
 
 # https://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python
 # https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
@@ -309,11 +312,11 @@ def colorstr(msg, fg, bg):
 def prc(msg):
 	print(msg)
 	# we need to flush the output periodically to see the latest status
-	global __last_flush
+	global last_stdout_flush
 	now = time.time()
-	if now - __last_flush >= PrintFlushPeriodInSec:
+	if now - last_stdout_flush >= PrintFlushPeriodInSec:
 		sys.stdout.flush()
-		__last_flush = now
+		last_stdout_flush = now
 
 pr = prc
 
@@ -651,6 +654,19 @@ def getfilemtime(path):
 
 	return mtime
 
+def getfilemtime_int(path):
+	# just int it, this is reliable no matter how stat_float_times() is changed
+	return int(getfilemtime(path))
+
+	# mtime = getfilemtime(path)
+	# if (mtime == -1):
+	# 	return mtime
+    #
+	# if os.stat_float_times():
+	# 	mtime = int(mtime)
+    #
+	# return mtime
+
 # seems os.path.join() doesn't handle Unicode well
 def joinpath(first, second, sep = os.sep):
 	head = ''
@@ -663,16 +679,12 @@ def joinpath(first, second, sep = os.sep):
 
 	return head + tail
 
+def unused():
+	''' just prevent unused warnings '''
+	inspect.stack()
+
 def donothing():
 	pass
-
-# https://urllib3.readthedocs.org/en/latest/security.html#insecurerequestwarning
-def disable_urllib3_warning():
-	try:
-		import requests.packages.urllib3
-		requests.packages.urllib3.disable_warnings()
-	except:
-		pass
 
 # https://stackoverflow.com/questions/10883399/unable-to-encode-decode-pprint-output
 class MyPrettyPrinter(pprint.PrettyPrinter):
@@ -710,6 +722,7 @@ class cached(object):
 	# and probably multiple instances are created for md5, crc32, etc
 	# it's a bit complex, and i thus don't have the confidence to do it in ctor/dtor
 	def __init__(self, f):
+		super(cached, self).__init__()
 		self.f = f
 
 	def __call__(self, *args):
@@ -724,7 +737,7 @@ class cached(object):
 				info = entry[file]
 				if self.f.__name__ in info \
 					and info['size'] == getfilesize(path) \
-					and info['mtime'] == getfilemtime(path) \
+					and info['mtime'] == getfilemtime_int(path) \
 					and self.f.__name__ in info \
 					and cached.usecache:
 					result = info[self.f.__name__]
@@ -754,7 +767,7 @@ class cached(object):
 	def __store(self, info, path, value):
 		cached.dirty = True
 		info['size'] = getfilesize(path)
-		info['mtime'] = getfilemtime(path)
+		info['mtime'] = getfilemtime_int(path)
 		info[self.f.__name__] = value
 		if cached.debug:
 			situation = "Storing cache"
@@ -895,15 +908,6 @@ def crc32(filename, slice = OneM):
 
 	return crc & 0xffffffff
 
-def enable_http_logging():
-	httplib.HTTPConnection.debuglevel = 1
-
-	logging.basicConfig() # you need to initialize logging, otherwise you will not see anything from requests
-	logging.getLogger().setLevel(logging.DEBUG)
-	requests_log = logging.getLogger("requests.packages.urllib3")
-	requests_log.setLevel(logging.DEBUG)
-	requests_log.propagate = True
-
 def ls_type(isdir):
 	return 'D' if isdir else 'F'
 
@@ -931,11 +935,11 @@ def print_pcs_list(json, foundmsg = "Found:", notfoundmsg = "Nothing found."):
 # single-linked-list, no backwards travelling capability
 class PathDictTree(dict):
 	def __init__(self, type = 'D', **kwargs):
+		super(PathDictTree, self).__init__()
 		self.type = type
 		self.extra = {}
 		for k, v in kwargs.items():
 			self.extra[k] = v
-		super(PathDictTree, self).__init__()
 
 	def __str__(self):
 		return self.__str('')
@@ -989,36 +993,112 @@ class PathDictTree(dict):
 
 		return result
 
+# the object returned from your Requester should have the following members
+# may be used for mocking / testing in the future
+class RequesterResponse(object):
+	def __init__(self, url, text, status_code):
+		super(RequesterResponse, self).__init__()
+		self.text = text
+		self.url = url
+		self.status_code = status_code
+		self.headers = {}
+
+	def json(self):
+		json.loads(self.text)
+
+# NOT in use, replacing the requests library is not trivial
+class UrllibRequester(object):
+	def __init__(self):
+		super(UrllibRequester, self).__init__()
+
+	@classmethod
+	def setoptions(cls, options):
+		pass
+
+	@classmethod
+	def request(cls, method, url, **kwargs):
+		"""
+		:type method: str
+		"""
+		methodupper = method.upper()
+		hasdata = 'data' in kwargs
+		if methodupper == 'GET':
+			if hasdata:
+				print("ERROR: Can't do HTTP GET when the 'data' parameter presents")
+				assert False
+			resp = ulr.urlopen(url, **kwargs)
+		elif methodupper == 'POST':
+			if hasdata:
+				resp = ulr.urlopen(url, **kwargs)
+			else:
+				resp = ulr.urlopen(url, data = '', **kwargs)
+		else:
+			raise NotImplementedError()
+
+		return RequestsRequester(resp.geturl(), resp.read(), resp.getcode())
+
+	@classmethod
+	def set_logging_level(cls, level):
+		pass
+
+	@classmethod
+	def disable_warnings(cls):
+		pass
+
+# extracting this class out would make it easier to test / mock
+class RequestsRequester(object):
+	options = {}
+
+	def __init__(self):
+		super(RequestsRequester, self).__init__()
+
+	@classmethod
+	def setoptions(cls, options):
+		cls.options = options
+
+	@classmethod
+	def request(cls, method, url, **kwargs):
+		for k,v in cls.options.iteritems():
+			kwargs.setdefault(k, v)
+		return requests.request(method, url, **kwargs)
+
+	@classmethod
+	def disable_warnings(cls):
+		try:
+			import requests.packages.urllib3 as ul3
+			#ul3.disable_warnings(ul3.exceptions.InsecureRequestWarning)
+			#ul3.disable_warnings(ul3.exceptions.InsecurePlatformWarning)
+			ul3.disable_warnings()
+		except:
+			perr("Failed to disable warnings for Urllib3.")
+			perr("Exception:\n{}".format(traceback.format_exc()))
+			pass
+
+	# only if user specifies '-ddd' or more 'd's, the following
+	# debugging information will be shown, as it's very talkative.
+	# it enables debugging at httplib level (requests->urllib3->httplib)
+	# you will see the REQUEST, including HEADERS and DATA, and RESPONSE with HEADERS but without DATA.
+	# the only thing missing will be the response.body which is not logged.
+	@classmethod
+	def set_logging_level(cls, level):
+		if level >= 3:
+			httplib.HTTPConnection.debuglevel = 1
+			logging.basicConfig() # you need to initialize logging, otherwise you will not see anything from requests
+			logging.getLogger().setLevel(logging.DEBUG)
+			requests_log = logging.getLogger("requests.packages.urllib3")
+			requests_log.setLevel(logging.DEBUG)
+			requests_log.propagate = True
+
 class ByPy(object):
 	'''The main class of the bypy program'''
-
-	# public static properties
-	HelpMarker = "Usage:"
-
-	ListFormatDict = {
-		'$t' : (lambda json: ls_type(json['isdir'])),
-		'$f' : (lambda json: json['path'].split('/')[-1]),
-		'$c' : (lambda json: ls_time(json['ctime'])),
-		'$m' : (lambda json: ls_time(json['mtime'])),
-		'$d' : (lambda json: str(json['md5'] if 'md5' in json else '')),
-		'$s' : (lambda json: str(json['size'])),
-		'$i' : (lambda json: str(json['fs_id'])),
-		'$b' : (lambda json: str(json['block_list'] if 'block_list' in json else '')),
-		'$u' : (lambda json: 'HasSubDir' if 'ifhassubdir' in json and json['ifhassubdir'] else 'NoSubDir'),
-		'$$' : (lambda json: '$')
-	}
-
-	# Old setting locations, should be moved to ~/.bypy to be clean
-	OldTokenFilePath = HomeDir + os.sep + '.bypy.json'
-	OldHashCachePath = HomeDir + os.sep + '.bypy.pickle'
 
 	@staticmethod
 	def migratesettings():
 		result = ENoError
 
 		filesToMove = [
-			[ByPy.OldTokenFilePath, TokenFilePath],
-			[ByPy.OldHashCachePath, HashCachePath]
+			[OldTokenFilePath, TokenFilePath],
+			[OldHashCachePath, HashCachePath]
 		]
 
 		result = makedir(ConfigDir, 0o700) and result # make it secretive
@@ -1047,14 +1127,16 @@ class ByPy(object):
 			else:
 				try:
 					# perform a simple download from github
-					urllib.urlretrieve(
-					'https://raw.githubusercontent.com/houtianze/bypy/master/bypy.cacerts.pem', ByPyCertsPath)
+					CACertUrl = 'https://raw.githubusercontent.com/houtianze/bypy/master/bypy.cacerts.pem'
+					resp = ulr.urlopen(CACertUrl)
+					with open(ByPyCertsPath, 'w') as f:
+						f.write(resp.read())
 				except IOError as ex:
-					perr("Fail download CA Certs to '{}'.\n" + \
+					perr("Fail download CA Certs to '{}'.\n"
 						"Exception:\n{}\nStack:{}\n".format(
 						ByPyCertsPath, ex, traceback.format_exc()))
 
-					result = EDownloadCerts	
+					result = EDownloadCerts
 
 		return result
 
@@ -1064,7 +1146,6 @@ class ByPy(object):
 		verify = True,
 		retry = 5, timeout = None,
 		quit_when_fail = False,
-		listfile = None,
 		resumedownload = True,
 		extraupdate = lambda: (),
 		incregex = '',
@@ -1073,7 +1154,13 @@ class ByPy(object):
 		checkssl = True,
 		cacerts = None,
 		rapiduploadonly = False,
-		verbose = 0, debug = False):
+		mirror = None,
+		verbose = 0, debug = False,
+		requester = RequestsRequester,
+		apikey = ApiKey,
+		secretkey = SecretKey):
+
+		super(ByPy, self).__init__()
 
 		# handle backward compatibility
 		sr = ByPy.migratesettings()
@@ -1084,13 +1171,35 @@ class ByPy(object):
 		# it doesn't matter if it failed, we can disable SSL verification anyway
 		ByPy.getcertfile()
 
+		self.__requester = requester
+		self.__apikey = apikey
+		self.__secretkey = secretkey
+		self.__use_server_auth = not secretkey
+
+		global pcsurl
+		global cpcsurl
+		global dpcsurl
+		if mirror and mirror.lower() != PcsDomain:
+			pcsurl = 'https://' + mirror + RestApiPath
+			cpcsurl = pcsurl
+			dpcsurl = pcsurl
+			# using a mirror, which has name mismatch SSL error,
+			# so need to disable SSL check
+			pwarn("Mirror '{}' used instead of the default PCS server url '{}', "
+				  "we have to disable the SSL cert check in this case.".format(pcsurl, PcsUrl))
+			checkssl = False
+		else:
+			# use the default domain
+			pcsurl = PcsUrl
+			cpcsurl = CPcsUrl
+			dpcsurl = DPcsUrl
+
 		self.__slice_size = slice_size
 		self.__dl_chunk_size = dl_chunk_size
 		self.__verify = verify
 		self.__retry = retry
 		self.__quit_when_fail = quit_when_fail
 		self.__timeout = timeout
-		self.__listfile = listfile
 		self.__resumedownload = resumedownload
 		self.__extraupdate = extraupdate
 		self.__incregex = incregex
@@ -1099,24 +1208,12 @@ class ByPy(object):
 			self.__ondup = ondup[0].upper()
 		else:
 			self.__ondup = 'O' # O - Overwrite* S - Skip P - Prompt
-		# TODO: whether this works is still to be tried out
-		self.__isrev = False
 		self.__followlink = followlink;
+		self.__rapiduploadonly = rapiduploadonly
 
 		# TODO: properly fix this InsecurePlatformWarning
 		checkssl = False
-		# using a mirror, which has name mismatch SSL error,
-		# so need to disable SSL check
-		if pcsurl != PcsUrl:
-			# TODO: print a warning
-			checkssl = False
-
 		self.__checkssl = checkssl
-		self.__rapiduploadonly = rapiduploadonly
-
-		self.Verbose = verbose
-		self.Debug = debug
-
 		if self.__checkssl:
 			# sort of undocumented by requests
 			# http://stackoverflow.com/questions/10667960/python-requests-throwing-up-sslerror
@@ -1134,58 +1231,59 @@ class ByPy(object):
 				else:
 					# Well, disable cert verification
 					pwarn(
-"** SSL Certificate Verification has been disabled **\n\n" + \
-"If you are confident that your CA Bundle can verify " + \
+"** SSL Certificate Verification has been disabled **\n\n"
+"If you are confident that your CA Bundle can verify "
 "Baidu PCS's certs, you can run the prog with the '" + CaCertsOption + \
-" <your ca cert path>' argument to enable SSL cert verification.\n\n" + \
-"However, most of the time, you can ignore this warning, " + \
-"you are going to send sensitive data to the cloud plainly right?")
+" <your ca cert path>' argument to enable SSL cert verification.\n\n"
+"However, most of the time, you can ignore this warning, "
+"you are not going to send sensitive data to the cloud plainly right?")
 					self.__checkssl = False
-
 		if not checkssl:
-			disable_urllib3_warning()
+			requester.disable_warnings()
+
+		# these two variables are without leadning double underscaore "__" as to export the as public,
+		# so if any code using this class can check the current verbose / debug level
+		self.verbose = verbose
+		self.debug = debug
+		requester.set_logging_level(debug)
+		# useful info for debugging
+		if debug > 0:
+			pr("----")
+			pr("Verbose level = {}".format(verbose))
+			pr("Debug level = {}".format(debug))
+			# these informations are useful for debugging
+			pr("Token file: '{}'".format(TokenFilePath))
+			pr("Hash Cache file: '{}'".format(HashCachePath))
+			pr("App root path at Baidu Yun '{}'".format(AppPcsPath))
+			pr("sys.stdin.encoding = {}".format(sys.stdin.encoding))
+			pr("sys.stdout.encoding = {}".format(sys.stdout.encoding))
+			pr("sys.stderr.encoding = {}".format(sys.stderr.encoding))
+			pr("----\n")
 
 		# the prophet said: thou shalt initialize
 		self.__existing_size = 0
 		self.__json = {}
 		self.__access_token = ''
-		self.__bduss = ''
-		self.__pancookies = {}
 		self.__remote_json = {}
 		self.__slice_md5s = []
-
-		if self.__listfile and os.path.exists(self.__listfile):
-			with open(self.__listfile, 'r') as f:
-				self.__list_file_contents = f.read()
-		else:
-			self.__list_file_contents = None
-
-		# only if user specifies '-ddd' or more 'd's, the following
-		# debugging information will be shown, as it's very talkative.
-		if self.Debug >= 3:
-			# these two lines enable debugging at httplib level (requests->urllib3->httplib)
-			# you will see the REQUEST, including HEADERS and DATA, and RESPONSE with HEADERS but without DATA.
-			# the only thing missing will be the response.body which is not logged.
-			enable_http_logging()
+		# TODO: whether this works is still to be tried out
+		self.__isrev = False
 
 		if not self.__load_local_json():
 			# no need to call __load_local_json() again as __auth() will load the json & acess token.
 			result = self.__auth()
 			if result != ENoError:
-				perr("Program authorization FAILED.\n" + \
-					"You need to authorize this program before using any PCS functions.\n" + \
+				perr("Program authorization FAILED.\n"
+					"You need to authorize this program before using any PCS functions.\n"
 					"Quitting...\n")
 				onexit(result)
 
-		if not self.__load_local_bduss():
-			self.pv("BDUSS not found at '{}'.".format(BDUSSPath))
-
 	def pv(self, msg, **kwargs):
-		if self.Verbose:
+		if self.verbose:
 			pr(msg)
 
 	def pd(self, msg, level = 1, **kwargs):
-		if self.Debug >= level:
+		if self.debug >= level:
 			pdbg(msg, kwargs)
 
 	def shalloverwrite(self, prompt):
@@ -1217,9 +1315,9 @@ class ByPy(object):
 			perr('Exception:\n{}'.format(traceback.format_exc()))
 
 	def __dump_exception(self, ex, url, pars, r, act):
-		if self.Debug or self.Verbose:
+		if self.debug or self.verbose:
 			perr("Error accessing '{}'".format(url))
-			if ex and isinstance(ex, Exception) and self.Debug:
+			if ex and isinstance(ex, Exception) and self.debug:
 				perr("Exception:\n{}".format(ex))
 			tb = traceback.format_exc()
 			if tb:
@@ -1232,7 +1330,10 @@ class ByPy(object):
 					self.__print_error_json(r)
 					perr("Website returned: {}".format(rb(r.text)))
 
-	# always append / replace the 'access_token' parameter in the https request
+	# child class override this to to customize error handling
+	def __handle_more_response_error(self, r, sc, ec, act, actargs):
+		return ERequestFailed
+
 	def __request_work(self, url, pars, act, method, actargs = None, addtoken = True, dumpex = True, **kwargs):
 		result = ENoError
 		r = None
@@ -1247,49 +1348,32 @@ class ByPy(object):
 			self.pd("actargs: {}".format(actargs))
 			self.pd("Params: {}".format(pars))
 
-			if method.upper() == 'GET':
-				r = requests.get(url,
-					params = parsnew, timeout = self.__timeout, verify = self.__checkssl, **kwargs)
-			elif method.upper() == 'POST':
-				r = requests.post(url,
-					params = parsnew, timeout = self.__timeout, verify = self.__checkssl, **kwargs)
-
-			# BUGFIX: DON'T do this, if we are downloading a big file, the program sticks and dies
-			#self.pd("Request Headers: {}".format(
-			#	pprint.pformat(r.request.headers)), 2)
+			r = self.__requester.request(method, url, params = parsnew, timeout = self.__timeout, verify = self.__checkssl, **kwargs)
 			sc = r.status_code
 			self.pd("HTTP Status Code: {}".format(sc))
-			# BUGFIX: DON'T do this, if we are downloading a big file, the program sticks and dies
-			#self.pd("Header returned: {}".format(pprint.pformat(r.headers)), 2)
-			#self.pd("Website returned: {}".format(rb(r.text)), 3)
+			# BUGFIX: DON'T do this, if we are downloading a big file,
+			# the program will eat A LOT of memeory and potentialy hang / get killed
+			#self.pd("Request Headers: {}".format(pprint.pformat(r.request.headers)), 2)
+			#self.pd("Response Header: {}".format(pprint.pformat(r.headers)), 2)
+			#self.pd("Response: {}".format(rb(r.text)), 3)
 			if sc == requests.codes.ok or sc == 206: # 206 Partial Content
+				# special case discovered by xslidian
 				if sc == requests.codes.ok:
-					if pars.get('method') != 'download':
-						try:
-							j = r.json()
-							if j.get('error_code') == 0 and j.get('error_msg') == u'no error': # __walk_remote_dir_act() KeyError: u'list'
-								self.pd("Unexpected response: {}".format(j))
-								return ERequestFailed
-						except Exception:
-							sys.exc_clear()
-					self.pd("Request OK, processing action")
+					self.pd("200 OK, processing action")
 				else:
-					self.pd("206 Partial Content")
+					self.pd("206 Partial Content (this is OK), processing action")
 				result = act(r, actargs)
 				if result == ENoError:
 					self.pd("Request all goes fine")
-			elif sc == 404 and r.url.find('http://bcscdn.baidu.com/bcs-cdn/wenxintishi') == 0: # = "error_code":31390,"error_msg":"Illegal File"
-				self.pd("File is blacklisted ('wenxintishi'). Skipping.")
-				result = EFileNotFound
 			else:
 				ec = 0
 				try:
 					j = r.json()
 					ec = j['error_code']
-					# error print is done in __dump_exception()
-					# self.__print_error_json(r)
 				except ValueError:
-					perr("Not valid error JSON")
+					perr("Invalid error JSON response received:\n{}".format(j))
+				# ec = 0, which will fall through all ec treatments and reach the ERequestFailed portion,
+				# in which, error print is done in __dump_exception() if dumpex is true
 
 				#   6 (sc: 403): No permission to access user data
 				# 110 (sc: 401): Access token invalid or no longer valid
@@ -1297,35 +1381,20 @@ class ByPy(object):
 				if ec == 111 or ec == 110 or ec == 6: # and sc == 401:
 					self.pd("Need to refresh token, refreshing")
 					if ENoError == self.__refresh_token(): # refresh the token and re-request
-						# TODO: avoid dead recursive loops
+						# TODO: avoid infinite recursive loops
 						# TODO: properly pass retry
 						result = self.__request(url, pars, act, method, actargs, True, addtoken, dumpex, **kwargs)
 					else:
 						result = EFatal
 						perr("FATAL: Token refreshing failed, can't continue.\nQuitting...\n")
 						onexit(result)
-				# File md5 not found, you should use upload API to upload the whole file.
-				elif ec == IEMD5NotFound: # and sc == 404:
+					# File md5 not found, you should use upload API to upload the whole file.
 					self.pd("MD5 not found, rapidupload failed")
 					result = ec
-				# user not exists
-				elif ec == 31045: # and sc == 403:
-					self.pd("BDUSS has expired")
-					result = IEBDUSSExpired
 				# superfile create failed
 				elif ec == 31081: # and sc == 404:
 					self.pd("Failed to combine files from MD5 slices (superfile create failed)")
 					result = ec
-				# topath already exists
-				elif ec == 31196: # and sc == 403:
-					self.pd("UnzipCopy destination already exists.")
-					result = act(r, actargs)
-				# file copy failed
-				elif ec == 31197: # and sc == 503:
-					result = act(r, actargs)
-				# file size exceeds limit
-				elif ec == 31199: # and sc == 403:
-					result = act(r, actargs)
 				# errors that make retrying meaningless
 				elif (
 					ec == 31061 or # sc == 400 file already exists
@@ -1333,13 +1402,17 @@ class ByPy(object):
 					ec == 31063 or # sc == 400 file parent path does not exist
 					ec == 31064 or # sc == 403 file is not authorized
 					ec == 31065 or # sc == 400 directory is full
-					ec == 31066): # sc == 403 (indeed 404) file does not exist
+					ec == 31066 or # sc == 403 (indeed 404) file does not exist
+					# the following was found by xslidian, but i have never ecountered before
+					ec == 31390):  # sc == 404 # {"error_code":31390,"error_msg":"Illegal File"} # r.url.find('http://bcscdn.baidu.com/bcs-cdn/wenxintishi') == 0
 					result = ec
 					if dumpex:
 						self.__dump_exception(None, url, pars, r, act)
 				else:
-					result = ERequestFailed
-					if dumpex:
+					# gate for child classes to customize behaviors
+					# the function should return ERequestFailed if it doesn't handle the case
+					result = self.__handle_more_response_error(self, r, sc, ec, act, actargs)
+					if result == ERequestFailed and dumpex:
 						self.__dump_exception(None, url, pars, r, act)
 		except (requests.exceptions.RequestException,
 				socket.error) as ex:
@@ -1353,19 +1426,19 @@ class ByPy(object):
 				# [Errno 1] _ssl.c:504: error:14090086:SSL routines:SSL3_GET_SERVER_CERTIFICATE:certificate verify failed
 				result = EFatal
 				self.__dump_exception(ex, url, pars, r, act)
-				perr("\n\n== Baidu's Certificate Verification Failure ==\n" + \
-				"We couldn't verify Baidu's SSL Certificate.\n" + \
-				"It's most likely that the system doesn't have " + \
-				"the corresponding CA certificate installed.\n" + \
-				"There are two ways of solving this:\n" + \
+				perr("\n\n== Baidu's Certificate Verification Failure ==\n"
+				"We couldn't verify Baidu's SSL Certificate.\n"
+				"It's most likely that the system doesn't have "
+				"the corresponding CA certificate installed.\n"
+				"There are two ways of solving this:\n"
 				"Either) Run this prog with the '" + CaCertsOption + \
-				" <path to " + ByPyCertsPath + "> argument " + \
-				"(" + ByPyCertsPath + " comes along with this prog). " + \
-				"This is the secure way. " + \
-				"However, it won't work after 2020-02-08 when " + \
-				"the certificat expires.\n" + \
+				" <path to " + ByPyCertsPath + "> argument "
+				"(" + ByPyCertsPath + " comes along with this prog). "
+				"This is the secure way. "
+				"However, it won't work after 2020-02-08 when "
+				"the certificat expires.\n"
 				"Or) Run this prog with the '" + DisableSslCheckOption + \
-				"' argument. This supresses the CA cert check " + \
+				"' argument. This supresses the CA cert check "
 				"and always works.\n")
 				onexit(result)
 
@@ -1375,12 +1448,12 @@ class ByPy(object):
 			if isinstance(ex, requests.exceptions.SSLError) \
 				and re.match(r'^\[Errno 1\].*error:14090086.*:certificate verify failed$', str(ex), re.I):
 				# [Errno 1] _ssl.c:504: error:14090086:SSL routines:SSL3_GET_SERVER_CERTIFICATE:certificate verify failed
-				perr("\n*** We probably don't have Baidu's CA Certificate ***\n" + \
-				"This in fact doesn't matter most of the time.\n\n" + \
-				"However, if you are _really_ concern about it, you can:\n" + \
+				perr("\n*** We probably don't have Baidu's CA Certificate ***\n" \
+				"This in fact doesn't matter most of the time.\n\n" \
+				"However, if you are _really_ concern about it, you can:\n" \
 				"Either) Run this prog with the '" + CaCertsOption + \
-				" <path to bypy.cacerts.pem>' " + \
-				"argument. This is the secure way.\n" + \
+				" <path to bypy.cacerts.pem>' " \
+				"argument. This is the secure way.\n" \
 				"Or) Run this prog with the '" + DisableSslCheckOption + \
 				"' argument. This suppresses the CA cert check.\n")
 
@@ -1405,7 +1478,6 @@ class ByPy(object):
 		if retry:
 			tries = self.__retry
 
-		i = 0
 		result = ERequestFailed
 
 		# Change the User-Agent to avoid server fuss
@@ -1417,6 +1489,7 @@ class ByPy(object):
 		if 'User-Agent' not in kwnew['headers']:
 			kwnew['headers']['User-Agent'] = UserAgent
 
+		i = 0
 		while True:
 			result = self.__request_work(url, pars, act, method, actargs, addtoken, dumpex, **kwnew)
 			i += 1
@@ -1471,6 +1544,19 @@ class ByPy(object):
 				lpath, arrow, rpath));
 
 		return include
+
+	ListFormatDict = {
+		'$t' : (lambda json: ls_type(json['isdir'])),
+		'$f' : (lambda json: json['path'].split('/')[-1]),
+		'$c' : (lambda json: ls_time(json['ctime'])),
+		'$m' : (lambda json: ls_time(json['mtime'])),
+		'$d' : (lambda json: str(json['md5'] if 'md5' in json else '')),
+		'$s' : (lambda json: str(json['size'])),
+		'$i' : (lambda json: str(json['fs_id'])),
+		'$b' : (lambda json: str(json['block_list'] if 'block_list' in json else '')),
+		'$u' : (lambda json: 'HasSubDir' if 'ifhassubdir' in json and json['ifhassubdir'] else 'NoSubDir'),
+		'$$' : (lambda json: '$')
+	}
 
 	def __replace_list_format(self, fmt, j):
 		output = fmt
@@ -1532,28 +1618,16 @@ Possible fixes:
 			return EInvalidJson
 		return self.__store_json_only(j)
 
-	def __load_local_bduss(self):
-		try:
-			with open(BDUSSPath, 'rb') as infile:
-				self.__bduss = infile.readline().strip()
-				self.pd("BDUSS loaded: {}".format(self.__bduss))
-				self.__pancookies = {'BDUSS': self.__bduss}
-				return True
-		except IOError:
-			self.pd('Error loading BDUSS:')
-			self.pd(traceback.format_exc())
-			return False
-
 	def __server_auth_act(self, r, args):
 		return self.__store_json(r)
 
 	def __server_auth(self):
 		params = {
-			'client_id' : ApiKey,
+			'client_id' : self.__apikey,
 			'response_type' : 'code',
 			'redirect_uri' : 'oob',
 			'scope' : 'basic netdisk' }
-		pars = urllib.urlencode(params)
+		pars = ulp.urlencode(params)
 		msg = 'Please visit:\n{}\nAnd authorize this app'.format(ServerAuthUrl + '?' + pars) + \
 			'\nPaste the Authorization Code here within 10 minutes.'
 		auth_code = ask(msg).strip()
@@ -1585,13 +1659,13 @@ Possible fixes:
 
 	def __device_auth(self):
 		pars = {
-			'client_id' : ApiKey,
+			'client_id' : self.__apikey,
 			'response_type' : 'device_code',
 			'scope' : 'basic netdisk'}
 		return self.__get(DeviceAuthUrl, pars, self.__device_auth_act, addtoken = False)
 
 	def __auth(self):
-		if ServerAuth:
+		if self.__use_server_auth:
 			return self.__server_auth()
 		else:
 			return self.__device_auth()
@@ -1600,18 +1674,25 @@ Possible fixes:
 		return self.__store_json(r)
 
 	def __get_token(self, deviceJson):
-		msg = 'Please visit:\n' + deviceJson['verification_url'] + \
-			'\nwithin ' + str(deviceJson['expires_in']) + ' seconds\n' + \
-			'Input the CODE: {}\n'.format(deviceJson['user_code']) + \
-			'and Authorize this little app.\n' + \
-			"Press [Enter] when you've finished\n"
+		# msg = "Please visit:{}\n" + deviceJson['verification_url'] + \
+		# 	  "\nwithin " + str(deviceJson['expires_in']) + " seconds\n"
+		# "Input the CODE: {}\n".format(deviceJson['user_code'])" + \
+		# 	"and Authorize this little app.\n"
+		# "Press [Enter] when you've finished\n"
+		msg = "Please visit:\n{}\nwithin {} seconds\n" \
+			"Input the CODE: {}\n" \
+			"and Authorize this little app.\n" \
+			"Press [Enter] when you've finished\n".format(
+				deviceJson['verification_url'],
+				str(deviceJson['expires_in']),
+				deviceJson['user_code'])
 		ask(msg)
 
 		pars = {
 			'grant_type' : 'device_token',
 			'code' :  deviceJson['device_code'],
-			'client_id' : ApiKey,
-			'client_secret' : SecretKey}
+			'client_id' : self.__apikey,
+			'client_secret' : self.__secretkey}
 
 		return self.__get(TokenUrl, pars, self.__get_token_act, addtoken = False)
 
@@ -1619,7 +1700,7 @@ Possible fixes:
 		return self.__store_json(r)
 
 	def __refresh_token(self):
-		if ServerAuth:
+		if self.__use_server_auth:
 			pr('Refreshing, please be patient, it may take upto {} seconds...'.format(self.__timeout))
 
 			pars = {
@@ -1644,8 +1725,8 @@ Possible fixes:
 			pars = {
 				'grant_type' : 'refresh_token',
 				'refresh_token' : self.__json['refresh_token'],
-				'client_secret' : SecretKey,
-				'client_id' : ApiKey }
+				'client_secret' : self.__secretkey,
+				'client_id' : self.__apikey}
 			return self.__post(TokenUrl, pars, self.__refresh_token_act)
 
 	def __quota_act(self, r, args):
@@ -1655,13 +1736,13 @@ Possible fixes:
 		return ENoError
 
 	def help(self, command): # this comes first to make it easy to spot
-		''' Usage: help command - provide some information for the command '''
+		''' Usage: help <command> - provide some information for the command '''
 		for i, v in ByPy.__dict__.iteritems():
 			if callable(v) and v.__doc__ and v.__name__ == command :
 				help = v.__doc__.strip()
 				pos = help.find(ByPy.HelpMarker)
 				if pos != -1:
-					pr("Usage: " + help[pos + len(ByPy.HelpMarker):].strip())
+					pr("Usage: " + help[pos + len(HelpMarker):].strip())
 
 	def refreshtoken(self):
 		''' Usage: refreshtoken - refresh the access token '''
@@ -1841,6 +1922,10 @@ get information of the given path (dir / file) at Baidu Yun.
 		return self.__get(pcsurl + 'file', pars,
 			self.__meta_act, (rpath, fmt))
 
+	def __add_isrev_param(self, ondup, pars):
+		if self.__isrev and ondup != 'newcopy':
+			pars['is_revision'] = 1
+
 	def __combine_file_act(self, r, args):
 		result = self.__verify_current_file(r.json(), False)
 		if result == ENoError:
@@ -1858,8 +1943,7 @@ get information of the given path (dir / file) at Baidu Yun.
 			'method' : 'createsuperfile',
 			'path' : remotepath,
 			'ondup' : ondup }
-		if self.__isrev and ondup != 'newcopy':
-			pars['is_revision'] = 1
+		self.__add_isrev_param(ondup, pars)
 
 		# always print this, so that we can use these data to combine file later
 		pr("Combining the following MD5 slices:")
@@ -1871,147 +1955,6 @@ get information of the given path (dir / file) at Baidu Yun.
 				pars, self.__combine_file_act,
 				remotepath,
 				data = { 'param' : json.dumps(param) } )
-
-	def unzip(self, remotepath, subpath = '/', start = 0, limit = 1000):
-		''' Usage: unzip <remotepath> [<subpath> [<start> [<limit>]]]'''
-		rpath = get_pcs_path(remotepath)
-		return self.__panapi_unzip_file(rpath, subpath, start, limit);
-
-	def __panapi_unzip_file_act(self, r, args):
-		j = r.json()
-		self.pd("Unzip response: {}".format(j))
-		if j['errno'] == 0:
-			if 'time' in j:
-				perr("Extraction not completed yet: '{}'...".format(args['path']))
-				return ERequestFailed
-			elif 'list' in j:
-				for e in j['list']:
-					pr("{}\t{}\t{}".format(ls_type(e['isdir'] == 1), e['file_name'], e['size']))
-		return ENoError
-
-	def __panapi_unzip_file(self, rpath, subpath, start, limit):
-		pars = {
-			'path' : rpath,
-			'start' : start,
-			'limit' : limit,
-			'subpath' : '/' + subpath.strip('/') }
-
-		self.pd("Unzip request: {}".format(pars))
-		return self.__get(PanAPIUrl + 'unzip?app_id=250528',
-				pars, self.__panapi_unzip_file_act, cookies = self.__pancookies, actargs = pars )
-
-	def extract(self, remotepath, subpath, saveaspath = None):
-		''' Usage: extract <remotepath> <subpath> [<saveaspath>]'''
-		rpath = get_pcs_path(remotepath)
-		topath = get_pcs_path(saveaspath)
-		if not saveaspath:
-			topath = os.path.dirname(rpath) + '/' + subpath
-		return self.__panapi_unzipcopy_file(rpath, subpath, topath)
-
-	def __panapi_unzipcopy_file_act(self, r, args):
-		j = r.json()
-		self.pd("UnzipCopy response: {}".format(j))
-		if 'path' in j:
-			self.pv("Remote extract: '{}#{}' =xx=> '{}' OK.".format(args['path'], args['subpath'], j[u'path']))
-			return ENoError
-		elif 'error_code' in j:
-			if j['error_code'] == 31196:
-				perr("Remote extract: '{}#{}' =xx=> '{}' FAILED. File already exists.".format(args['path'], args['subpath'], args['topath']))
-				subresult = self.__delete(args['topath'])
-				if subresult == ENoError:
-					return self.__panapi_unzipcopy_file(args['path'], args['subpath'], args['topath'])
-				else:
-					return ERequestFailed
-			elif j['error_code'] == 31199:
-				perr("Remote extract: '{}#{}' =xx=> '{}' FAILED. File too large.".format(args['path'], args['subpath'], args['topath']))
-				return EMaxRetry
-			else:
-				perr("Remote extract: '{}#{}' =xx=> '{}' FAILED. Unknown error {}: {}.".format(args['path'], args['subpath'], args['topath'], j['error_code'], j['error_msg']))
-		return EMaxRetry
-
-	def __panapi_unzipcopy_file(self, rpath, subpath, topath):
-		pars = {
-			'app_id' : 250528,
-			'method' : 'unzipcopy',
-			'path' : rpath,
-			'subpath' : '/' + subpath.strip('/'),
-			'topath' : topath }
-
-		self.pd("UnzipCopy request: {}".format(pars))
-		return self.__get(pcsurl + 'file',
-				pars, self.__panapi_unzipcopy_file_act, addtoken = False, cookies = self.__pancookies, actargs = pars )
-
-	def revision(self, remotepath):
-		''' Usage: revision <remotepath> '''
-		rpath = get_pcs_path(remotepath)
-		return self.__panapi_revision_list(rpath)
-
-	def history(self, remotepath):
-		''' Usage: history <remotepath> '''
-		return self.revision(remotepath)
-
-	def __panapi_revision_list_act(self, r, args):
-		j = r.json()
-		self.pd("RevisionList response: {}".format(j))
-		if j['errno'] == 0:
-			if 'list' in j:
-				for e in j['list']:
-					pr("{}\t{}\t{}".format(e['revision'], e['size'], ls_time(e['revision'] / 1e6)))
-			return ENoError
-		if j['errno'] == -6: # invalid BDUSS
-			pr("BDUSS has expired.")
-			return IEBDUSSExpired
-		if j['errno'] == -9:
-			pr("File '{}' not exists.".format(args['path']))
-			return EFileNotFound
-		return ENoError
-
-	def __panapi_revision_list(self, rpath):
-		pars = {
-			'path' : rpath,
-			'desc' : 1 }
-
-		self.pd("RevisionList request: {}".format(pars))
-		return self.__post(PanAPIUrl + 'revision/list?app_id=250528',
-				{}, self.__panapi_revision_list_act, pars, data = pars, cookies = self.__pancookies )
-
-	def revert(self, remotepath, revision, dir = None):
-		''' Usage: revert <remotepath> revisionid [dir]'''
-		rpath = get_pcs_path(remotepath)
-		dir = get_pcs_path(dir)
-		if not dir:
-			dir = os.path.dirname(rpath)
-		return self.__panapi_revision_revert(rpath, revision, dir)
-
-	def __panapi_revision_revert_act(self, r, args):
-		j = r.json()
-		self.pd("RevisionRevert response: {}".format(j))
-		if j['errno'] == 0:
-			self.pv("Remote revert: '{}#{}' =rr=> '{}' OK.".format(args['path'], args['revision'], j['path']))
-			return ENoError
-		if j['errno'] == -6: # invalid BDUSS
-			pr("BDUSS has expired.")
-			return IEBDUSSExpired
-		if j['errno'] == -9:
-			pr("File '{}' not exists.".format(args['path']))
-			return EFileNotFound
-		if j['errno'] == 10:
-			pr("Reverting '{}' in process...".format(args['path']))
-			return ERequestFailed
-		return ENoError
-
-	def __panapi_revision_revert(self, rpath, revision, dir = None):
-		if not dir:
-			dir = os.path.dirname(rpath)
-		pars = {
-			'revision' : revision,
-			'path' : rpath,
-			'type' : 2,
-			'dir' : dir }
-
-		self.pd("RevisionRevert request: {}".format(pars))
-		return self.__post(PanAPIUrl + 'revision/revert?app_id=250528',
-				{}, self.__panapi_revision_revert_act, pars, data = pars, cookies = self.__pancookies )
 
 	def __upload_slice_act(self, r, args):
 		j = r.json()
@@ -2034,7 +1977,7 @@ get information of the given path (dir / file) at Baidu Yun.
 
 		return self.__post(cpcsurl + 'file',
 				pars, self.__upload_slice_act, remotepath,
-				# wants to be proper? properness doesn't work (search this sentence for more occurence)
+				# want to be proper? properness doesn't work (search this sentence for more occurence)
 				#files = { 'file' : (os.path.basename(self.__current_file), self.__current_slice) } )
 				files = { 'file' : ('file', self.__current_slice) } )
 
@@ -2074,7 +2017,7 @@ get information of the given path (dir / file) at Baidu Yun.
 						break
 					elif j < self.__retry:
 						j += 1
-						# TODO: Improve or make it TRY with the __requet retry logic
+						# TODO: Improve or make it DRY with the __request retry logic
 						perr("Slice MD5 mismatch, waiting {} seconds before retrying...".format(RetryDelayInSec))
 						time.sleep(RetryDelayInSec)
 						perr("Retrying #{} / {}".format(j + 1, self.__retry))
@@ -2114,8 +2057,7 @@ get information of the given path (dir / file) at Baidu Yun.
 			'slice-md5' : slicemd5str,
 			'content-crc32' : crcstr,
 			'ondup' : ondup }
-		if self.__isrev and ondup != 'newcopy':
-			pars['is_revision'] = 1
+		self.__add_isrev_param(ondup, pars)
 
 		self.pd("RapidUploading Length: {} MD5: {}, Slice-MD5: {}, CRC: {}".format(
 			self.__current_file_size, md5str, slicemd5str, crcstr))
@@ -2135,8 +2077,7 @@ get information of the given path (dir / file) at Baidu Yun.
 			'method' : 'upload',
 			'path' : remotepath,
 			'ondup' : ondup }
-		if self.__isrev and ondup != 'newcopy':
-			pars['is_revision'] = 1
+		self.__add_isrev_param(ondup, pars)
 
 		with open(localpath, "rb") as f:
 			return self.__post(cpcsurl + 'file',
@@ -2186,8 +2127,8 @@ get information of the given path (dir / file) at Baidu Yun.
 					upload = False
 					self.pv("Remote file '{}' already exists, skip uploading".format(rfile))
 				else: # the two files are different
-					if not self.shalloverwrite("Remote file '{}' exists but is different, ".format(rfile) + \
-							"do you want to overwrite it? [y/N]"):
+					if not self.shalloverwrite("Remote file '{}' exists but is different, "
+							"do you want to overwrite it? [y/N]".format(rfile)):
 						upload = False
 
 			if upload:
@@ -2292,38 +2233,47 @@ upload a file or directory (recursively)
 			perr("Error: invalid local path '{}' for uploading specified.".format(localpath))
 			return EParameter
 
-	def combine(self, remotefile, localfile = '', *args):
-		''' Usage: combine <remotefile> [md5s] [localfile] - \
+	# The parameter 'localfile' is a bit kluge as it carries double meanings,
+	# but this is to be command line friendly (one can not input an empty string '' from the command line),
+	# so let's just leave it like this unless we can devise a cleverer / clearer weay
+	def combine(self, remotefile, localfile = '*', *args):
+		''' Usage: combine <remotefile> [localfile] [md5s] - \
 try to create a file at PCS by combining slices, having MD5s specified
   remotefile - remote file at Baidu Yun (after app root directory at Baidu Yun)
-  md5s - MD5 digests of the slices, separated by spaces
-    if not specified, you must specify the 'listfile' using the '-l' or '--list-file' switch in command line. the MD5 digests will be read from the (text) file, which can store the MD5 digest seperate by new-line or spaces
-  localfile - local file for verification, if not specified, no verification is done
+  localfile - local file to verify against, passing in a star '*' or '/dev/null' means no verification
+  md5s - MD5 digests of the slices, can be:
+    - list of MD5 hex strings separated by spaces
+    - a string in the form of 'l<path>' where <path> points to a text file containing MD5 hex strings separated by spaces or line-by-line
 		'''
 		self.__slice_md5s = []
 		if args:
-			for arg in args:
-				self.__slice_md5s.append(arg)
-		elif self.__list_file_contents:
-			digests = filter(None, self.__list_file_contents.split())
-			for d in digests:
-				self.__slice_md5s.append(d)
+			if args[0].upper() == 'L':
+				try:
+					with open(args[1:], 'r') as f:
+						contents = f.read()
+						digests = filter(None, contents.split())
+						for d in digests:
+							self.__slice_md5s.append(d)
+				except IOError:
+					perr("Exception occured while reading file '{}'. Exception:\n{}".format(
+						localfile, traceback.format_exc()))
+			else:
+				for arg in args:
+					self.__slice_md5s.append(arg)
 		else:
-			perr("You MUST either provide the MD5s through the command line, "
-				"or using the '-l' ('--list-file') switch to specify "
-				"the 'listfile' to read MD5s from")
+			perr("You MUST provide the MD5s hex strings through arguments or a file.")
 			return EArgument
 
-		verify = self.__verify
-		if localfile:
-			self.__current_file = localfile
-			self.__current_file_size = getfilesize(localfile)
-		else:
+		original_verify = self.__verify
+		if not localfile or localfile == '*' or localfile == '/dev/null':
 			self.__current_file = '/dev/null' # Force no verify
 			self.__verify = False
+		else:
+			self.__current_file = localfile
+			self.__current_file_size = getfilesize(localfile)
 
 		result = self.__combine_file(get_pcs_path(remotefile))
-		self.__verify = verify
+		self.__verify = original_verify
 		return result
 
 	# no longer used
@@ -2493,8 +2443,8 @@ try to create a file at PCS by combining slices, having MD5s specified
 				self.pd("Same local file '{}' already exists, skip downloading".format(localfile))
 				return ENoError
 			else:
-				if not self.shalloverwrite("Same-name locale file '{}' exists but is different, ".format(localfile) + \
-						"do you want to overwrite it? [y/N]"):
+				if not self.shalloverwrite("Same-name locale file '{}' exists but is different, "
+						"do you want to overwrite it? [y/N]".format(localfile)):
 					pinfo("Same-name local file '{}' exists but is different, skip downloading".format(localfile))
 					return ENoError
 
@@ -2505,13 +2455,13 @@ try to create a file at PCS by combining slices, having MD5s specified
 				if pieces > 1:
 					offset = (pieces - 1) * self.__dl_chunk_size
 		elif os.path.isdir(localfile):
-			if not self.shalloverwrite("Same-name direcotry '{}' exists, ".format(localfile) + \
-				"do you want to remove it? [y/N]"):
+			if not self.shalloverwrite("Same-name direcotry '{}' exists, "
+				"do you want to remove it? [y/N]".format(localfile)):
 				pinfo("Same-name directory '{}' exists, skip downloading".format(localfile))
 				return ENoError
 
 			self.pv("Directory with the same name '{}' exists, removing ...".format(localfile))
-			result = removedir(localfile, self.Verbose)
+			result = removedir(localfile, self.verbose)
 			if result == ENoError:
 				self.pv("Removed")
 			else:
@@ -2520,7 +2470,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 		ldir, file = os.path.split(localfile)
 		if ldir and not os.path.exists(ldir):
-			result = makedir(ldir, verbose = self.Verbose)
+			result = makedir(ldir, verbose = self.verbose)
 			if result != ENoError:
 				perr("Fail to make directory '{}'".format(ldir))
 				return result
@@ -2594,7 +2544,10 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 	def __walk_remote_dir_act(self, r, args):
 		dirjs, filejs = args
 		j = r.json()
-		#self.pd("Remote path content JSON: {}".format(j))
+		if 'list' not in j:
+			self.pd("Key 'list' not found in the response of directory listing request:\n{}".format(j))
+			return ERequestFailed
+
 		paths = j['list']
 		for path in paths:
 			if path['isdir']:
@@ -2644,11 +2597,11 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 	def __prepare_local_dir(self, localdir):
 		result = ENoError
 		if os.path.isfile(localdir):
-			result = removefile(localdir, self.Verbose)
+			result = removefile(localdir, self.verbose)
 
 		if result == ENoError:
 			if localdir and not os.path.exists(localdir):
-				result = makedir(localdir, verbose = self.Verbose)
+				result = makedir(localdir, verbose = self.verbose)
 
 		return result
 
@@ -2698,7 +2651,7 @@ download a remote directory (recursively)
 		return self.__walk_remote_dir(rpath, self.__proceed_downdir, (rpath, lpath))
 
 	def __mkdir_act(self, r, args):
-		if self.Verbose:
+		if self.verbose:
 			j = r.json()
 			pr("path, ctime, mtime, fs_id")
 			pr("{path}, {ctime}, {mtime}, {fs_id}".format(**j))
@@ -3055,13 +3008,13 @@ if not specified, it defaults to the root directory
 			lcpath = joinpath(localdir, p) # local complete path
 			rcpath = rpath + '/' + p # remote complete path
 			if t == 'DF':
-				result = removedir(lcpath, self.Verbose)
+				result = removedir(lcpath, self.verbose)
 				subresult = self.__downfile(rcpath, lcpath)
 				if subresult != ENoError:
 					result = subresult
 			elif t == 'FD':
-				result = removefile(lcpath, self.Verbose)
-				subresult = makedir(lcpath, verbose = self.Verbose)
+				result = removefile(lcpath, self.verbose)
+				subresult = makedir(lcpath, verbose = self.verbose)
 				if subresult != ENoError:
 					result = subresult
 			else: # " t == 'F' " must be true
@@ -3078,7 +3031,7 @@ if not specified, it defaults to the root directory
 				if subresult != ENoError:
 					result = subresult
 			else: # " t == 'D' " must be true
-				subresult = makedir(lcpath, verbose = self.Verbose)
+				subresult = makedir(lcpath, verbose = self.verbose)
 				if subresult != ENoError:
 					result = subresult
 
@@ -3089,11 +3042,11 @@ if not specified, it defaults to the root directory
 				#p = os.path.join(localdir, l[1])
 				p = joinpath(localdir, l[1])
 				if os.path.isfile(p):
-					subresult = removefile(p, self.Verbose)
+					subresult = removefile(p, self.verbose)
 					if subresult != ENoError:
 						result = subresult
 				elif os.path.isdir(p):
-					subresult = removedir(p, self.Verbose)
+					subresult = removedir(p, self.verbose)
 					if subresult != ENoError:
 						result = subresult
 
@@ -3198,6 +3151,197 @@ if not specified, it defaults to the root directory
 		else:
 			return EFileNotFound
 
+# put all xslidian's bduss extensions here, i never tried out them though
+class PanAPI(ByPy):
+	IEBDUSSExpired = -6
+	BDUSSPath = ConfigDir + os.sep + 'bypy.bduss'
+	# Does https work? if so, we should always use https
+	#PanAPIUrl = 'http://pan.baidu.com/api/'
+	PanAPIUrl = 'https://pan.baidu.com/api/'
+
+	def __init__(self, **kwargs):
+		super(PanAPI, self).__init__(**kwargs)
+		self.__bduss = ''
+		self.__pancookies = {}
+		if not self.__load_local_bduss():
+			self.pv("BDUSS not found at '{}'.".format(PanAPI.BDUSSPath))
+
+	def __load_local_bduss(self):
+		try:
+			with open(PanAPI.BDUSSPath, 'rb') as infile:
+				self.__bduss = infile.readline().strip()
+				self.pd("BDUSS loaded: {}".format(self.__bduss))
+				self.__pancookies = {'BDUSS': self.__bduss}
+				return True
+		except IOError:
+			self.pd('Error loading BDUSS:')
+			self.pd(traceback.format_exc())
+			return False
+
+	# overriding
+	def __handle_more_response_error(self, r, sc, ec, act, actargs):
+		result = ERequestFailed
+
+		# user not exists
+		if ec == 31045: # and sc == 403:
+			self.pd("BDUSS has expired")
+			result = PanAPI.IEBDUSSExpired
+		# topath already exists
+		elif ec == 31196: # and sc == 403:
+			self.pd("UnzipCopy destination already exists.")
+			result = act(r, actargs)
+		# file copy failed
+		elif ec == 31197: # and sc == 503:
+			self.pd("File copy failed")
+			result = act(r, actargs)
+		# file size exceeds limit
+		elif ec == 31199: # and sc == 403:
+			result = act(r, actargs)
+
+		return result
+
+	def unzip(self, remotepath, subpath = '/', start = 0, limit = 1000):
+		''' Usage: unzip <remotepath> [<subpath> [<start> [<limit>]]]'''
+		rpath = get_pcs_path(remotepath)
+		return self.__panapi_unzip_file(rpath, subpath, start, limit);
+
+	def __panapi_unzip_file_act(self, r, args):
+		j = r.json()
+		self.pd("Unzip response: {}".format(j))
+		if j['errno'] == 0:
+			if 'time' in j:
+				perr("Extraction not completed yet: '{}'...".format(args['path']))
+				return ERequestFailed
+			elif 'list' in j:
+				for e in j['list']:
+					pr("{}\t{}\t{}".format(ls_type(e['isdir'] == 1), e['file_name'], e['size']))
+		return ENoError
+
+	def __panapi_unzip_file(self, rpath, subpath, start, limit):
+		pars = {
+			'path' : rpath,
+			'start' : start,
+			'limit' : limit,
+			'subpath' : '/' + subpath.strip('/') }
+
+		self.pd("Unzip request: {}".format(pars))
+		return self.__get(PanAPI.PanAPIUrl + 'unzip?app_id=250528',
+						  pars, self.__panapi_unzip_file_act, cookies = self.__pancookies, actargs = pars )
+
+	def extract(self, remotepath, subpath, saveaspath = None):
+		''' Usage: extract <remotepath> <subpath> [<saveaspath>]'''
+		rpath = get_pcs_path(remotepath)
+		topath = get_pcs_path(saveaspath)
+		if not saveaspath:
+			topath = os.path.dirname(rpath) + '/' + subpath
+		return self.__panapi_unzipcopy_file(rpath, subpath, topath)
+
+	def __panapi_unzipcopy_file_act(self, r, args):
+		j = r.json()
+		self.pd("UnzipCopy response: {}".format(j))
+		if 'path' in j:
+			self.pv("Remote extract: '{}#{}' =xx=> '{}' OK.".format(args['path'], args['subpath'], j[u'path']))
+			return ENoError
+		elif 'error_code' in j:
+			if j['error_code'] == 31196:
+				perr("Remote extract: '{}#{}' =xx=> '{}' FAILED. File already exists.".format(args['path'], args['subpath'], args['topath']))
+				subresult = self.__delete(args['topath'])
+				if subresult == ENoError:
+					return self.__panapi_unzipcopy_file(args['path'], args['subpath'], args['topath'])
+				else:
+					return ERequestFailed
+			elif j['error_code'] == 31199:
+				perr("Remote extract: '{}#{}' =xx=> '{}' FAILED. File too large.".format(args['path'], args['subpath'], args['topath']))
+				return EMaxRetry
+			else:
+				perr("Remote extract: '{}#{}' =xx=> '{}' FAILED. Unknown error {}: {}.".format(args['path'], args['subpath'], args['topath'], j['error_code'], j['error_msg']))
+		return EMaxRetry
+
+	def __panapi_unzipcopy_file(self, rpath, subpath, topath):
+		pars = {
+			'app_id' : 250528,
+			'method' : 'unzipcopy',
+			'path' : rpath,
+			'subpath' : '/' + subpath.strip('/'),
+			'topath' : topath }
+
+		self.pd("UnzipCopy request: {}".format(pars))
+		return self.__get(pcsurl + 'file',
+						  pars, self.__panapi_unzipcopy_file_act, addtoken = False, cookies = self.__pancookies, actargs = pars )
+
+	def revision(self, remotepath):
+		''' Usage: revision <remotepath> '''
+		rpath = get_pcs_path(remotepath)
+		return self.__panapi_revision_list(rpath)
+
+	def history(self, remotepath):
+		''' Usage: history <remotepath> '''
+		return self.revision(remotepath)
+
+	def __panapi_revision_list_act(self, r, args):
+		j = r.json()
+		self.pd("RevisionList response: {}".format(j))
+		if j['errno'] == 0:
+			if 'list' in j:
+				for e in j['list']:
+					pr("{}\t{}\t{}".format(e['revision'], e['size'], ls_time(e['revision'] / 1e6)))
+			return ENoError
+		if j['errno'] == -6: # invalid BDUSS
+			pr("BDUSS has expired.")
+			return PanAPI.IEBDUSSExpired
+		if j['errno'] == -9:
+			pr("File '{}' not exists.".format(args['path']))
+			return EFileNotFound
+		return ENoError
+
+	def __panapi_revision_list(self, rpath):
+		pars = {
+			'path' : rpath,
+			'desc' : 1 }
+
+		self.pd("RevisionList request: {}".format(pars))
+		return self.__post(PanAPI.PanAPIUrl + 'revision/list?app_id=250528',
+						   {}, self.__panapi_revision_list_act, pars, data = pars, cookies = self.__pancookies )
+
+	def revert(self, remotepath, revision, dir = None):
+		''' Usage: revert <remotepath> revisionid [dir]'''
+		rpath = get_pcs_path(remotepath)
+		dir = get_pcs_path(dir)
+		if not dir:
+			dir = os.path.dirname(rpath)
+		return self.__panapi_revision_revert(rpath, revision, dir)
+
+	def __panapi_revision_revert_act(self, r, args):
+		j = r.json()
+		self.pd("RevisionRevert response: {}".format(j))
+		if j['errno'] == 0:
+			self.pv("Remote revert: '{}#{}' =rr=> '{}' OK.".format(args['path'], args['revision'], j['path']))
+			return ENoError
+		if j['errno'] == -6: # invalid BDUSS
+			pr("BDUSS has expired.")
+			return PanAPI.IEBDUSSExpired
+		if j['errno'] == -9:
+			pr("File '{}' not exists.".format(args['path']))
+			return EFileNotFound
+		if j['errno'] == 10:
+			pr("Reverting '{}' in process...".format(args['path']))
+			return ERequestFailed
+		return ENoError
+
+	def __panapi_revision_revert(self, rpath, revision, dir = None):
+		if not dir:
+			dir = os.path.dirname(rpath)
+		pars = {
+			'revision' : revision,
+			'path' : rpath,
+			'type' : 2,
+			'dir' : dir }
+
+		self.pd("RevisionRevert request: {}".format(pars))
+		return self.__post(PanAPI.PanAPIUrl + 'revision/revert?app_id=250528',
+						   {}, self.__panapi_revision_revert_act, pars, data = pars, cookies = self.__pancookies )
+
+
 OriginalFloatTime = True
 
 def onexit(retcode = ENoError):
@@ -3209,7 +3353,6 @@ def onexit(retcode = ENoError):
 	# we don't act too smart.
 	#cached.cleancache()
 	cached.savecache()
-	os.stat_float_times(OriginalFloatTime)
 	# if we flush() on Ctrl-C, we get
 	# IOError: [Errno 32] Broken pipe
 	sys.stdout.flush()
@@ -3221,204 +3364,161 @@ def sighandler(signum, frame):
 	traceback.print_stack(frame)
 	onexit(EAbort)
 
-def main(argv=None): # IGNORE:C0111
-	''' Main Entry '''
+# http://www.gnu.org/software/libc/manual/html_node/Basic-Signal-Handling.html
+def setsighandler(signum, handler):
+	if signal.signal(signum, handler) == signal.SIG_IGN:
+		signal.signal(signum, signal.SIG_IGN)
 
-	# *** IMPORTANT ***
-	# We must set this in order for cache to work,
-	# as we need to get integer file mtime, which is used as the key of Hash Cache
-	global OriginalFloatTime
-	OriginalFloatTime = os.stat_float_times()
-	os.stat_float_times(False)
-	# --- IMPORTANT ---
-
-	result = ENoError
-	if argv is None:
-		argv = sys.argv
-	else:
-		sys.argv.extend(argv)
-
+def setuphandlers():
 	if sys.platform == 'win32':
-		#signal.signal(signal.CTRL_C_EVENT, sighandler)
-		#signal.signal(signal.CTRL_BREAK_EVENT, sighandler)
+		# setsighandler(signal.CTRL_C_EVENT, sighandler)
+		# setsighandler(signal.CTRL_BREAK_EVENT, sighandler)
 		# bug, see: http://bugs.python.org/issue9524
 		pass
 	else:
-		signal.signal(signal.SIGBUS, sighandler)
-		signal.signal(signal.SIGHUP, sighandler)
+		setsighandler(signal.SIGBUS, sighandler)
+		setsighandler(signal.SIGHUP, sighandler)
 		# https://stackoverflow.com/questions/108183/how-to-prevent-sigpipes-or-handle-them-properly
-		signal.signal(signal.SIGPIPE, signal.SIG_IGN)
-		signal.signal(signal.SIGQUIT, sighandler)
-		signal.signal(signal.SIGSYS, sighandler)
+		setsighandler(signal.SIGPIPE, signal.SIG_IGN)
+		setsighandler(signal.SIGQUIT, sighandler)
+		setsighandler(signal.SIGSYS, sighandler)
+	setsighandler(signal.SIGABRT, sighandler)
+	setsighandler(signal.SIGFPE, sighandler)
+	setsighandler(signal.SIGILL, sighandler)
+	setsighandler(signal.SIGINT, sighandler)
+	setsighandler(signal.SIGSEGV, sighandler)
+	setsighandler(signal.SIGTERM, sighandler)
 
-	signal.signal(signal.SIGABRT, sighandler)
-	signal.signal(signal.SIGFPE, sighandler)
-	signal.signal(signal.SIGILL, sighandler)
-	signal.signal(signal.SIGINT, sighandler)
-	signal.signal(signal.SIGSEGV, sighandler)
-	signal.signal(signal.SIGTERM, sighandler)
+def getparser():
+	#name = os.path.basename(sys.argv[0])
+	version = "v%s" % __version__
+	version_message = '%%(prog)s %s' % (version)
+	docstring = __import__('__main__').__doc__
+	doclist = docstring.split("---")
+	desc = "{} - {}\n{}".format(version_message, doclist[0].strip(), doclist[1].strip())
 
-	#program_name = os.path.basename(sys.argv[0])
-	program_version = "v%s" % __version__
-	program_version_message = '%%(prog)s %s' % (program_version )
-	shortdesc = __import__('__main__').__doc__.split("\n")[1]
-	shortdesc = program_version_message + ' -- ' + shortdesc.split('--')[1]
-	program_shortdesc = shortdesc
-	program_longdesc = __import__('__main__').__doc__.split("---\n")[1]
+	# setup argument parser
+	epilog = "Commands:\n"
+	summary = []
+	for k, v in ByPy.__dict__.items():
+		if callable(v) and v.__doc__:
+			help = v.__doc__.strip()
+			pos = help.find(HelpMarker)
+			if pos != -1:
+				pos_body = pos + len(HelpMarker)
+				helpbody = help[pos_body:]
+				helpline = helpbody.split('\n')[0].strip() + '\n'
+				if helpline.find('help') == 0:
+					summary.insert(0, helpline)
+				else:
+					summary.append(helpline)
+
+	remaining = summary[1:]
+	remaining.sort()
+	summary = [summary[0]] + remaining
+	epilog += ''.join(summary)
+
+	parser = ArgumentParser(
+		description=desc,
+		formatter_class=RawDescriptionHelpFormatter, epilog=epilog)
+
+	# help, version, program information etc
+	parser.add_argument('-V', '--version', action='version', version=version_message)
+
+	# debug, logging
+	parser.add_argument("-d", "--debug", dest="debug", action="count", default=0, help="set debugging level (-dd to increase debugging level, -ddd to enable HTPP traffic debugging as well (very talkative)) [default: %(default)s]")
+	parser.add_argument("-v", "--verbose", dest="verbose", default=0, action="count", help="set verbosity level [default: %(default)s]")
+
+	# program tunning, configration (those will be passed to class ByPy)
+	parser.add_argument("-r", "--retry", dest="retry", default=5, help="number of retry attempts on network error [default: %(default)i times]")
+	parser.add_argument("-q", "--quit-when-fail", dest="quit", default=False, help="quit when maximum number of retry failed [default: %(default)s]")
+	parser.add_argument("-t", "--timeout", dest="timeout", default=60, help="network timeout in seconds [default: %(default)s]")
+	parser.add_argument("-s", "--slice", dest="slice", default=DefaultSliceSize, help="size of file upload slice (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultSliceInMB))
+	parser.add_argument("--chunk", dest="chunk", default=DefaultDlChunkSize, help="size of file download chunk (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultDlChunkSize / OneM))
+	parser.add_argument("-e", "--verify", dest="verify", action="store_true", default=False, help="Verify upload / download [default : %(default)s]")
+	parser.add_argument("-f", "--force-hash", dest="forcehash", action="store_true", help="force file MD5 / CRC32 calculation instead of using cached value")
+	parser.add_argument("--resume-download", dest="resumedl", default=True, help="resume instead of restarting when downloading if local file already exists [default: %(default)s]")
+	parser.add_argument("--include-regex", dest="incregex", default='', help="regular expression of files to include. if not specified (default), everything is included. for download, the regex applies to the remote files; for upload, the regex applies to the local files. to exclude files, think about your regex, some tips here: https://stackoverflow.com/questions/406230/regular-expression-to-match-string-not-containing-a-word [default: %(default)s]")
+	parser.add_argument("--on-dup", dest="ondup", default='overwrite', help="what to do when the same file / folder exists in the destination: 'overwrite', 'skip', 'prompt' [default: %(default)s]")
+	parser.add_argument("--no-symlink", dest="followlink", action="store_false", help="DON'T follow symbol links when uploading / syncing up")
+	parser.add_argument(DisableSslCheckOption, dest="checkssl", action="store_false", help="DON'T verify host SSL cerificate")
+	parser.add_argument(CaCertsOption, dest="cacerts", help="Specify the path for CA Bundle [default: %(default)s]")
+	parser.add_argument("--mirror", dest="mirror", default=None, help="Specify the PCS mirror (e.g. bj.baidupcs.com. Open 'https://pcs.baidu.com/rest/2.0/pcs/manage?method=listhost' to get the list) to use. [default: " + PcsDomain + "]")
+	parser.add_argument("--rapid-upload-only", dest="rapiduploadonly", action="store_true", help="Only upload large files that can be rapidly uploaded")
+
+	# action
+	parser.add_argument(CleanOptionShort, CleanOptionLong, dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean settings and hash cache [default: %(default)s]")
+
+	# the MAIN parameter - what command to perform
+	parser.add_argument("command", nargs='*', help = "operations (quota, list, etc)")
+
+	return parser;
+
+def clean_prog_files(cleanlevel, verbose):
+	result = removefile(TokenFilePath, verbose)
+	if result == ENoError:
+		pr("Token file '{}' removed. You need to re-authorize "
+		   "the application upon next run".format(TokenFilePath))
+	else:
+		perr("Failed to remove the token file '{}'".format(TokenFilePath))
+		perr("You need to remove it manually")
+
+	if cleanlevel >= 2:
+		subresult = os.remove(HashCachePath)
+		if subresult == ENoError:
+			pr("Hash Cache File '{}' removed.".format(HashCachePath))
+		else:
+			perr("Failed to remove the Hash Cache File '{}'".format(HashCachePath))
+			perr("You need to remove it manually")
+			result = subresult
+
+	return result
+
+def main(argv=None): # IGNORE:C0111
+	''' Main Entry '''
 
 	try:
-		# +++ DEPRECATED +++
-		# check if ApiKey, SecretKey and AppPcsPath are correctly specified.
-		#if not ApiKey or not SecretKey or not AppPcsPath:
-		if False:
-			ApiNotConfigured = '''
-*** ABORT *** Baidu API not properly configured
+		result = ENoError
+		if argv is None:
+			argv = sys.argv
+		else:
+			sys.argv.extend(argv)
 
-- Please go to 'http://developer.baidu.com/' and create an application.
-- Get the ApiKey, SecretKey and configure the App Path (default: '/apps/bypy/')
-- Update the corresponding variables at the beginning of this file, \
-right after the '# PCS configuration constants' comment.
-- Try to run this program again
+		setuphandlers()
 
-*** ABORT ***
-'''
-			pr(ApiNotConfigured)
-			return EApiNotConfigured
-		# --- DEPRECATED ---
-
-		# setup argument parser
-		epilog = "Commands:\n"
-		summary = []
-		for k, v in ByPy.__dict__.items():
-			if callable(v) and v.__doc__:
-				help = v.__doc__.strip()
-				pos = help.find(ByPy.HelpMarker)
-				if pos != -1:
-					pos_body = pos + len(ByPy.HelpMarker)
-					helpbody = help[pos_body:]
-					helpline = helpbody.split('\n')[0].strip() + '\n'
-					if helpline.find('help') == 0:
-						summary.insert(0, helpline)
-					else:
-						summary.append(helpline)
-
-		remaining = summary[1:]
-		remaining.sort()
-		summary = [summary[0]] + remaining
-		epilog += ''.join(summary)
-
-		parser = ArgumentParser(
-			description=program_shortdesc + '\n\n' + program_longdesc,
-			formatter_class=RawDescriptionHelpFormatter, epilog=epilog)
-
-		# special
-		parser.add_argument("--TESTRUN", dest="TESTRUN", action="store_true", help="Perform python doctest")
-		parser.add_argument("--PROFILE", dest="PROFILE", action="store_true", help="Profile the code")
-
-		# help, version, program information etc
-		parser.add_argument('-V', '--version', action='version', version=program_version_message)
-		#parser.add_argument(dest="paths", help="paths to folder(s) with source file(s) [default: %(default)s]", metavar="path", nargs='+')
-
-		# debug, logging
-		parser.add_argument("-d", "--debug", dest="debug", action="count", default=0, help="enable debugging & logging [default: %(default)s]")
-		parser.add_argument("-v", "--verbose", dest="verbose", default=0, action="count", help="set verbosity level [default: %(default)s]")
-
-		# program tunning, configration (those will be passed to class ByPy)
-		parser.add_argument("-r", "--retry", dest="retry", default=5, help="number of retry attempts on network error [default: %(default)i times]")
-		parser.add_argument("-q", "--quit-when-fail", dest="quit", default=False, help="quit when maximum number of retry failed [default: %(default)s]")
-		parser.add_argument("-t", "--timeout", dest="timeout", default=60, help="network timeout in seconds [default: %(default)s]")
-		parser.add_argument("-s", "--slice", dest="slice", default=DefaultSliceSize, help="size of file upload slice (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultSliceInMB))
-		parser.add_argument("--chunk", dest="chunk", default=DefaultDlChunkSize, help="size of file download chunk (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultDlChunkSize / OneM))
-		parser.add_argument("-e", "--verify", dest="verify", action="store_true", default=False, help="Verify upload / download [default : %(default)s]")
-		parser.add_argument("-f", "--force-hash", dest="forcehash", action="store_true", help="force file MD5 / CRC32 calculation instead of using cached value")
-		parser.add_argument("-l", "--list-file", dest="listfile", default=None, help="input list file (used by some of the commands only [default: %(default)s]")
-		parser.add_argument("--resume-download", dest="resumedl", default=True, help="resume instead of restarting when downloading if local file already exists [default: %(default)s]")
-		parser.add_argument("--include-regex", dest="incregex", default='', help="regular expression of files to include. if not specified (default), everything is included. for download, the regex applies to the remote files; for upload, the regex applies to the local files. to exclude files, think about your regex, some tips here: https://stackoverflow.com/questions/406230/regular-expression-to-match-string-not-containing-a-word [default: %(default)s]")
-		parser.add_argument("--on-dup", dest="ondup", default='overwrite', help="what to do when the same file / folder exists in the destination: 'overwrite', 'skip', 'prompt' [default: %(default)s]")
-		parser.add_argument("--no-symlink", dest="followlink", action="store_false", help="DON'T follow symbol links when uploading / syncing up")
-		parser.add_argument(DisableSslCheckOption, dest="checkssl", action="store_false", help="DON'T verify host SSL cerificate")
-		parser.add_argument(CaCertsOption, dest="cacerts", help="Specify the path for CA Bundle [default: %(default)s]")
-		parser.add_argument("--mirror", dest="mirror", default=None, help="Specify the PCS mirror (e.g. bj.baidupcs.com. Open 'https://pcs.baidu.com/rest/2.0/pcs/manage?method=listhost' to get the list) to use.")
-		parser.add_argument("--rapid-upload-only", dest="rapiduploadonly", action="store_true", help="Only upload large files that can be rapidly uploaded")
-
-		# action
-		parser.add_argument(CleanOptionShort, CleanOptionLong, dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean settings and hash cache [default: %(default)s]")
-
-		# the MAIN parameter - what command to perform
-		parser.add_argument("command", nargs='*', help = "operations (quota / list)")
-
-		# Process arguments
+		parser = getparser()
 		args = parser.parse_args()
 
-		if args.mirror:
-			global pcsurl
-			global cpcsurl
-			global dpcsurl
-			pcsurl = re.sub(r'//.*?/', '//' + args.mirror + '/', pcsurl)
-			cpcsurl = pcsurl
-			dpcsurl = pcsurl
+		# house-keeping reminder
+		if os.path.exists(HashCachePath):
+			cachesize = getfilesize(HashCachePath)
+			if cachesize > 10 * OneM or cachesize == -1:
+				pr((
+				   "*** WARNING ***\n"
+				   "Hash Cache file '{0}' is very large ({1}).\n"
+				   "This may affect program's performance (high memory consumption).\n"
+				   "You can first try to run 'bypy.py cleancache' to slim the file.\n"
+				   "But if the file size won't reduce (this warning persists),"
+				   " you may consider deleting / moving the Hash Cache file '{0}'\n"
+				   "*** WARNING ***\n\n\n").format(HashCachePath, human_size(cachesize)))
 
+		# check for situations that require no ByPy object creation first
+		if args.clean >= 1:
+			return clean_prog_files(args.clean, args.verbose)
+
+
+		# some arguments need some processing
 		try:
 			slice_size = interpret_size(args.slice)
 		except (ValueError, KeyError):
 			pr("Error: Invalid slice size specified '{}'".format(args.slice))
 			return EArgument
+
 		try:
 			chunk_size = interpret_size(args.chunk)
 		except (ValueError, KeyError):
 			pr("Error: Invalid slice size specified '{}'".format(args.slice))
 			return EArgument
-
-		if args.TESTRUN:
-			return TestRun()
-
-		if args.PROFILE:
-			return Profile()
-
-		pr("Token file: '{}'".format(TokenFilePath))
-		pr("Hash Cache file: '{}'".format(HashCachePath))
-		pr("App root path at Baidu Yun '{}'".format(AppPcsPath))
-		pr("sys.stdin.encoding = {}".format(sys.stdin.encoding))
-		pr("sys.stdout.encoding = {}".format(sys.stdout.encoding))
-		pr("sys.stderr.encoding = {}".format(sys.stderr.encoding))
-
-		if args.verbose > 0:
-			pr("Verbose level = {}".format(args.verbose))
-			pr("Debug = {}".format(args.debug))
-
-		pr("----\n")
-
-		if os.path.exists(HashCachePath):
-			cachesize = getfilesize(HashCachePath)
-			if cachesize > 10 * OneM or cachesize == -1:
-				pr((
-"*** WARNING ***\n"
-"Hash Cache file '{0}' is very large ({1}).\n"
-"This may affect program's performance (high memory consumption).\n"
-"You can first try to run 'bypy.py cleancache' to slim the file.\n"
-"But if the file size won't reduce (this warning persists),"
-" you may consider deleting / moving the Hash Cache file '{0}'\n"
-"*** WARNING ***\n\n\n").format(HashCachePath, human_size(cachesize)))
-
-		if args.clean >= 1:
-			result = removefile(TokenFilePath, args.verbose)
-			if result == ENoError:
-				pr("Token file '{}' removed. You need to re-authorize "
-					"the application upon next run".format(TokenFilePath))
-			else:
-				perr("Failed to remove the token file '{}'".format(TokenFilePath))
-				perr("You need to remove it manually")
-
-			if args.clean >= 2:
-				subresult = os.remove(HashCachePath)
-				if subresult == ENoError:
-					pr("Hash Cache File '{}' removed.".format(HashCachePath))
-				else:
-					perr("Failed to remove the Hash Cache File '{}'".format(HashCachePath))
-					perr("You need to remove it manually")
-					result = subresult
-
-			return result
 
 		if len(args.command) <= 0 or \
 			(len(args.command) == 1 and args.command[0].lower() == 'help'):
@@ -3434,11 +3534,13 @@ right after the '# PCS configuration constants' comment.
 			cached.debug = args.debug
 			cached.loadcache()
 
+			# we construct a ByPy object here.
+			# if you want to try PanAPI, simply replace ByPy with PanAPI, and all the bduss related function _should_ work
+			# I didn't use PanAPI here as I have never tried out those functions inside
 			by = ByPy(slice_size = slice_size, dl_chunk_size = chunk_size,
 					verify = args.verify,
 					retry = int(args.retry), timeout = timeout,
 					quit_when_fail = args.quit,
-					listfile = args.listfile,
 					resumedownload = args.resumedl,
 					incregex = args.incregex,
 					ondup = args.ondup,
@@ -3446,6 +3548,7 @@ right after the '# PCS configuration constants' comment.
 					checkssl = args.checkssl,
 					cacerts = args.cacerts,
 					rapiduploadonly = args.rapiduploadonly,
+					mirror = args.mirror,
 					verbose = args.verbose, debug = args.debug)
 			uargs = []
 			for arg in args.command[1:]:
@@ -3467,27 +3570,6 @@ right after the '# PCS configuration constants' comment.
 		# raise
 
 	onexit(result)
-
-def TestRun():
-	import doctest
-	doctest.testmod()
-	return ENoError
-
-def Profile():
-	import cProfile
-	import pstats
-	profile_filename = 'bypy_profile.txt'
-	cProfile.run('main()', profile_filename)
-	statsfile = open("profile_stats.txt", "wb")
-	p = pstats.Stats(profile_filename, stream=statsfile)
-	stats = p.strip_dirs().sort_stats('cumulative')
-	stats.print_stats()
-	statsfile.close()
-	sys.exit(ENoError)
-
-def unused():
-	''' just prevent unused warnings '''
-	inspect.stack()
 
 if __name__ == "__main__":
 	main()

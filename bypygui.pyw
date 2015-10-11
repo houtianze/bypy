@@ -12,9 +12,9 @@ import Tkinter as tk
 import tkFileDialog
 
 vi = sys.version_info
-if vi.major == 2:
+if vi[0] == 2:
 	import ScrolledText as scrt
-elif vi.major == 3:
+elif vi[0] == 3:
 	import scrolledtext as scrt
 
 MyReadOnlyText = tk.Text
