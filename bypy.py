@@ -2190,7 +2190,7 @@ get information of the given path (dir / file) at Baidu Yun.
 			self.pd("'{}' is small and being non-slicing uploaded.".format(self.__current_file))
 			return self.__upload_one_file(localpath, remotepath, ondup)
 
-	def upload(self, localpath = u'', remotepath = '', ondup = "overwrite"):
+	def upload(self, localpath = '', remotepath = '', ondup = "overwrite"):
 		''' Usage: upload [localpath] [remotepath] [ondup] - \
 upload a file or directory (recursively)
     localpath - local path, is the current directory '.' if not specified
