@@ -33,7 +33,7 @@ The main purpose is to utilize Baidu Yun in Linux environment (e.g. Raspberry Pi
 from __future__ import unicode_literals
 
 ### special variables that say about this module
-__version__ = '1.2.0'
+__version__ = '1.2.1'
 
 ### return (error) codes
 # they are put at the top because:
@@ -1113,7 +1113,7 @@ class ByPy(object):
 			if os.path.exists(oldfile):
 				dst = newfile
 				if os.path.exists(newfile):
-					dst = TokenFilePath + '.old'
+					dst = dst + '.old'
 				result = movefile(oldfile, dst) and result
 
 		return result
@@ -2024,6 +2024,8 @@ get information of the given path (dir / file) at Baidu Yun.
 					else:
 						self.__slice_md5s = []
 						break
+				if ec != ENoError:
+					break
 				i += 1
 
 		if ec != ENoError:
