@@ -40,4 +40,4 @@ nosetests.xml
 
 ### personal
 ## PyCharm
-.idea/
+#.idea/

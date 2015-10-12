@@ -1266,6 +1266,7 @@ class ByPy(object):
 		self.__access_token = ''
 		self.__remote_json = {}
 		self.__slice_md5s = []
+		self.__cookies = {}
 		# TODO: whether this works is still to be tried out
 		self.__isrev = False
 
@@ -2396,7 +2397,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 			headers['User-Agent'] = 'netdisk;5.2.7.2;PC;PC-Windows;6.2.9200;WindowsBaiduYunGuanJia'
 
 			subresult = self.__get(dpcsurl + 'file', pars,
-				self.__downchunks_act, (rfile, offset, rsize, start_time), headers = headers, cookies = self.__pancookies)
+				self.__downchunks_act, (rfile, offset, rsize, start_time), headers = headers, cookies = self.__cookies)
 			if subresult != ENoError:
 				return subresult
 
@@ -3164,7 +3165,6 @@ class PanAPI(ByPy):
 	def __init__(self, **kwargs):
 		super(PanAPI, self).__init__(**kwargs)
 		self.__bduss = ''
-		self.__pancookies = {}
 		if not self.__load_local_bduss():
 			self.pv("BDUSS not found at '{}'.".format(PanAPI.BDUSSPath))
 
@@ -3173,7 +3173,7 @@ class PanAPI(ByPy):
 			with open(PanAPI.BDUSSPath, 'rb') as infile:
 				self.__bduss = infile.readline().strip()
 				self.pd("BDUSS loaded: {}".format(self.__bduss))
-				self.__pancookies = {'BDUSS': self.__bduss}
+				self.__cookies = {'BDUSS': self.__bduss}
 				return True
 		except IOError:
 			self.pd('Error loading BDUSS:')
@@ -3228,7 +3228,7 @@ class PanAPI(ByPy):
 
 		self.pd("Unzip request: {}".format(pars))
 		return self.__get(PanAPI.PanAPIUrl + 'unzip?app_id=250528',
-						  pars, self.__panapi_unzip_file_act, cookies = self.__pancookies, actargs = pars )
+						  pars, self.__panapi_unzip_file_act, cookies = self.__cookies, actargs = pars )
 
 	def extract(self, remotepath, subpath, saveaspath = None):
 		''' Usage: extract <remotepath> <subpath> [<saveaspath>]'''
@@ -3269,7 +3269,7 @@ class PanAPI(ByPy):
 
 		self.pd("UnzipCopy request: {}".format(pars))
 		return self.__get(pcsurl + 'file',
-						  pars, self.__panapi_unzipcopy_file_act, addtoken = False, cookies = self.__pancookies, actargs = pars )
+						  pars, self.__panapi_unzipcopy_file_act, addtoken = False, cookies = self.__cookies, actargs = pars )
 
 	def revision(self, remotepath):
 		''' Usage: revision <remotepath> '''
@@ -3303,7 +3303,7 @@ class PanAPI(ByPy):
 
 		self.pd("RevisionList request: {}".format(pars))
 		return self.__post(PanAPI.PanAPIUrl + 'revision/list?app_id=250528',
-						   {}, self.__panapi_revision_list_act, pars, data = pars, cookies = self.__pancookies )
+						   {}, self.__panapi_revision_list_act, pars, data = pars, cookies = self.__cookies )
 
 	def revert(self, remotepath, revision, dir = None):
 		''' Usage: revert <remotepath> revisionid [dir]'''
@@ -3341,7 +3341,7 @@ class PanAPI(ByPy):
 
 		self.pd("RevisionRevert request: {}".format(pars))
 		return self.__post(PanAPI.PanAPIUrl + 'revision/revert?app_id=250528',
-						   {}, self.__panapi_revision_revert_act, pars, data = pars, cookies = self.__pancookies )
+						   {}, self.__panapi_revision_revert_act, pars, data = pars, cookies = self.__cookies )
 
 
 OriginalFloatTime = True
