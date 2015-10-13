@@ -1389,7 +1389,8 @@ class ByPy(object):
 						result = EFatal
 						perr("FATAL: Token refreshing failed, can't continue.\nQuitting...\n")
 						onexit(result)
-					# File md5 not found, you should use upload API to upload the whole file.
+				# File md5 not found, you should use upload API to upload the whole file.
+				elif ec == IEMD5NotFound: # and sc == 404:
 					self.pd("MD5 not found, rapidupload failed")
 					result = ec
 				# superfile create failed
