@@ -1412,7 +1412,7 @@ class ByPy(object):
 				else:
 					# gate for child classes to customize behaviors
 					# the function should return ERequestFailed if it doesn't handle the case
-					result = self.__handle_more_response_error(self, r, sc, ec, act, actargs)
+					result = self.__handle_more_response_error(r, sc, ec, act, actargs)
 					if result == ERequestFailed and dumpex:
 						self.__dump_exception(None, url, pars, r, act)
 		except (requests.exceptions.RequestException,
