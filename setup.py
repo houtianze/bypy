@@ -20,7 +20,21 @@ setup(
 	scripts=['bypy.py', 'bypygui.pyw'],
 	keywords = ['bypy', 'bypy.py', 'baidu pcs', 'baidu yun', 'baidu pan', 'baidu netdisk',
 				'baidu cloud storage', 'baidu personal cloud storage',
-				'百度云', '百度云盘', '百度网盘', '百度个人云存储']
+				'百度云', '百度云盘', '百度网盘', '百度个人云存储'],
+	classifiers = [
+		'Development Status :: 5 - Production/Stable',
+		'Environment :: Console',
+		'Intended Audience :: End Users/Desktop',
+		'Intended Audience :: Developers',
+		'Intended Audience :: System Administrators',
+		'License :: OSI Approved :: MIT License',
+		'Natural Language :: English',
+		'Operating System :: MacOS :: MacOS X',
+		'Operating System :: Microsoft :: Windows',
+		'Operating System :: POSIX',
+		'Programming Language :: Python',
+		'Topic :: Utilities',
+		'Topic :: Internet :: WWW/HTTP']
 	)
 
 # vim: set fileencoding=utf-8
