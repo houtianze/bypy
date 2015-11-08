@@ -67,6 +67,10 @@ IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload 
 ### imports
 # version check must pass before any further action
 import sys
+## Import-related constant strings
+PipBinaryName = 'pip' + sys.version_info[0]
+PipInstallCommand = PipBinaryName + ' install requests[security]'
+PipUpgradeCommand = PipBinaryName + ' install -U requests[security]'
 if sys.version_info[0] != 2 or sys.version_info[1] < 7:
 	print("Error: Incorrect Python version. You need 2.7 or above (but not 3)")
 	sys.exit(EIncorrectPythonVersion)
@@ -140,9 +144,8 @@ from argparse import RawDescriptionHelpFormatter
 try:
 	import requests
 except:
-	print("Fail to import the 'requests' library\n"
-		  "You need to install the Requests library\n"
-		  "You can install it by running 'pip install requests[security]'")
+	print("Fail to import the 'requests' library.\n"
+		"You need to install it by running '{}".format(PipInstallCommand))
 	raise
 
 # there was a WantWriteError uncaught exception for Urllib3:
@@ -158,7 +161,7 @@ except:
 requests_version = requests.__version__.split('.')
 if int(requests_version[0]) < 2 or (requests_version[0] == 2 and requests_version[1] < 5):
 	print("Your version of Python Requests library is too low (minimum version 2.5.0 is required).\n"
-		  "You can run 'pip install -U requests[security]' to upgrade it to the latest version.")
+		  "You can run '{}' to upgrade it to the latest version.".format(PipUpgradeCommand))
 	raise
 
 #### Definitions that are real world constants
@@ -1070,8 +1073,10 @@ class RequestsRequester(object):
 			#ul3.disable_warnings(ul3.exceptions.InsecurePlatformWarning)
 			ul3.disable_warnings()
 		except:
-			perr("Failed to disable warnings for Urllib3.")
-			perr("Exception:\n{}".format(traceback.format_exc()))
+			perr("Failed to disable warnings for Urllib3.\n"
+				"Possibly the requests library is out of date?\n"
+				"You can upgrade it by running '{}'.\n"
+				"Exception:\n{}".format(PipUpgradeCommand, traceback.format_exc()))
 			pass
 
 	# only if user specifies '-ddd' or more 'd's, the following
@@ -1731,6 +1736,10 @@ Possible fixes:
 				'client_id' : self.__apikey}
 			return self.__post(TokenUrl, pars, self.__refresh_token_act)
 
+	def __walk_normal_file(self, dir):
+		for walk in os.walk(dir, followlinks=self.__followlink):
+			yield tuple(t for t in walk if os.path.isfile(t[2]))
+
 	def __quota_act(self, r, args):
 		j = r.json()
 		pr('Quota: ' + human_size(j['quota']))
@@ -2149,7 +2158,8 @@ get information of the given path (dir / file) at Baidu Yun.
 		self.pd("Uploading directory '{}' to '{}'".format(localpath, remotepath))
 		# it's so minor that we don't care about the return value
 		self.__mkdir(remotepath, dumpex = False)
-		for walk in os.walk(localpath, followlinks=self.__followlink):
+		#for walk in os.walk(localpath, followlinks=self.__followlink):
+		for walk in self.__walk_normal_file(localpath):
 			self.__walk_upload(localpath, remotepath, ondup, walk)
 
 	def __upload_file(self, localpath, remotepath, ondup = 'overwrite'):
@@ -2881,7 +2891,8 @@ restore a file from the recycle bin
 
 	def __gather_local_dir(self, dir):
 		self.__local_dir_contents = PathDictTree()
-		for walk in os.walk(dir, followlinks=self.__followlink):
+		#for walk in os.walk(dir, followlinks=self.__followlink):
+		for walk in self.__walk_normal_file(dir):
 			self.__proceed_local_gather(len(dir), walk)
 		self.pd(self.__local_dir_contents)
 
@@ -3563,7 +3574,7 @@ def main(argv=None): # IGNORE:C0111
 			return EParameter
 
 	except KeyboardInterrupt:
-		### handle keyboard interrupt ###
+		# handle keyboard interrupt
 		pr("KeyboardInterrupt")
 		pr("Abort")
 	except Exception:
