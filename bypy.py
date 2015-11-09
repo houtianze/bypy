@@ -68,7 +68,7 @@ IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload 
 # version check must pass before any further action
 import sys
 ## Import-related constant strings
-PipBinaryName = 'pip' + sys.version_info[0]
+PipBinaryName = 'pip' + str(sys.version_info[0])
 PipInstallCommand = PipBinaryName + ' install requests[security]'
 PipUpgradeCommand = PipBinaryName + ' install -U requests[security]'
 if sys.version_info[0] != 2 or sys.version_info[1] < 7:
