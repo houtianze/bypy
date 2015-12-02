@@ -2405,9 +2405,10 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 		pars = {
 			'method' : 'download',
-			'app_id': 250528,
-			'check_blue' : '1',
-			'ec' : '1',
+			# Do they cause some side effects?
+			#'app_id': 250528,
+			#'check_blue' : '1',
+			#'ec' : '1',
 			'path' : rfile }
 
 		offset = start
