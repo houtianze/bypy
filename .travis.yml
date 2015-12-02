@@ -1,9 +1,14 @@
 language: python
+sudo: false
 python:
   - "2.7"
 # command to install dependencies,
 # e.g. pip install -r requirements.txt --use-mirrors
-install: pip install -r requirements.txt
+install:
+ - pip install -r requirements.txt
+ - pip install pyflakes
+ - pip install coverage
+ - pip install coveralls
 # command to run tests, e.g. python setup.py test
 script:
  - pyflakes bypy.py
@@ -11,7 +16,10 @@ script:
  - pyflakes bypygui.pyw
  - python setup.py test
  - python -m doctest -v bypy.py
+ - coverage run test/test.py
 notifications:
   email:
     on_success: change # default: change
     on_failure: always # default: always
+after_success:
+ - coveralls

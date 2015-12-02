@@ -3,6 +3,7 @@ bypy - Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网�
 ====
 
 [![alt text](https://travis-ci.org/houtianze/bypy.svg "Build status")](https://travis-ci.org/houtianze/bypy)
+[![Coverage Status](https://coveralls.io/repos/houtianze/bypy/badge.svg?branch=master&service=github)](https://coveralls.io/github/houtianze/bypy?branch=master)
 [![Join the chat at https://gitter.im/houtianze/bypy](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/houtianze/bypy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ===
@@ -185,5 +186,5 @@ Tips / Sharing
 Please go to [wiki](../../wiki)
 
 ===
-Copyright 2013 - 2015: Hou Tianze (GitHub: houtianze, Twitter: @ibic, G+: +TianzeHou)
+Copyright 2015: Hou Tianze (GitHub: houtianze)
 License: MIT

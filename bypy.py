@@ -33,7 +33,7 @@ The main purpose is to utilize Baidu Yun in Linux environments (e.g. Raspberry P
 from __future__ import unicode_literals
 
 ### special variables that say about this module
-__version__ = '1.2.1'
+__version__ = '1.2.2'
 
 ### return (error) codes
 # they are put at the top because:
@@ -246,10 +246,12 @@ HelpMarker = "Usage:"
 HomeDir = expanduser('~')
 # os.path.join() may not handle unicode well
 ConfigDir = HomeDir + os.sep + '.bypy'
-TokenFilePath = ConfigDir + os.sep + 'bypy.json'
-HashCachePath = ConfigDir + os.sep + 'bypy.pickle'
-ByPyCertsFile = 'bypy.cacerts.pem'
-ByPyCertsPath = ConfigDir + os.sep + ByPyCertsFile
+TokenFileName = 'bypy.json'
+TokenFilePath = ConfigDir + os.sep + TokenFileName
+HashCacheFileName = 'bypy.pickle'
+HashCachePath = ConfigDir + os.sep + HashCacheFileName
+ByPyCertsFileName = 'bypy.cacerts.pem'
+ByPyCertsPath = ConfigDir + os.sep + ByPyCertsFileName
 # Old setting locations, should be moved to ~/.bypy to be clean
 OldTokenFilePath = HomeDir + os.sep + '.bypy.json'
 OldHashCachePath = HomeDir + os.sep + '.bypy.pickle'
@@ -541,7 +543,7 @@ def human_num(num, precision = 0, filler = ''):
 	expint = int(math.floor(exp))
 	maxsize = len(SIPrefixNames) - 1
 	if expint > maxsize:
-		pwarn("Ridiculously large number '{}' pased to 'human_num()'".format(num))
+		pwarn("Ridiculously large number '{}' passed to 'human_num()'".format(num))
 		expint = maxsize
 	unit = SIPrefixNames[expint]
 	return numfmt.format(num / float(OneK ** expint)) + filler + unit
@@ -569,6 +571,9 @@ def get_pcs_path(path):
 		return AppPcsPath
 
 	return (AppPcsPath + '/' + path.strip('/')).rstrip('/')
+
+def is_pcs_root_path(path):
+	return path == AppPcsPath or path == AppPcsPath + '/'
 
 # guarantee no-exception
 def copyfile(src, dst):
@@ -718,6 +723,7 @@ class cached(object):
 	usecache = True
 	verbose = False
 	debug = False
+	hashcachepath = HashCachePath
 	cache = {}
 	cacheloaded = False
 	dirty = False
@@ -796,11 +802,11 @@ class cached(object):
 		# because we will save (possibly updated) and hash values
 		if not cached.cacheloaded: # no double-loading
 			if cached.verbose:
-				pr("Loading Hash Cache File '{}'...".format(HashCachePath))
+				pr("Loading Hash Cache File '{}'...".format(cached.hashcachepath))
 
-			if os.path.exists(HashCachePath):
+			if os.path.exists(cached.hashcachepath):
 				try:
-					with open(HashCachePath, 'rb') as f:
+					with open(cached.hashcachepath, 'rb') as f:
 						cached.cache = pickle.load(f)
 					cached.cacheloaded = True
 					if cached.verbose:
@@ -816,7 +822,7 @@ class cached(object):
 					pr("Hash Cache File not found, no caching")
 		else:
 			if cached.verbose:
-				pr("Not loading Hash Cache since 'cacheloaded' is '{}'".format( cached.cacheloaded))
+				pr("Not loading Hash Cache since 'cacheloaded' is '{}'".format(cached.cacheloaded))
 
 		return cached.cacheloaded
 
@@ -829,7 +835,7 @@ class cached(object):
 				pr("Saving Hash Cache...")
 
 			try:
-				with open(HashCachePath, 'wb') as f:
+				with open(cached.hashcachepath, 'wb') as f:
 					pickle.dump(cached.cache, f)
 					f.close()
 				if cached.verbose:
@@ -838,11 +844,9 @@ class cached(object):
 				cached.dirty = False
 			except Exception:
 				perr("Failed to save Hash Cache. Exception:\n{}".format(traceback.format_exc()))
-
 		else:
 			if cached.verbose:
-				pr("Not saving Hash Cache since 'dirty' is '{}' and 'force_saving' is '{}'".format(
-					cached.dirty, force_saving))
+				pr("Skip saving Hash Cache since it has not been updated.")
 
 		return saved
 
@@ -1038,7 +1042,7 @@ class UrllibRequester(object):
 		else:
 			raise NotImplementedError()
 
-		return RequestsRequester(resp.geturl(), resp.read(), resp.getcode())
+		return resp
 
 	@classmethod
 	def set_logging_level(cls, level):
@@ -1123,23 +1127,22 @@ class ByPy(object):
 
 		return result
 
-	@staticmethod
-	def getcertfile():
+	def getcertfile(self):
 		result = ENoError
-		if not os.path.exists(ByPyCertsPath):
-			if os.path.exists(ByPyCertsFile):
-				result = copyfile(ByPyCertsFile, ByPyCertsPath)
+		if not os.path.exists(self.__certspath):
+			if os.path.exists(ByPyCertsFileName):
+				result = copyfile(ByPyCertsFileName, self.__certspath)
 			else:
 				try:
 					# perform a simple download from github
 					CACertUrl = 'https://raw.githubusercontent.com/houtianze/bypy/master/bypy.cacerts.pem'
 					resp = ulr.urlopen(CACertUrl)
-					with open(ByPyCertsPath, 'w') as f:
+					with open(self.__certspath, 'w') as f:
 						f.write(resp.read())
 				except IOError as ex:
 					perr("Fail download CA Certs to '{}'.\n"
 						"Exception:\n{}\nStack:{}\n".format(
-						ByPyCertsPath, ex, traceback.format_exc()))
+						self.__certpath, ex, traceback.format_exc()))
 
 					result = EDownloadCerts
 
@@ -1161,6 +1164,7 @@ class ByPy(object):
 		rapiduploadonly = False,
 		mirror = None,
 		verbose = 0, debug = False,
+		configdir = ConfigDir,
 		requester = RequestsRequester,
 		apikey = ApiKey,
 		secretkey = SecretKey):
@@ -1173,8 +1177,15 @@ class ByPy(object):
 			# bail out
 			perr("Failed to migrate old settings.")
 			onexit(EMigrationFailed)
+
+		self.__configdir = configdir.rstrip("/\\ ")
+		# os.path.join() may not handle unicode well on Python 2.7
+		self.__tokenpath = configdir + os.sep + TokenFileName
+		self.__hashcachepath = configdir + os.sep + HashCacheFileName
+		cached.hashcachepath = self.__hashcachepath
+		self.__certspath = configdir + os.sep + ByPyCertsFileName
 		# it doesn't matter if it failed, we can disable SSL verification anyway
-		ByPy.getcertfile()
+		self.getcertfile()
 
 		self.__requester = requester
 		self.__apikey = apikey
@@ -1231,8 +1242,8 @@ class ByPy(object):
 			# falling through here means no customized CA Certs specified
 			if self.__checkssl is True:
 				# use our own CA Bundle if possible
-				if os.path.isfile(ByPyCertsPath):
-					self.__checkssl = ByPyCertsPath
+				if os.path.isfile(self.__certspath):
+					self.__checkssl = self.__certspath
 				else:
 					# Well, disable cert verification
 					pwarn(
@@ -1248,8 +1259,9 @@ class ByPy(object):
 
 		# these two variables are without leadning double underscaore "__" as to export the as public,
 		# so if any code using this class can check the current verbose / debug level
-		self.verbose = verbose
-		self.debug = debug
+		cached.verbose = self.verbose = verbose
+		cached.debug = self.debug = debug
+		cached.loadcache()
 		requester.set_logging_level(debug)
 		# useful info for debugging
 		if debug > 0:
@@ -1257,8 +1269,9 @@ class ByPy(object):
 			pr("Verbose level = {}".format(verbose))
 			pr("Debug level = {}".format(debug))
 			# these informations are useful for debugging
-			pr("Token file: '{}'".format(TokenFilePath))
-			pr("Hash Cache file: '{}'".format(HashCachePath))
+			pr("Config direcotry: '{}'".format(self.__configdir))
+			pr("Token file: '{}'".format(self.__tokenpath))
+			pr("Hash Cache file: '{}'".format(self.__hashcachepath))
 			pr("App root path at Baidu Yun '{}'".format(AppPcsPath))
 			pr("sys.stdin.encoding = {}".format(sys.stdin.encoding))
 			pr("sys.stdout.encoding = {}".format(sys.stdout.encoding))
@@ -1274,6 +1287,11 @@ class ByPy(object):
 		self.__cookies = {}
 		# TODO: whether this works is still to be tried out
 		self.__isrev = False
+
+		# store the response object, mainly for testing.
+		self.response = object()
+		# store function-specific result data
+		self.result = {}
 
 		if not self.__load_local_json():
 			# no need to call __load_local_json() again as __auth() will load the json & acess token.
@@ -1314,7 +1332,7 @@ class ByPy(object):
 					msg = et
 				else:
 					pf = perr
-					msg = "Error code: {}\nError Description: {}".format(ec, et)
+					msg = "Error JSON returned:{}\nError code: {}\nError Description: {}".format(dj, ec, et)
 				pf(msg)
 		except Exception:
 			perr('Error parsing JSON Error Code from:\n{}'.format(rb(r.text)))
@@ -1327,7 +1345,7 @@ class ByPy(object):
 				perr("Exception:\n{}".format(ex))
 			tb = traceback.format_exc()
 			if tb:
-				pr(tb)
+				pr("Traceback:\n" + tb)
 			perr("Function: {}".format(act.__name__))
 			perr("Website parameters: {}".format(pars))
 			if hasattr(r, 'status_code'):
@@ -1339,6 +1357,16 @@ class ByPy(object):
 	# child class override this to to customize error handling
 	def __handle_more_response_error(self, r, sc, ec, act, actargs):
 		return ERequestFailed
+
+	def __get_json(self, r, defaultec = ERequestFailed):
+		try:
+			j = r.json()
+			if 'error_code' in j:
+				return j['error_code']
+			else:
+				return defaultec
+		except ValueError:
+			return defaultec
 
 	def __request_work(self, url, pars, act, method, actargs = None, addtoken = True, dumpex = True, **kwargs):
 		result = ENoError
@@ -1355,6 +1383,7 @@ class ByPy(object):
 			self.pd("Params: {}".format(pars))
 
 			r = self.__requester.request(method, url, params = parsnew, timeout = self.__timeout, verify = self.__checkssl, **kwargs)
+			self.response = r
 			sc = r.status_code
 			self.pd("HTTP Status Code: {}".format(sc))
 			# BUGFIX: DON'T do this, if we are downloading a big file,
@@ -1363,7 +1392,6 @@ class ByPy(object):
 			#self.pd("Response Header: {}".format(pprint.pformat(r.headers)), 2)
 			#self.pd("Response: {}".format(rb(r.text)), 3)
 			if sc == requests.codes.ok or sc == 206: # 206 Partial Content
-				# special case discovered by xslidian
 				if sc == requests.codes.ok:
 					self.pd("200 OK, processing action")
 				else:
@@ -1372,15 +1400,7 @@ class ByPy(object):
 				if result == ENoError:
 					self.pd("Request all goes fine")
 			else:
-				ec = 0
-				try:
-					j = r.json()
-					ec = j['error_code']
-				except ValueError:
-					perr("Invalid error JSON response received:\n{}".format(j))
-				# ec = 0, which will fall through all ec treatments and reach the ERequestFailed portion,
-				# in which, error print is done in __dump_exception() if dumpex is true
-
+				ec = self.__get_json(r)
 				#   6 (sc: 403): No permission to access user data
 				# 110 (sc: 401): Access token invalid or no longer valid
 				# 111 (sc: 401): Access token expired
@@ -1439,8 +1459,8 @@ class ByPy(object):
 				"the corresponding CA certificate installed.\n"
 				"There are two ways of solving this:\n"
 				"Either) Run this prog with the '" + CaCertsOption + \
-				" <path to " + ByPyCertsPath + "> argument "
-				"(" + ByPyCertsPath + " comes along with this prog). "
+				" <path to " + ByPyCertsFileName + "> argument "
+				"(" + ByPyCertsFileName + " comes along with this prog). "
 				"This is the secure way. "
 				"However, it won't work after 2020-02-08 when "
 				"the certificat expires.\n"
@@ -1573,7 +1593,7 @@ class ByPy(object):
 
 	def __load_local_json(self):
 		try:
-			with open(TokenFilePath, 'rb') as infile:
+			with open(self.__tokenpath, 'rb') as infile:
 				self.__json = json.load(infile)
 				self.__access_token = self.__json['access_token']
 				self.pd("Token loaded:")
@@ -1592,10 +1612,10 @@ class ByPy(object):
 		self.pd(self.__json)
 		tokenmode = 0o600
 		try:
-			with open(TokenFilePath, 'wb') as outfile:
+			with open(self.__tokenpath, 'wb') as outfile:
 				json.dump(self.__json, outfile)
 
-			os.chmod(TokenFilePath, tokenmode)
+			os.chmod(self.__tokenpath, tokenmode)
 			return ENoError
 		except Exception:
 			perr("Exception occured while trying to store access token:\n" \
@@ -1738,7 +1758,10 @@ Possible fixes:
 
 	def __walk_normal_file(self, dir):
 		for walk in os.walk(dir, followlinks=self.__followlink):
-			yield tuple(t for t in walk if os.path.isfile(t[2]))
+			normalfiles = [t for t in walk[-1]
+								if os.path.isfile(os.path.join(walk[0], t))]
+			normalwalk = walk[:-1] + (normalfiles,)
+			yield normalwalk
 
 	def __quota_act(self, r, args):
 		j = r.json()
@@ -2155,12 +2178,18 @@ get information of the given path (dir / file) at Baidu Yun.
 		return result
 
 	def __upload_dir(self, localpath, remotepath, ondup = 'overwrite'):
+		result = ENoError
 		self.pd("Uploading directory '{}' to '{}'".format(localpath, remotepath))
 		# it's so minor that we don't care about the return value
-		self.__mkdir(remotepath, dumpex = False)
+		#self.__mkdir(remotepath, retry = False, dumpex = False)
 		#for walk in os.walk(localpath, followlinks=self.__followlink):
 		for walk in self.__walk_normal_file(localpath):
-			self.__walk_upload(localpath, remotepath, ondup, walk)
+			thisresult = self.__walk_upload(localpath, remotepath, ondup, walk)
+			# we continue even if some upload failed, but keep the last error code
+			if thisresult != ENoError:
+				result = thisresult
+
+		return result
 
 	def __upload_file(self, localpath, remotepath, ondup = 'overwrite'):
 		# TODO: this is a quick patch
@@ -2776,6 +2805,24 @@ copy a file / dir remotely at Baidu Yun
 		self.pd("Remote deleting: '{}'".format(rpath))
 		return self.__post(pcsurl + 'file', pars, self.__delete_act)
 
+	def __delete_children_act(self, r, args):
+		result = ENoError
+		j = r.json()
+		for f in j['list']:
+			# we continue even if some upload failed, but keep the last error code
+			thisresult = self.__delete(f['path'])
+			if thisresult != ENoError:
+				result = thisresult
+
+		return result
+
+	def __delete_children(self, rpath):
+		pars = {
+			'method' : 'list',
+			'path' : rpath}
+
+		return self.__get(pcsurl + 'file', pars, self.__delete_children_act, None)
+
 	# aliases
 	def remove(self, remotepath):
 		return self.delete(remotepath)
@@ -2789,6 +2836,9 @@ delete a file / dir remotely at Baidu Yun
   remotepath - destination path (file / dir)
 		'''
 		rpath = get_pcs_path(remotepath)
+		#if is_pcs_root_path(rpath):
+		#	return self.__delete_children(rpath)
+		#else:
 		return self.__delete(rpath)
 
 	def __search_act(self, r, args):
@@ -3004,6 +3054,13 @@ directory is much larger than the local one). it defaults to False.
 		pr("Local only: {}".format(len(local)));
 		pr("Remote only: {}".format(len(remote)));
 
+		self.result['same'] = same
+		self.result['diff'] = diff
+		self.result['local'] = local
+		self.result['remote'] = remote
+
+		return ENoError
+
 	def syncdown(self, remotedir = '', localdir = u'', deletelocal = False):
 		''' Usage: syncdown [remotedir] [localdir] [deletelocal] - \
 sync down from the remote direcotry to the local directory
@@ -3151,13 +3208,13 @@ if not specified, it defaults to the root directory
 
 	def cleancache(self):
 		''' Usage: cleancache - remove invalid entries from hash cache file'''
-		if os.path.exists(HashCachePath):
+		if os.path.exists(self.__hashcachepath):
 			try:
 				# backup first
-				backup = HashCachePath + '.lastclean'
-				shutil.copy(HashCachePath, backup)
+				backup = self.__hashcachepath + '.lastclean'
+				shutil.copy(self.__hashcachepath, backup)
 				self.pd("Hash Cache file '{}' backed up as '{}".format(
-					HashCachePath, backup))
+					self.__hashcachepath, backup))
 				cached.cleancache()
 				return ENoError
 			except:
@@ -3169,20 +3226,20 @@ if not specified, it defaults to the root directory
 # put all xslidian's bduss extensions here, i never tried out them though
 class PanAPI(ByPy):
 	IEBDUSSExpired = -6
-	BDUSSPath = ConfigDir + os.sep + 'bypy.bduss'
 	# Does https work? if so, we should always use https
 	#PanAPIUrl = 'http://pan.baidu.com/api/'
 	PanAPIUrl = 'https://pan.baidu.com/api/'
 
 	def __init__(self, **kwargs):
 		super(PanAPI, self).__init__(**kwargs)
+		self.__bdusspath= self.__configdir + os.sep + 'bypy.bduss'
 		self.__bduss = ''
 		if not self.__load_local_bduss():
-			self.pv("BDUSS not found at '{}'.".format(PanAPI.BDUSSPath))
+			self.pv("BDUSS not found at '{}'.".format(self.__bdusspath))
 
 	def __load_local_bduss(self):
 		try:
-			with open(PanAPI.BDUSSPath, 'rb') as infile:
+			with open(self.__bdusspath, 'rb') as infile:
 				self.__bduss = infile.readline().strip()
 				self.pd("BDUSS loaded: {}".format(self.__bduss))
 				self.__cookies = {'BDUSS': self.__bduss}
@@ -3355,9 +3412,6 @@ class PanAPI(ByPy):
 		return self.__post(PanAPI.PanAPIUrl + 'revision/revert?app_id=250528',
 						   {}, self.__panapi_revision_revert_act, pars, data = pars, cookies = self.__cookies )
 
-
-OriginalFloatTime = True
-
 def onexit(retcode = ENoError):
 	# saving is the most important
 	# we save, but don't clean, why?
@@ -3458,7 +3512,9 @@ def getparser():
 	parser.add_argument(DisableSslCheckOption, dest="checkssl", action="store_false", help="DON'T verify host SSL cerificate")
 	parser.add_argument(CaCertsOption, dest="cacerts", help="Specify the path for CA Bundle [default: %(default)s]")
 	parser.add_argument("--mirror", dest="mirror", default=None, help="Specify the PCS mirror (e.g. bj.baidupcs.com. Open 'https://pcs.baidu.com/rest/2.0/pcs/manage?method=listhost' to get the list) to use. [default: " + PcsDomain + "]")
-	parser.add_argument("--rapid-upload-only", dest="rapiduploadonly", action="store_true", help="Only upload large files that can be rapidly uploaded")
+	parser.add_argument("--rapid-upload-only", dest="rapiduploadonly", action="store_true", help="only upload large files that can be rapidly uploaded")
+	# i think there is no need to expose this config option to the command line interface
+	#parser.add_argument("--config-dir", dest="configdir", default=ConfigDir, help="specify the config path [default: %(default)s]")
 
 	# action
 	parser.add_argument(CleanOptionShort, CleanOptionLong, dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean settings and hash cache [default: %(default)s]")
@@ -3468,21 +3524,21 @@ def getparser():
 
 	return parser;
 
-def clean_prog_files(cleanlevel, verbose):
-	result = removefile(TokenFilePath, verbose)
+def clean_prog_files(cleanlevel, verbose, tokenpath = TokenFilePath):
+	result = removefile(tokenpath, verbose)
 	if result == ENoError:
 		pr("Token file '{}' removed. You need to re-authorize "
-		   "the application upon next run".format(TokenFilePath))
+		   "the application upon next run".format(tokenpath))
 	else:
-		perr("Failed to remove the token file '{}'".format(TokenFilePath))
+		perr("Failed to remove the token file '{}'".format(tokenpath))
 		perr("You need to remove it manually")
 
 	if cleanlevel >= 2:
-		subresult = os.remove(HashCachePath)
+		subresult = os.remove(cached.hashcachepath)
 		if subresult == ENoError:
-			pr("Hash Cache File '{}' removed.".format(HashCachePath))
+			pr("Hash Cache File '{}' removed.".format(cached.hashcachepath))
 		else:
-			perr("Failed to remove the Hash Cache File '{}'".format(HashCachePath))
+			perr("Failed to remove the Hash Cache File '{}'".format(cached.hashcachepath))
 			perr("You need to remove it manually")
 			result = subresult
 
@@ -3504,6 +3560,7 @@ def main(argv=None): # IGNORE:C0111
 		args = parser.parse_args()
 
 		# house-keeping reminder
+		# TODO: may need to move into ByPy for customized config dir
 		if os.path.exists(HashCachePath):
 			cachesize = getfilesize(HashCachePath)
 			if cachesize > 10 * OneM or cachesize == -1:
@@ -3544,9 +3601,6 @@ def main(argv=None): # IGNORE:C0111
 				timeout = float(args.timeout)
 
 			cached.usecache = not args.forcehash
-			cached.verbose = args.verbose
-			cached.debug = args.debug
-			cached.loadcache()
 
 			# we construct a ByPy object here.
 			# if you want to try PanAPI, simply replace ByPy with PanAPI, and all the bduss related function _should_ work
