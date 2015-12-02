@@ -2432,10 +2432,11 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 			# this _may_ solve #163: { "error_code":31326, "error_msg":"anti hotlinking"}
 			if headers.has_key('Range'):
-				self.pd("headers['Range'][6:]: {} {}".format(headers['Range'][6:], base64.standard_b64encode(headers['Range'][6:])))
-				pars['ru'] = base64.standard_b64encode(headers['Range'][6:])
+				rangemagic = base64.standard_b64encode(headers['Range'][6:])
+				self.pd("headers['Range'][6:]: {} {}".format(headers['Range'][6:], rangemagic))
+				#pars['ru'] = rangemagic
 
-			headers['User-Agent'] = 'netdisk;5.2.7.2;PC;PC-Windows;6.2.9200;WindowsBaiduYunGuanJia'
+			#headers['User-Agent'] = 'netdisk;5.2.7.2;PC;PC-Windows;6.2.9200;WindowsBaiduYunGuanJia'
 
 			subresult = self.__get(dpcsurl + 'file', pars,
 				self.__downchunks_act, (rfile, offset, rsize, start_time), headers = headers, cookies = self.__cookies)
