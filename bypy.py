@@ -2434,7 +2434,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 			if headers.has_key('Range'):
 				rangemagic = base64.standard_b64encode(headers['Range'][6:])
 				self.pd("headers['Range'][6:]: {} {}".format(headers['Range'][6:], rangemagic))
-				#pars['ru'] = rangemagic
+				pars['ru'] = rangemagic
 
 			#headers['User-Agent'] = 'netdisk;5.2.7.2;PC;PC-Windows;6.2.9200;WindowsBaiduYunGuanJia'
 

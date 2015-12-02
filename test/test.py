@@ -129,20 +129,20 @@ def downdir():
 	assertsame()
 	mpr.empty()
 
+def syncup():
+	banner("Syncing up")
+	emptyremote()
+	assert by.syncup(testdir, testdir) == bypy.ENoError
+	assert by.compare(testdir, testdir) == bypy.ENoError
+	assertsame()
+	mpr.empty()
+
 def syncdown():
 	banner("Syncing down")
 	shutil.rmtree(downloaddir, ignore_errors=True)
 	assert by.syncdown(testdir, downloaddir) == bypy.ENoError
 	assert by.compare(testdir, downloaddir) == bypy.ENoError
 	shutil.rmtree(downloaddir, ignore_errors=True)
-	assertsame()
-	mpr.empty()
-
-def syncup():
-	banner("Syncing up")
-	emptyremote()
-	assert by.syncup(testdir, testdir) == bypy.ENoError
-	assert by.compare(testdir, testdir) == bypy.ENoError
 	assertsame()
 	mpr.empty()
 
@@ -153,8 +153,8 @@ def main():
 	getquota()
 	compare()
 	downdir()
-	syncdown()
 	syncup()
+	syncdown()
 	os.remove(zerofilename)
 	shutil.rmtree(configdir, ignore_errors=True)
 
