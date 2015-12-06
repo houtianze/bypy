@@ -1077,11 +1077,16 @@ class RequestsRequester(object):
 			#ul3.disable_warnings(ul3.exceptions.InsecurePlatformWarning)
 			ul3.disable_warnings()
 		except:
-			perr("Failed to disable warnings for Urllib3.\n"
-				"Possibly the requests library is out of date?\n"
-				"You can upgrade it by running '{}'.\n"
-				"Exception:\n{}".format(PipUpgradeCommand, traceback.format_exc()))
-			pass
+			try:
+				import urllib3 as ul3
+				ul3.disable_warnings()
+			except:
+				perr("Failed to disable warnings for Urllib3.\n"
+					"Possibly the requests library is out of date?\n"
+					"You can upgrade it by running '{}'.\n"
+					"Exception:\n{}".format(PipUpgradeCommand, traceback.format_exc()))
+			# i don't know why under Ubuntu, 'pip install requests' doesn't install the requests.packages.* packages
+				pass
 
 	# only if user specifies '-ddd' or more 'd's, the following
 	# debugging information will be shown, as it's very talkative.
