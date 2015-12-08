@@ -33,7 +33,7 @@ The main purpose is to utilize Baidu Yun in Linux environments (e.g. Raspberry P
 from __future__ import unicode_literals
 
 ### special variables that say about this module
-__version__ = '1.2.2'
+__version__ = '1.2.3'
 
 ### return (error) codes
 # they are put at the top because:
@@ -281,13 +281,28 @@ CleanOptionLong= '--clean'
 DisableSslCheckOption = '--disable-ssl-check'
 CaCertsOption = '--cacerts'
 
+# ======== RANT RANT RANT ========
 # unicode in Python 2.x is such a nuisance, some references
+# https://docs.python.org/2/howto/unicode.html
+# https://docs.python.org/3/howto/unicode.html
 # https://stackoverflow.com/questions/4374455/how-to-set-sys-stdout-encoding-in-python-3
 # https://stackoverflow.com/questions/492483/setting-the-correct-encoding-when-piping-stdout-in-python
 # http://drj11.wordpress.com/2007/05/14/python-how-is-sysstdoutencoding-chosen/
 # https://stackoverflow.com/questions/11741574/how-to-set-the-default-encoding-to-utf-8-in-python
 # https://stackoverflow.com/questions/2276200/changing-default-encoding-of-python
 # strings are unicode by default now
+# -------- RANT RANT RANT --------
+
+
+# https://github.com/houtianze/bypy/issues/11
+# https://github.com/houtianze/bypy/issues/195
+FileSystemEncoding = sys.getfilesystemencoding()
+u2ios = ios2u = lambda x: x
+if sys.version_info[0] == 2:
+	# Convert the given unicode string to IO-compatible string
+	u2ios = lambda x: x.encode(FileSystemEncoding)
+	# Convert the given IO-compatible string to unicode string
+	ios2u = lambda x: x.decode(FileSystemEncoding)
 
 # https://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python
 # https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
@@ -1762,10 +1777,14 @@ Possible fixes:
 			return self.__post(TokenUrl, pars, self.__refresh_token_act)
 
 	def __walk_normal_file(self, dir):
-		for walk in os.walk(dir, followlinks=self.__followlink):
-			normalfiles = [t for t in walk[-1]
+		dirios = u2ios(dir)
+		for walk in os.walk(dirios, followlinks=self.__followlink):
+			dirpath = ios2u(walk[0])
+			dirnames = [ios2u(t) for t in walk[1]]
+			normalfiles = [ios2u(t) for t in walk[-1]
 								if os.path.isfile(os.path.join(walk[0], t))]
-			normalwalk = walk[:-1] + (normalfiles,)
+			#normalwalk = walk[:-1] + (normalfiles,)
+			normalwalk = (dirpath, dirnames, normalfiles)
 			yield normalwalk
 
 	def __quota_act(self, r, args):
