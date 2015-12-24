@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # encoding: utf-8
 
 # primitive sanity tests
@@ -9,6 +9,9 @@ import os
 import sys
 import shutil
 import re
+
+TestGarbledPathNames = False
+
 # store the output, for further analysis
 class StorePrinter(object):
 	def __init__(self, opr):
@@ -43,6 +46,10 @@ def filterregex(list, regex):
 	rec = re.compile(regex)
 	return filter(lambda x: rec.search(x), list)
 
+def makesuredir(dirname):
+	if not os.path.exists(dirname):
+		os.mkdir(dirname)
+
 # TODO: this is a quick hack, need to re-structure the directory later
 # http://stackoverflow.com/questions/11536764/attempted-relative-import-in-non-package-even-with-init-py/27876800#27876800
 bypydir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -58,8 +65,7 @@ mpr = StorePrinter(bypy.pr)
 bypy.pr = mpr.pr
 # create some dummy files
 zerofilename = os.path.join(testdir, 'allzero.1m.bin')
-if not os.path.exists(configdir):
-	os.mkdir(configdir)
+makesuredir(configdir)
 shutil.copy('bypy.json', configdir)
 by = bypy.ByPy(configdir=configdir, debug=1, verbose=1)
 
@@ -75,15 +81,21 @@ def prepare():
 	assert by.list('/') == bypy.ENoError
 	print("Response: {}".format(by.response.json()))
 	mpr.empty()
+	with open(zerofilename, 'wb') as f:
+		zeros = bytearray(1024 * 1024)
+		f.write(zeros)
+	if TestGarbledPathNames:
+		jd = testdir.encode() + os.sep.encode() + b'garble\xec\xeddir'
+		jf = testdir.encode() + os.sep.encode() + b'garble\xea\xebfile'
+		makesuredir(jd)
+		with open(jf, 'w') as f:
+			f.write("garbled")
 
 def emptyremote():
 	banner("Deleting all the files at PCS")
 	assert by.delete('/') == bypy.ENoError
 	assert 'request_id' in by.response.json()
 	mpr.empty()
-	with open(zerofilename, 'wb') as f:
-		zeros = bytearray(1024 * 1024)
-		f.write(zeros)
 
 def uploaddir():
 	# upload
@@ -103,7 +115,7 @@ def getquota():
 	resp = by.response.json()
 	print("Response: {}".format(resp))
 	#assert resp['used'] == 1048626
-	assert resp['quota'] == 2206539448320L
+	assert resp['quota'] == 2206539448320
 	mpr.empty()
 
 def assertsame():
@@ -111,7 +123,7 @@ def assertsame():
 	assert len(by.result['diff']) == 0
 	assert len(by.result['local']) == 0
 	assert len(by.result['remote']) == 0
-	assert len(by.result['same']) == 6
+	assert len(by.result['same']) >= 5
 
 def compare():
 	# comparison
@@ -161,3 +173,5 @@ def main():
 # this is barely a sanity test, more to be added
 if __name__ == "__main__":
 	main()
+
+# vim: tabstop=4 noexpandtab shiftwidth=4 softtabstop=4 ff=unix fileencoding=utf-8

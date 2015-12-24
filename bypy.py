@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # encoding: utf-8
 # ===  IMPORTANT  ====
 # NOTE: In order to support non-ASCII file names,
@@ -31,6 +31,7 @@ The main purpose is to utilize Baidu Yun in Linux environments (e.g. Raspberry P
 
 # from __future__ imports must occur at the beginning of the file
 from __future__ import unicode_literals
+from __future__ import print_function
 
 ### special variables that say about this module
 __version__ = '1.2.3'
@@ -67,12 +68,15 @@ IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload 
 ### imports
 # version check must pass before any further action
 import sys
+
+FileSystemEncoding = sys.getfilesystemencoding()
+
 ## Import-related constant strings
 PipBinaryName = 'pip' + str(sys.version_info[0])
 PipInstallCommand = PipBinaryName + ' install requests[security]'
 PipUpgradeCommand = PipBinaryName + ' install -U requests[security]'
-if sys.version_info[0] != 2 or sys.version_info[1] < 7:
-	print("Error: Incorrect Python version. You need 2.7 or above (but not 3)")
+if sys.version_info[0] < 2 or (sys.version_info[0] == 2 and sys.version_info[1] < 7):
+	print("Error: Incorrect Python version. You need 2.7 or above")
 	sys.exit(EIncorrectPythonVersion)
 import os
 import locale
@@ -123,16 +127,20 @@ if sys.version_info[0] == 2:
 	import urllib2 as ulr
 	import urllib as ulp
 	import httplib
-else:
+	import cPickle as pickle
+elif sys.version_info[0] == 3:
 	import urllib.request as ulr
 	import urllib.parse as ulp
 	import http.client as httplib
+	import pickle
+	unicode = str
+	basestring = str
+	long = int
 import json
 import hashlib
 import base64
 import binascii
 import re
-import cPickle as pickle
 import pprint
 import socket
 import math
@@ -281,28 +289,13 @@ CleanOptionLong= '--clean'
 DisableSslCheckOption = '--disable-ssl-check'
 CaCertsOption = '--cacerts'
 
-# ======== RANT RANT RANT ========
 # unicode in Python 2.x is such a nuisance, some references
-# https://docs.python.org/2/howto/unicode.html
-# https://docs.python.org/3/howto/unicode.html
 # https://stackoverflow.com/questions/4374455/how-to-set-sys-stdout-encoding-in-python-3
 # https://stackoverflow.com/questions/492483/setting-the-correct-encoding-when-piping-stdout-in-python
 # http://drj11.wordpress.com/2007/05/14/python-how-is-sysstdoutencoding-chosen/
 # https://stackoverflow.com/questions/11741574/how-to-set-the-default-encoding-to-utf-8-in-python
 # https://stackoverflow.com/questions/2276200/changing-default-encoding-of-python
 # strings are unicode by default now
-# -------- RANT RANT RANT --------
-
-
-# https://github.com/houtianze/bypy/issues/11
-# https://github.com/houtianze/bypy/issues/195
-FileSystemEncoding = sys.getfilesystemencoding()
-u2ios = ios2u = lambda x: x
-if sys.version_info[0] == 2:
-	# Convert the given unicode string to IO-compatible string
-	u2ios = lambda x: x.encode(FileSystemEncoding)
-	# Convert the given IO-compatible string to unicode string
-	ios2u = lambda x: x.decode(FileSystemEncoding)
 
 # https://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python
 # https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
@@ -421,8 +414,23 @@ pprgr = pprgrc
 def remove_backslash(s):
 	return s.replace(r'\/', r'/')
 
-def rb(s):
-	return s.replace(r'\/', r'/')
+rb = remove_backslash
+
+# http://stackoverflow.com/questions/9403986/python-3-traceback-fails-when-no-exception-is-active
+def format_exc(**kwargs):
+	if sys.exc_info() == (None, None, None):
+		return []
+	else:
+		return traceback.format_stack(**kwargs)
+
+def format_exc_str(**kwargs):
+	return ''.join(format_exc(**kwargs))
+
+def print_stack(**kwargs):
+	if sys.exc_info() == (None, None, None):
+		return None
+	else:
+		return traceback.print_stack(**kwargs)
 
 # marshaling
 def str2bool(s):
@@ -597,7 +605,7 @@ def copyfile(src, dst):
 		shutil.copyfile(src, dst)
 	except (shutil.Error, IOError) as ex:
 		perr("Fail to copy '{}' to '{}'.\nException:\n{}\nStack:{}\n".format(
-			src, dst, ex, traceback.format_exc()))
+			src, dst, ex, format_exc_str()))
 		result = EFailToCreateLocalFile
 
 	return result
@@ -608,7 +616,7 @@ def movefile(src, dst):
 		shutil.move(src, dst)
 	except (shutil.Error, OSError) as ex:
 		perr("Fail to move '{}' to '{}'.\nException:\n{}\nStack:\n{}\n".format(
-			src, dst, ex, traceback.format_exc()))
+			src, dst, ex, format_exc_str()))
 		result = EFailToCreateLocalFile
 
 	return result
@@ -622,7 +630,7 @@ def removefile(path, verbose = False):
 			os.remove(path)
 	except Exception as ex:
 		perr("Fail to remove local fle '{}'.\nException:\n{}\nStack:{}\n".format(
-			path, ex, traceback.format_exc()))
+			path, ex, format_exc_str()))
 		result = EFailToDeleteFile
 
 	return result
@@ -636,7 +644,7 @@ def removedir(path, verbose = False):
 			shutil.rmtree(path)
 	except Exception as ex:
 		perr("Fail to remove local directory '{}'.\nException:\n{}\nStack:{}\n".format(
-			path, ex, traceback.format_exc()))
+			path, ex, format_exc_str()))
 		result = EFailToDeleteDir
 
 	return result
@@ -652,7 +660,7 @@ def makedir(path, mode = 0o777, verbose = False):
 			os.makedirs(path, mode)
 		except os.error as ex:
 			perr("Failed at creating local dir '{}'.\nException:\n{}\nStack:{}\n".format(
-				path, ex, traceback.format_exc()))
+				path, ex, format_exc_str()))
 			result = EFailToCreateLocalDir
 
 	return result
@@ -663,7 +671,7 @@ def getfilesize(path):
 	try:
 		size = os.path.getsize(path)
 	except os.error:
-		perr("Exception occured while getting size of '{}'. Exception:\n{}".format(path, traceback.format_exc()))
+		perr("Exception occured while getting size of '{}'. Exception:\n{}".format(path, format_exc_str()))
 
 	return size
 
@@ -673,7 +681,7 @@ def getfilemtime(path):
 	try:
 		mtime = os.path.getmtime(path)
 	except os.error:
-		perr("Exception occured while getting modification time of '{}'. Exception:\n{}".format(path, traceback.format_exc()))
+		perr("Exception occured while getting modification time of '{}'. Exception:\n{}".format(path, format_exc_str()))
 
 	return mtime
 
@@ -715,7 +723,7 @@ class MyPrettyPrinter(pprint.PrettyPrinter):
 		if isinstance(obj, unicode):
 			#return (obj.encode('utf8'), True, False)
 			return (obj, True, False)
-		if isinstance(obj, str):
+		if isinstance(obj, bytes):
 			convert = False
 			#for c in obj:
 			#	if ord(c) >= 128:
@@ -830,7 +838,7 @@ class cached(object):
 					pickle.PickleError,
 					# the following is for dealing with corrupted cache file
 					EOFError, TypeError, ValueError):
-					perr("Fail to load the Hash Cache, no caching. Exception:\n{}".format(traceback.format_exc()))
+					perr("Fail to load the Hash Cache, no caching. Exception:\n{}".format(format_exc_str()))
 					cached.cache = {}
 			else:
 				if cached.verbose:
@@ -858,7 +866,7 @@ class cached(object):
 				saved = True
 				cached.dirty = False
 			except Exception:
-				perr("Failed to save Hash Cache. Exception:\n{}".format(traceback.format_exc()))
+				perr("Failed to save Hash Cache. Exception:\n{}".format(format_exc_str()))
 		else:
 			if cached.verbose:
 				pr("Skip saving Hash Cache since it has not been updated.")
@@ -968,13 +976,13 @@ class PathDictTree(dict):
 
 	def __str(self, prefix):
 		result = ''
-		for k, v in self.iteritems():
+		for k, v in self.items():
 			result += "{} - {}/{} - size: {} - md5: {} \n".format(
 				v.type, prefix, k,
 				v.extra['size'] if 'size' in v.extra else '',
 				binascii.hexlify(v.extra['md5']) if 'md5' in v.extra else '')
 
-		for k, v in self.iteritems():
+		for k, v in self.items():
 			if v.type == 'D':
 				result += v.__str(prefix + '/' + k)
 
@@ -1080,7 +1088,7 @@ class RequestsRequester(object):
 
 	@classmethod
 	def request(cls, method, url, **kwargs):
-		for k,v in cls.options.iteritems():
+		for k,v in cls.options.items():
 			kwargs.setdefault(k, v)
 		return requests.request(method, url, **kwargs)
 
@@ -1099,7 +1107,7 @@ class RequestsRequester(object):
 				perr("Failed to disable warnings for Urllib3.\n"
 					"Possibly the requests library is out of date?\n"
 					"You can upgrade it by running '{}'.\n"
-					"Exception:\n{}".format(PipUpgradeCommand, traceback.format_exc()))
+					"Exception:\n{}".format(PipUpgradeCommand, format_exc_str()))
 			# i don't know why under Ubuntu, 'pip install requests' doesn't install the requests.packages.* packages
 				pass
 
@@ -1162,7 +1170,7 @@ class ByPy(object):
 				except IOError as ex:
 					perr("Fail download CA Certs to '{}'.\n"
 						"Exception:\n{}\nStack:{}\n".format(
-						self.__certpath, ex, traceback.format_exc()))
+						self.__certpath, ex, format_exc_str()))
 
 					result = EDownloadCerts
 
@@ -1356,21 +1364,24 @@ class ByPy(object):
 				pf(msg)
 		except Exception:
 			perr('Error parsing JSON Error Code from:\n{}'.format(rb(r.text)))
-			perr('Exception:\n{}'.format(traceback.format_exc()))
+			perr('Exception:\n{}'.format(format_exc_str()))
 
 	def __dump_exception(self, ex, url, pars, r, act):
 		if self.debug or self.verbose:
 			perr("Error accessing '{}'".format(url))
 			if ex and isinstance(ex, Exception) and self.debug:
 				perr("Exception:\n{}".format(ex))
-			tb = traceback.format_exc()
+			tb = format_exc_str()
 			if tb:
 				pr("Traceback:\n" + tb)
 			perr("Function: {}".format(act.__name__))
 			perr("Website parameters: {}".format(pars))
 			if hasattr(r, 'status_code'):
 				perr("HTTP Response Status Code: {}".format(r.status_code))
-				if (r.status_code != 200 and r.status_code != 206) or (not (pars.has_key('method') and pars['method'] == 'download') and url.find('method=download') == -1 and url.find('baidupcs.com/file/') == -1):
+				if (r.status_code != 200 and r.status_code != 206) \
+					or (not ('method' in pars and pars['method'] == 'download') \
+						and url.find('method=download') == -1 \
+						and url.find('baidupcs.com/file/') == -1):
 					self.__print_error_json(r)
 					perr("Website returned: {}".format(rb(r.text)))
 
@@ -1607,13 +1618,13 @@ class ByPy(object):
 
 	def __replace_list_format(self, fmt, j):
 		output = fmt
-		for k, v in ByPy.ListFormatDict.iteritems():
+		for k, v in ByPy.ListFormatDict.items():
 			output = output.replace(k, v(j))
 		return output
 
 	def __load_local_json(self):
 		try:
-			with open(self.__tokenpath, 'rb') as infile:
+			with open(self.__tokenpath, 'r') as infile:
 				self.__json = json.load(infile)
 				self.__access_token = self.__json['access_token']
 				self.pd("Token loaded:")
@@ -1621,7 +1632,7 @@ class ByPy(object):
 				return True
 		except IOError:
 			perr('Error while loading baidu pcs token:')
-			perr(traceback.format_exc())
+			perr(format_exc_str())
 			return False
 
 	def __store_json_only(self, j):
@@ -1632,14 +1643,14 @@ class ByPy(object):
 		self.pd(self.__json)
 		tokenmode = 0o600
 		try:
-			with open(self.__tokenpath, 'wb') as outfile:
+			with open(self.__tokenpath, 'w') as outfile:
 				json.dump(self.__json, outfile)
 
 			os.chmod(self.__tokenpath, tokenmode)
 			return ENoError
 		except Exception:
 			perr("Exception occured while trying to store access token:\n" \
-				"Exception:\n{}".format(traceback.format_exc()))
+				"Exception:\n{}".format(format_exc_str()))
 			return EFileWrite
 
 	def __store_json(self, r):
@@ -1648,7 +1659,7 @@ class ByPy(object):
 			j = r.json()
 		except Exception:
 			perr("Failed to decode JSON:\n" \
-				"Exception:\n{}".format(traceback.format_exc()))
+				"Exception:\n{}".format(format_exc_str()))
 			perr("Error response:\n{}".format(r.text));
 			pinfo('-' * 64)
 			pinfo("""This is most likely caused by authorization errors.
@@ -1777,14 +1788,11 @@ Possible fixes:
 			return self.__post(TokenUrl, pars, self.__refresh_token_act)
 
 	def __walk_normal_file(self, dir):
-		dirios = u2ios(dir)
-		for walk in os.walk(dirios, followlinks=self.__followlink):
-			dirpath = ios2u(walk[0])
-			dirnames = [ios2u(t) for t in walk[1]]
-			normalfiles = [ios2u(t) for t in walk[-1]
+		#dirb = dir.encode(FileSystemEncoding)
+		for walk in os.walk(dir, followlinks=self.__followlink):
+			normalfiles = [t for t in walk[-1]
 								if os.path.isfile(os.path.join(walk[0], t))]
-			#normalwalk = walk[:-1] + (normalfiles,)
-			normalwalk = (dirpath, dirnames, normalfiles)
+			normalwalk = walk[:-1] + (normalfiles,)
 			yield normalwalk
 
 	def __quota_act(self, r, args):
@@ -1795,7 +1803,7 @@ Possible fixes:
 
 	def help(self, command): # this comes first to make it easy to spot
 		''' Usage: help <command> - provide some information for the command '''
-		for i, v in ByPy.__dict__.iteritems():
+		for i, v in ByPy.__dict__.items():
 			if callable(v) and v.__doc__ and v.__name__ == command :
 				help = v.__doc__.strip()
 				pos = help.find(ByPy.HelpMarker)
@@ -2323,7 +2331,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 							self.__slice_md5s.append(d)
 				except IOError:
 					perr("Exception occured while reading file '{}'. Exception:\n{}".format(
-						localfile, traceback.format_exc()))
+						localfile, format_exc_str()))
 			else:
 				for arg in args:
 					self.__slice_md5s.append(arg)
@@ -2359,7 +2367,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 		if not parse_ok:
 			self.__remote_json = {}
-			perr("Invalid JSON: {}\n{}".format(j, traceback.format_exc()))
+			perr("Invalid JSON: {}\n{}".format(j, format_exc_str()))
 			return EInvalidJson
 
 	# no longer used
@@ -2455,8 +2463,8 @@ try to create a file at PCS by combining slices, having MD5s specified
 				headers = {}
 
 			# this _may_ solve #163: { "error_code":31326, "error_msg":"anti hotlinking"}
-			if headers.has_key('Range'):
-				rangemagic = base64.standard_b64encode(headers['Range'][6:])
+			if 'Range' in headers:
+				rangemagic = base64.standard_b64encode(headers['Range'][6:].encode('utf-8'))
 				self.pd("headers['Range'][6:]: {} {}".format(headers['Range'][6:], rangemagic))
 				pars['ru'] = rangemagic
 
@@ -3244,7 +3252,7 @@ if not specified, it defaults to the root directory
 				cached.cleancache()
 				return ENoError
 			except:
-				perr("Exception:\n{}".format(traceback.format_exc()))
+				perr("Exception:\n{}".format(format_exc_str()))
 				return EException
 		else:
 			return EFileNotFound
@@ -3272,7 +3280,7 @@ class PanAPI(ByPy):
 				return True
 		except IOError:
 			self.pd('Error loading BDUSS:')
-			self.pd(traceback.format_exc())
+			self.pd(format_exc_str())
 			return False
 
 	# overriding
@@ -3455,7 +3463,7 @@ def onexit(retcode = ENoError):
 def sighandler(signum, frame):
 	pr("Signal {} received, Abort".format(signum))
 	pr("Stack:\n")
-	traceback.print_stack(frame)
+	print_stack(frame)
 	onexit(EAbort)
 
 # http://www.gnu.org/software/libc/manual/html_node/Basic-Signal-Handling.html
@@ -3659,7 +3667,7 @@ def main(argv=None): # IGNORE:C0111
 		pr("Abort")
 	except Exception:
 		perr("Exception occurred:")
-		pr(traceback.format_exc())
+		pr(format_exc_str())
 		pr("Abort")
 		# raise
 
