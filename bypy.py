@@ -34,7 +34,7 @@ from __future__ import unicode_literals
 from __future__ import print_function
 
 ### special variables that say about this module
-__version__ = '1.2.3'
+__version__ = '1.2.2'
 
 ### return (error) codes
 # they are put at the top because:
