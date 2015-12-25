@@ -29,13 +29,14 @@ sudo pip install requests
 
 安装
 ---
-`git clone`到任意目录。（为了运行方便，可以把`bypy.py`和`bypygui.pyw`拷贝至`/usr/bin/`目录）
+- 稳定版：直接通过`pip`来安装：`sudo pip install bypy` （支持Python 2.7+, 3.3+)
+- 开发版：`git clone`到任意目录。（为了运行方便，可以把`bypy.py`和`bypygui.pyw`拷贝至`/usr/bin/`目录
 
 运行
 ---
-cd 到clone的目录，运行：
-`./bypy.py`
-可见命令行支持的全部命令和参数。
+- 稳定版（`pip`安装的）：运行 `bypy`
+- 开发版(`git clone`的）：进入clone目录，运行`./bypy`
+可以看到命令行支持的全部命令和参数。
 
 简单的图形界面：
 `./bypygui.pyw`
@@ -117,12 +118,14 @@ sudo pip install requests
 
 Installation
 ---
-`git clone` to any directory. (You can copy `bypy.py` and `bypygui.pyw` to `/usr/bin/` for easier command execution)
+- Stable Release: `sudo pip install bypy` (Supports Python 2.7+, 3.3+)
+- Development Version: `git clone` to any directory. (You can copy `bypy.py` and `bypygui.pyw` to `/usr/bin/` for easier command execution)
 
 
 Usage
 ---
-cd to the directory where it is cloned, and run:
+- Stable Release (installed by `pip`): Simply run `bypy`
+- Deveopment Version: cd to the directory where it is cloned, and run:
 `./bypy.py`
 You will see all the commands and parameters it supports
 
