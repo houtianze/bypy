@@ -1535,13 +1535,22 @@ class ByPy(object):
 		except ValueError as ex:
 			if ex.message == 'No JSON object could be decoded':
 				result = ERequestFailed
+				if dumpex:
+					self.__dump_exception(ex, url, pars, r, act)
 			else:
 				result = EFatal
 				self.__request_work_die(ex, url, pars, r, act)
 
 		except Exception as ex:
-			result = EFatal
-			self.__request_work_die(ex, url, pars, r, act)
+			# OpenSSL SysCallError
+			if ex.args == (10054, 'WSAECONNRESET') \
+			or ex.args == (104, 'ECONNRESET'):
+				result = ERequestFailed
+				if dumpex:
+					self.__dump_exception(ex, url, pars, r, act)
+			else:
+				result = EFatal
+				self.__request_work_die(ex, url, pars, r, act)
 
 		return result
 
