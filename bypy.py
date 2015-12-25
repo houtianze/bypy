@@ -1401,6 +1401,16 @@ class ByPy(object):
 		except ValueError:
 			return defaultec
 
+	def __request_work_die(self, ex, url, pars, r, act):
+		result = EFatal
+		self.__dump_exception(ex, url, pars, r, act)
+		perr("Fatal Exception, no way to continue.\nQuitting...\n")
+		perr("If the error is reproducible, run the program with `-dv` arguments again to get more info.\n")
+		onexit(result)
+		# we eat the exception, and use return code as the only
+		# error notification method, we don't want to mix them two
+		#raise # must notify the caller about the failure
+
 	def __request_work(self, url, pars, act, method, actargs = None, addtoken = True, dumpex = True, **kwargs):
 		result = ENoError
 		r = None
@@ -1521,15 +1531,17 @@ class ByPy(object):
 			if dumpex:
 				self.__dump_exception(ex, url, pars, r, act)
 
+		# TODO: put this check into the specific funcitons?
+		except ValueError as ex:
+			if ex.message == 'No JSON object could be decoded':
+				result = ERequestFailed
+			else:
+				result = EFatal
+				self.__request_work_die(ex, url, pars, r, act)
+
 		except Exception as ex:
 			result = EFatal
-			self.__dump_exception(ex, url, pars, r, act)
-			perr("Fatal Exception, no way to continue.\nQuitting...\n")
-			perr("If the error is reproducible, run the program with `-dv` arguments again to get more info.\n")
-			onexit(result)
-			# we eat the exception, and use return code as the only
-			# error notification method, we don't want to mix them two
-			#raise # must notify the caller about the failure
+			self.__request_work_die(ex, url, pars, r, act)
 
 		return result
 
