@@ -106,7 +106,7 @@ if not (sys.stdout.encoding and sys.stdout.encoding.lower() == 'utf-8'):
 	encoding_to_use = sys.stdout.encoding
 	try:
 		codecs.lookup(encoding_to_use)
-		u'\u6c49\u5b57'.encode(encoding_to_use) # u'汉字'
+		'\u6c49\u5b57'.encode(encoding_to_use) # '汉字'
 		print("Encoding for stdout / stderr: {}".format(encoding_to_use))
 	except: # (LookupError, TypeError, UnicodeEncodeError):
 		encoding_to_use = 'utf-8'
@@ -1167,7 +1167,7 @@ class ByPy(object):
 					# perform a simple download from github
 					CACertUrl = 'https://raw.githubusercontent.com/houtianze/bypy/master/bypy.cacerts.pem'
 					resp = ulr.urlopen(CACertUrl)
-					with open(self.__certspath, 'w') as f:
+					with open(self.__certspath, 'wb') as f:
 						f.write(resp.read())
 				except IOError as ex:
 					perr("Fail download CA Certs to '{}'.\n"
@@ -3119,7 +3119,7 @@ directory is much larger than the local one). it defaults to False.
 
 		return ENoError
 
-	def syncdown(self, remotedir = '', localdir = u'', deletelocal = False):
+	def syncdown(self, remotedir = '', localdir = '', deletelocal = False):
 		''' Usage: syncdown [remotedir] [localdir] [deletelocal] - \
 sync down from the remote direcotry to the local directory
   remotedir - the remote directory at Baidu Yun (after app's direcotry) to sync from. \
@@ -3182,7 +3182,7 @@ if not specified, it defaults to the root directory
 
 		return result
 
-	def syncup(self, localdir = u'', remotedir = '', deleteremote = False):
+	def syncup(self, localdir = '', remotedir = '', deleteremote = False):
 		''' Usage: syncup [localdir] [remotedir] [deleteremote] - \
 sync up from the local direcotry to the remote directory
   localdir - the local directory to sync from if not specified, it defaults to the current directory.
