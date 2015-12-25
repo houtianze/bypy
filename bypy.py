@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # encoding: utf-8
 # ===  IMPORTANT  ====
 # NOTE: In order to support non-ASCII file names,
@@ -32,6 +32,7 @@ The main purpose is to utilize Baidu Yun in Linux environments (e.g. Raspberry P
 # from __future__ imports must occur at the beginning of the file
 from __future__ import unicode_literals
 from __future__ import print_function
+from __future__ import division
 
 ### special variables that say about this module
 __version__ = '1.2.2'
@@ -464,21 +465,21 @@ def str2float(s):
 
 def human_time(seconds):
 	''' DocTests:
-	>>> human_time(0)
-	u''
-	>>> human_time(122.1)
-	u'2m2s'
-	>>> human_time(133)
-	u'2m13s'
-	>>> human_time(12345678)
-	u'20W2D21h21m18s'
+	>>> human_time(0) == ''
+	True
+	>>> human_time(122.1) == '2m2s'
+	True
+	>>> human_time(133) == '2m13s'
+	True
+	>>> human_time(12345678) == '20W2D21h21m18s'
+	True
 	'''
 	isec = int(seconds)
 	s = isec % 60
-	m = isec / 60 % 60
-	h = isec / 60 / 60 % 24
-	d = isec / 60 / 60 / 24 % 7
-	w = isec / 60 / 60 / 24 / 7
+	m = isec // 60 % 60
+	h = isec // 60 // 60 % 24
+	d = isec // 60 // 60 // 24 % 7
+	w = isec // 60 // 60 // 24 // 7
 
 	result = ''
 	for t in [ ('W', w), ('D', d), ('h', h), ('m', m), ('s', s) ]:
@@ -489,16 +490,16 @@ def human_time(seconds):
 
 def limit_unit(timestr, num = 2):
 	''' DocTests:
-	>>> limit_unit('1m2s', 1)
-	u'1m'
-	>>> limit_unit('1m2s')
-	u'1m2s'
-	>>> limit_unit('1m2s', 4)
-	u'1m2s'
-	>>> limit_unit('1d2h3m2s')
-	u'1d2h'
-	>>> limit_unit('1d2h3m2s', 1)
-	u'1d'
+	>>> limit_unit('1m2s', 1) == '1m'
+	True
+	>>> limit_unit('1m2s') == '1m2s'
+	True
+	>>> limit_unit('1m2s', 4) == '1m2s'
+	True
+	>>> limit_unit('1d2h3m2s') == '1d2h'
+	True
+	>>> limit_unit('1d2h3m2s', 1) == '1d'
+	True
 	'''
 	l = len(timestr)
 	i = 0
@@ -574,10 +575,10 @@ def human_num(num, precision = 0, filler = ''):
 
 def human_size(num, precision = 3):
 	''' DocTests:
-	>>> human_size(1000, 0)
-	u'1000B'
-	>>> human_size(1025)
-	u'1.001kB'
+	>>> human_size(1000, 0) == '1000B'
+	True
+	>>> human_size(1025) == '1.001kB'
+	True
 	'''
 	return human_num(num, precision) + 'B'
 
@@ -2053,13 +2054,13 @@ get information of the given path (dir / file) at Baidu Yun.
 		slice = self.__slice_size
 		if self.__current_file_size <= self.__slice_size * MaxSlicePieces:
 			# slice them using slice size
-			pieces = (self.__current_file_size + self.__slice_size - 1 ) / self.__slice_size
+			pieces = (self.__current_file_size + self.__slice_size - 1 ) // self.__slice_size
 		else:
 			# the following comparision is done in the caller:
 			# elif self.__current_file_size <= MaxSliceSize * MaxSlicePieces:
 
 			# no choice, but need to slice them to 'MaxSlicePieces' pieces
-			slice = (self.__current_file_size + MaxSlicePieces - 1) / MaxSlicePieces
+			slice = (self.__current_file_size + MaxSlicePieces - 1) // MaxSlicePieces
 
 		self.pd("Slice size: {}, Pieces: {}".format(slice, pieces))
 
@@ -3390,7 +3391,7 @@ class PanAPI(ByPy):
 		if j['errno'] == 0:
 			if 'list' in j:
 				for e in j['list']:
-					pr("{}\t{}\t{}".format(e['revision'], e['size'], ls_time(e['revision'] / 1e6)))
+					pr("{}\t{}\t{}".format(e['revision'], e['size'], ls_time(e['revision'] // 1e6)))
 			return ENoError
 		if j['errno'] == -6: # invalid BDUSS
 			pr("BDUSS has expired.")
@@ -3537,7 +3538,7 @@ def getparser():
 	parser.add_argument("-q", "--quit-when-fail", dest="quit", default=False, help="quit when maximum number of retry failed [default: %(default)s]")
 	parser.add_argument("-t", "--timeout", dest="timeout", default=60, help="network timeout in seconds [default: %(default)s]")
 	parser.add_argument("-s", "--slice", dest="slice", default=DefaultSliceSize, help="size of file upload slice (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultSliceInMB))
-	parser.add_argument("--chunk", dest="chunk", default=DefaultDlChunkSize, help="size of file download chunk (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultDlChunkSize / OneM))
+	parser.add_argument("--chunk", dest="chunk", default=DefaultDlChunkSize, help="size of file download chunk (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultDlChunkSize // OneM))
 	parser.add_argument("-e", "--verify", dest="verify", action="store_true", default=False, help="Verify upload / download [default : %(default)s]")
 	parser.add_argument("-f", "--force-hash", dest="forcehash", action="store_true", help="force file MD5 / CRC32 calculation instead of using cached value")
 	parser.add_argument("--resume-download", dest="resumedl", default=True, help="resume instead of restarting when downloading if local file already exists [default: %(default)s]")
