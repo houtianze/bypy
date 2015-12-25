@@ -3369,7 +3369,7 @@ class PanAPI(ByPy):
 		j = r.json()
 		self.pd("UnzipCopy response: {}".format(j))
 		if 'path' in j:
-			self.pv("Remote extract: '{}#{}' =xx=> '{}' OK.".format(args['path'], args['subpath'], j[u'path']))
+			self.pv("Remote extract: '{}#{}' =xx=> '{}' OK.".format(args['path'], args['subpath'], j['path']))
 			return ENoError
 		elif 'error_code' in j:
 			if j['error_code'] == 31196:
