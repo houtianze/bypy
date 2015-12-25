@@ -1794,6 +1794,7 @@ Possible fixes:
 		for walk in os.walk(dir, followlinks=self.__followlink):
 			normalfiles = [t for t in walk[-1]
 								if os.path.isfile(os.path.join(walk[0], t))]
+			normalfiles.sort()
 			normalwalk = walk[:-1] + (normalfiles,)
 			yield normalwalk
 
