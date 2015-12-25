@@ -76,8 +76,10 @@ FileSystemEncoding = sys.getfilesystemencoding()
 PipBinaryName = 'pip' + str(sys.version_info[0])
 PipInstallCommand = PipBinaryName + ' install requests[security]'
 PipUpgradeCommand = PipBinaryName + ' install -U requests[security]'
-if sys.version_info[0] < 2 or (sys.version_info[0] == 2 and sys.version_info[1] < 7):
-	print("Error: Incorrect Python version. You need 2.7 or above")
+if sys.version_info[0] < 2 \
+or (sys.version_info[0] == 2 and sys.version_info[1] < 7) \
+or (sys.version_info[0] == 3 and sys.version_info[1] < 3):
+	print("Error: Incorrect Python version. You need 2.7 / 3.3 or above")
 	sys.exit(EIncorrectPythonVersion)
 import os
 import locale
