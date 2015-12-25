@@ -136,6 +136,7 @@ elif sys.version_info[0] == 3:
 	unicode = str
 	basestring = str
 	long = int
+	raw_input = input
 import json
 import hashlib
 import base64
