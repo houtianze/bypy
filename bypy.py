@@ -110,7 +110,8 @@ if not (sys.stdout.encoding and sys.stdout.encoding.lower() == 'utf-8'):
 		print("Encoding for stdout / stderr: {}".format(encoding_to_use))
 	except: # (LookupError, TypeError, UnicodeEncodeError):
 		encoding_to_use = 'utf-8'
-		sys.exc_clear()
+		if hasattr(sys, 'exc_clear'):  # in Python 3.x sys.exc_clear() is removed and unnecessary
+			sys.exc_clear()
 		print("WARNING: Can't detect encoding for stdout / stderr, assume it's 'UTF-8'.\n"
 			  "Files with non-ASCII names may not be handled correctly.\n")
 	sys.stdout = codecs.getwriter(encoding_to_use)(sys.stdout)
