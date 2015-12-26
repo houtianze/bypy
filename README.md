@@ -34,9 +34,14 @@ sudo pip install requests
 
 运行
 ---
-- 稳定版（`pip`安装的）：运行 `bypy`
-- 开发版(`git clone`的）：进入clone目录，运行`./bypy`
-可以看到命令行支持的全部命令和参数。
+- 作为独立程序
+  - 稳定版（`pip`安装的）：运行 `bypy` (或者`python -m bypy`，或者`python3 -m bypy`）
+  - 开发版(`git clone`的）：进入clone目录，运行`./bypy` (或者`python ./bypy`，或者`python3 ./bypy`）
+
+  可以看到命令行支持的全部命令和参数。
+- 作为一个包，在代码中使用
+  - `import bypy`
+
 
 简单的图形界面：
 `./bypygui.pyw`
@@ -124,10 +129,13 @@ Installation
 
 Usage
 ---
-- Stable Release (installed by `pip`): Simply run `bypy`
-- Deveopment Version: cd to the directory where it is cloned, and run:
-`./bypy.py`
-You will see all the commands and parameters it supports
+- Standalone program
+  - Stable Release (installed by `pip`): Simply run `bypy`  (or `python -m bypy`, or `python3 -m bypy`）
+  - Deveopment Version: cd to the directory where it is cloned, and run:`./bypy.py`  (or `python -m bypy`, or `python3 -m bypy`）
+  You will see all the commands and parameters it supports
+
+- As a package in your code
+  - `import bypy`
 
 Simple GUI:
 `./bypygui.pyw`
