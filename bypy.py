@@ -270,11 +270,10 @@ OldTokenFilePath = HomeDir + os.sep + '.bypy.json'
 OldHashCachePath = HomeDir + os.sep + '.bypy.pickle'
 ## default config values
 # TODO: Does the following User-Agent emulation help?
+#UserAgent = None # According to xslidian, User-Agent affects download.
 #UserAgent = 'Mozilla/5.0'
 #UserAgent = "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)"
-#UserAgent = 'netdisk;5.2.7.2;PC;PC-Windows;6.2.9200;WindowsBaiduYunGuanJia'
-# According to xslidian, this User-Agent string affects the download.
-UserAgent = None
+UserAgent = 'netdisk;5.2.7.2;PC;PC-Windows;6.2.9200;WindowsBaiduYunGuanJia'
 DefaultSliceInMB = 20
 DefaultSliceSize = 20 * OneM
 DefaultDlChunkSize = 20 * OneM
