@@ -17,7 +17,7 @@ setup(
 	url='https://github.com/houtianze/bypy',
 	download_url='https://github.com/houtianze/bypy/tarball/' + bypy.__version__,
 	packages=find_packages(),
-	scripts=['bypy.py', 'bypygui.pyw'],
+	scripts=['bypy', 'bypy.py', 'bypy.py', 'bypygui.pyw'],
 	keywords = ['bypy', 'bypy.py', 'baidu pcs', 'baidu yun', 'baidu pan', 'baidu netdisk',
 				'baidu cloud storage', 'baidu personal cloud storage',
 				'百度云', '百度云盘', '百度网盘', '百度个人云存储'],
