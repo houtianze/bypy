@@ -294,13 +294,8 @@ CleanOptionLong= '--clean'
 DisableSslCheckOption = '--disable-ssl-check'
 CaCertsOption = '--cacerts'
 
-# unicode in Python 2.x is such a nuisance, some references
-# https://stackoverflow.com/questions/4374455/how-to-set-sys-stdout-encoding-in-python-3
-# https://stackoverflow.com/questions/492483/setting-the-correct-encoding-when-piping-stdout-in-python
-# http://drj11.wordpress.com/2007/05/14/python-how-is-sysstdoutencoding-chosen/
-# https://stackoverflow.com/questions/11741574/how-to-set-the-default-encoding-to-utf-8-in-python
-# https://stackoverflow.com/questions/2276200/changing-default-encoding-of-python
-# strings are unicode by default now
+# A little summary of Unicode in Python (ad warning):
+# http://houtianze.github.io/python/unicode/2015/12/07/python-unicode.html
 
 # https://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python
 # https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
