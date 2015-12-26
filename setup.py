@@ -22,7 +22,7 @@ setup(
 				'baidu cloud storage', 'baidu personal cloud storage',
 				'百度云', '百度云盘', '百度网盘', '百度个人云存储'],
 	classifiers = [
-		'Development Status :: 5 - Production/Stable',
+		'Development Status :: 4 - Beta'
 		'Environment :: Console',
 		'Intended Audience :: End Users/Desktop',
 		'Intended Audience :: Developers',
@@ -34,7 +34,9 @@ setup(
 		'Operating System :: POSIX',
 		'Programming Language :: Python',
 		'Topic :: Utilities',
-		'Topic :: Internet :: WWW/HTTP']
+		'Topic :: Internet :: WWW/HTTP'],
+	extras_require = {
+		'requests' : ['requests']}
 	)
 
-# vim: set fileencoding=utf-8
+# vim: tabstop=4 noexpandtab shiftwidth=4 softtabstop=4 ff=unix fileencoding=utf-8
