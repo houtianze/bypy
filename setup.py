@@ -22,7 +22,7 @@ setup(
 				'baidu cloud storage', 'baidu personal cloud storage',
 				'百度云', '百度云盘', '百度网盘', '百度个人云存储'],
 	classifiers = [
-		'Development Status :: 4 - Beta'
+		'Development Status :: 4 - Beta',
 		'Environment :: Console',
 		'Intended Audience :: End Users/Desktop',
 		'Intended Audience :: Developers',
