@@ -35,7 +35,7 @@ from __future__ import print_function
 from __future__ import division
 
 ### special variables that say about this module
-__version__ = '1.2.2'
+__version__ = '1.2.3'
 
 ### return (error) codes
 # they are put at the top because:
