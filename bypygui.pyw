@@ -17,14 +17,10 @@ if vi[0] == 2:
 	import tkFileDialog
 	import tkMessageBox
 	import ttk
-	def iteritems(d):
-		return d.iteritems()
 elif vi[0] == 3:
 	from tkinter import scrolledtext as scrt
 	import tkinter as tk
 	from tkinter import filedialog as tkFileDialog, messagebox as tkMessageBox, ttk
-	def iteritems(d):
-		return d.items()
 
 MyReadOnlyText = tk.Text
 MyLogText = scrt.ScrolledText
@@ -387,7 +383,7 @@ class BypyGui(tk.Frame):
 
 		#self.wLog.tag_add(fgtag(''))
 		#self.wLog.tag_add(bgtag(''))
-		for k, v in iteritems(ColorMap):
+		for k, v in ColorMap.items():
 			ft = fgtag(v)
 			bt = bgtag(v)
 			#self.wLog.tag_add(ft)
