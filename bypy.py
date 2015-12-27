@@ -829,7 +829,10 @@ class cached(object):
 			if os.path.exists(cached.hashcachepath):
 				try:
 					with open(cached.hashcachepath, 'rb') as f:
-						cached.cache = pickle.load(f)
+						if sys.version_info[0] == 3:
+							cached.cache = pickle.load(f, encoding="bytes")
+						else:
+							cached.cache = pickle.load(f)
 					cached.cacheloaded = True
 					if cached.verbose:
 						pr("Hash Cache File loaded.")

@@ -6,16 +6,25 @@
 # Licensed under the GPLv3
 # https://www.gnu.org/licenses/gpl-3.0.txt
 
+from __future__ import division
 import sys
 import threading
-import Tkinter as tk
-import tkFileDialog
 
 vi = sys.version_info
 if vi[0] == 2:
 	import ScrolledText as scrt
+	import Tkinter as tk
+	import tkFileDialog
+	import tkMessageBox
+	import ttk
+	def iteritems(d):
+		return d.iteritems()
 elif vi[0] == 3:
-	import scrolledtext as scrt
+	from tkinter import scrolledtext as scrt
+	import tkinter as tk
+	from tkinter import filedialog as tkFileDialog, messagebox as tkMessageBox, ttk
+	def iteritems(d):
+		return d.items()
 
 MyReadOnlyText = tk.Text
 MyLogText = scrt.ScrolledText
@@ -42,8 +51,6 @@ try:
 except:
 	# it's OK, we just ignore it
 	pass
-import tkMessageBox
-import ttk
 
 import bypy
 
@@ -66,8 +73,8 @@ def centerwindow(w):
 	w.update() # fucking bit me
 	sw, sh = w.winfo_screenwidth(), w.winfo_screenheight()
 	width, height = w.winfo_width(), w.winfo_height()
-	x = (sw - width) / 2
-	y = (sh - height) / 2
+	x = (sw - width) // 2
+	y = (sh - height) // 2
 	w.geometry('{}x{}+{}+{}'.format(width, height, x, y))
 
 def fgtag(text):
@@ -380,7 +387,7 @@ class BypyGui(tk.Frame):
 
 		#self.wLog.tag_add(fgtag(''))
 		#self.wLog.tag_add(bgtag(''))
-		for k, v in ColorMap.iteritems():
+		for k, v in iteritems(ColorMap):
 			ft = fgtag(v)
 			bt = bgtag(v)
 			#self.wLog.tag_add(ft)
