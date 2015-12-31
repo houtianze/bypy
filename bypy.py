@@ -1607,6 +1607,7 @@ class ByPy(object):
 		except Exception as ex:
 			# OpenSSL SysCallError
 			if ex.args == (10054, 'WSAECONNRESET') \
+			or ex.args == (10053, 'WSAECONNABORTED') \
 			or ex.args == (104, 'ECONNRESET'):
 				result = ERequestFailed
 				if dumpex:
