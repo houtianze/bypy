@@ -143,7 +143,7 @@ elif sys.version_info[0] == 3:
 	basestring = str
 	long = int
 	raw_input = input
-	pickleload = partial(pickle.load(encoding="bytes"))
+	pickleload = partial(pickle.load, encoding="bytes")
 import json
 import hashlib
 import base64
@@ -422,10 +422,11 @@ rb = remove_backslash
 
 # http://stackoverflow.com/questions/9403986/python-3-traceback-fails-when-no-exception-is-active
 def format_exc(**kwargs):
-	if sys.exc_info() == (None, None, None):
-		return []
-	else:
-		return traceback.format_stack(**kwargs)
+	if sys.version_info[0] == 3:
+		if sys.exc_info() == (None, None, None):
+			return []
+
+	return traceback.format_stack(**kwargs)
 
 def format_exc_str(**kwargs):
 	return ''.join(format_exc(**kwargs))
@@ -3742,7 +3743,10 @@ def main(argv=None): # IGNORE:C0111
 					verbose = args.verbose, debug = args.debug)
 			uargs = []
 			for arg in args.command[1:]:
-				uargs.append(unicode(arg, SystemEncoding))
+				if sys.version_info[0] < 3:
+					uargs.append(unicode(arg, SystemEncoding))
+				else:
+					uargs.append(arg)
 			result = getattr(by, args.command[0])(*uargs)
 		else:
 			pr("Error: Command '{}' not available.".format(args.command[0]))
@@ -3753,8 +3757,9 @@ def main(argv=None): # IGNORE:C0111
 		# handle keyboard interrupt
 		pr("KeyboardInterrupt")
 		pr("Abort")
-	except Exception:
+	except Exception as ex:
 		perr("Exception occurred:")
+		pr("Exception: {}".format(ex))
 		pr(format_exc_str())
 		pr("Abort")
 		# raise
