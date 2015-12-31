@@ -3758,6 +3758,9 @@ def main(argv=None): # IGNORE:C0111
 		pr("KeyboardInterrupt")
 		pr("Abort")
 	except Exception as ex:
+		# NOTE: Capturing the exeption as 'ex' seems matters, otherwise this:
+		# except Exception ex:
+		# will sometimes give exception ...
 		perr("Exception occurred:")
 		pr("Exception: {}".format(ex))
 		pr(format_exc_str())
