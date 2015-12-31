@@ -35,7 +35,7 @@ from __future__ import print_function
 from __future__ import division
 
 ### special variables that say about this module
-__version__ = '1.2.3'
+__version__ = '1.2.4'
 
 ### return (error) codes
 # they are put at the top because:
@@ -126,12 +126,14 @@ import posixpath
 import traceback
 import inspect
 import logging
+from functools import partial
 # unify Python 2 and 3
 if sys.version_info[0] == 2:
 	import urllib2 as ulr
 	import urllib as ulp
 	import httplib
 	import cPickle as pickle
+	pickleload = pickle.load
 elif sys.version_info[0] == 3:
 	import urllib.request as ulr
 	import urllib.parse as ulp
@@ -141,6 +143,7 @@ elif sys.version_info[0] == 3:
 	basestring = str
 	long = int
 	raw_input = input
+	pickleload = partial(pickle.load(encoding="bytes"))
 import json
 import hashlib
 import base64
@@ -261,13 +264,15 @@ HomeDir = expanduser('~')
 ConfigDir = HomeDir + os.sep + '.bypy'
 TokenFileName = 'bypy.json'
 TokenFilePath = ConfigDir + os.sep + TokenFileName
-HashCacheFileName = 'bypy.pickle'
+HashCacheFileName = 'bypy.hashcache.json'
 HashCachePath = ConfigDir + os.sep + HashCacheFileName
+PickleFileName = 'bypy.pickle'
+PicklePath = ConfigDir + os.sep + PickleFileName
 ByPyCertsFileName = 'bypy.cacerts.pem'
 ByPyCertsPath = ConfigDir + os.sep + ByPyCertsFileName
 # Old setting locations, should be moved to ~/.bypy to be clean
 OldTokenFilePath = HomeDir + os.sep + '.bypy.json'
-OldHashCachePath = HomeDir + os.sep + '.bypy.pickle'
+OldPicklePath = HomeDir + os.sep + '.bypy.pickle'
 ## default config values
 # TODO: Does the following User-Agent emulation help?
 #UserAgent = None # According to xslidian, User-Agent affects download.
@@ -818,8 +823,37 @@ class cached(object):
 		if cached.debug:
 			pdbg("Periodically saving Hash Cash")
 
+	# merge the from 'fromc' cache into the 'to' cache.
+	# 'keepto':
+	#  - True to keep the entry in 'to' cache when conflicting
+	#  - False to keep the entry from 'fromc' cache
+	# return number of conflict entries found
 	@staticmethod
-	def loadcache():
+	def mergeinto(fromc, to, keepto = True):
+		conflicts = 0
+		for absdir in fromc:
+			entry = fromc[absdir]
+			if not absdir in to:
+				to[absdir] = {}
+			toentry = to[absdir]
+			for file in entry:
+				if file in toentry:
+					if cached.debug:
+						msg = "Cache merge conflict for: '{}/{}', {}: {}.".format(absdir, file,
+							"Keeping the destination value" if keepto else
+							"Using the source value",
+							toentry[file] if keepto else entry[file])
+						pdbg(msg)
+					if not keepto:
+						toentry[file] = entry[file]
+					conflicts += 1
+				else:
+					toentry[file] = entry[file]
+
+		return conflicts
+
+	@staticmethod
+	def loadcache(existingcache = {}):
 		# load cache even we don't use cached hash values,
 		# because we will save (possibly updated) and hash values
 		if not cached.cacheloaded: # no double-loading
@@ -828,23 +862,21 @@ class cached(object):
 
 			if os.path.exists(cached.hashcachepath):
 				try:
-					with open(cached.hashcachepath, 'rb') as f:
-						if sys.version_info[0] == 3:
-							cached.cache = pickle.load(f, encoding="bytes")
-						else:
-							cached.cache = pickle.load(f)
+					with open(cached.hashcachepath, 'r') as f:
+						cached.cache = json.load(f)
+						if existingcache: # not empty
+							if cached.verbose:
+								pr("Merging with existing Hash Cache")
+							mergeinto(existingcache, cached.cache)
 					cached.cacheloaded = True
 					if cached.verbose:
 						pr("Hash Cache File loaded.")
-				except (
-					pickle.PickleError,
-					# the following is for dealing with corrupted cache file
-					EOFError, TypeError, ValueError):
+				except (EOFError, TypeError, ValueError):
 					perr("Fail to load the Hash Cache, no caching. Exception:\n{}".format(format_exc_str()))
-					cached.cache = {}
+					cached.cache = existingcache
 			else:
 				if cached.verbose:
-					pr("Hash Cache File not found, no caching")
+					pr("Hash Cache File '{}' not found, no caching".format(cached.hashcachepath))
 		else:
 			if cached.verbose:
 				pr("Not loading Hash Cache since 'cacheloaded' is '{}'".format(cached.cacheloaded))
@@ -860,8 +892,8 @@ class cached(object):
 				pr("Saving Hash Cache...")
 
 			try:
-				with open(cached.hashcachepath, 'wb') as f:
-					pickle.dump(cached.cache, f)
+				with open(cached.hashcachepath, 'w') as f:
+					json.dump(cached.cache, f)
 					f.close()
 				if cached.verbose:
 					pr("Hash Cache saved.")
@@ -1131,13 +1163,14 @@ class RequestsRequester(object):
 class ByPy(object):
 	'''The main class of the bypy program'''
 
+	# TODO: Apply to configdir instead of ~/.bypy
 	@staticmethod
 	def migratesettings():
 		result = ENoError
 
 		filesToMove = [
 			[OldTokenFilePath, TokenFilePath],
-			[OldHashCachePath, HashCachePath]
+			[OldPicklePath, PicklePath]
 		]
 
 		result = makedir(ConfigDir, 0o700) and result # make it secretive
@@ -1155,6 +1188,37 @@ class ByPy(object):
 					dst = dst + '.old'
 				result = movefile(oldfile, dst) and result
 
+		# we move to JSON for hash caching for better portability
+		# http://www.benfrederickson.com/dont-pickle-your-data/
+		# https://kovshenin.com/2010/pickle-vs-json-which-is-faster/
+		# JSON even outpeforms Pickle and definitely much more portable
+		# DON'T bother with pickle.
+		if os.path.exists(PicklePath):
+			oldcache = {}
+			try:
+				with open(PicklePath, 'rb') as f:
+					oldcache = pickleload(f)
+				cached.loadcache(oldcache)
+				cached.savecache(True)
+				pinfo("Contents of Pickle (old format hash cache) '{}' "
+				"has been merged to '{}'".format(PicklePath, HashCachePath))
+				mergedfile = PicklePath + '.merged'
+				ok = movefile(PicklePath, mergedfile)
+				if ok == ENoError:
+					pinfo("Pickle (old format hash cache) '{}' "
+					"has been renamed to '{}".format(PicklePath, mergedfile))
+				else:
+					perr("Failed to move Pickle (old format hash cache) '{}' to '{}'".format(PicklePath, mergedfile))
+			except (
+				pickle.PickleError,
+				# the following is for dealing with corrupted cache file
+				EOFError, TypeError, ValueError):
+				invalidfile = PicklePath + '.invalid'
+				ok = movefile(PicklePath, invalidfile)
+				perr("{} invalid Pickle (old format hash cache) file '{}' to '{}'".format(
+					"Moved" if ok == ENoError else "Failed to move",
+					PicklePath, invalidfile))
+
 		return result
 
 	def getcertfile(self):
@@ -1170,8 +1234,7 @@ class ByPy(object):
 					with open(self.__certspath, 'wb') as f:
 						f.write(resp.read())
 				except IOError as ex:
-					perr("Fail download CA Certs to '{}'.\n"
-						"Exception:\n{}\nStack:{}\n".format(
+					perr("Fail download CA Certs to '{}'.\nException:\n{}\nStack:{}\n".format(
 						self.__certpath, ex, format_exc_str()))
 
 					result = EDownloadCerts
@@ -1201,7 +1264,7 @@ class ByPy(object):
 
 		super(ByPy, self).__init__()
 
-		# handle backward compatibility
+		# handle backward compatibility, a.k.a. history debt
 		sr = ByPy.migratesettings()
 		if sr != ENoError:
 			# bail out
@@ -1231,8 +1294,8 @@ class ByPy(object):
 			dpcsurl = pcsurl
 			# using a mirror, which has name mismatch SSL error,
 			# so need to disable SSL check
-			pwarn("Mirror '{}' used instead of the default PCS server url '{}', "
-				  "we have to disable the SSL cert check in this case.".format(pcsurl, PcsUrl))
+			pwarn("Mirror '{}' used instead of the default PCS server url '{}', ".format(pcsurl, PcsUrl) +  \
+				  "we have to disable the SSL cert check in this case.")
 			checkssl = False
 		else:
 			# use the default domain

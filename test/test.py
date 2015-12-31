@@ -9,6 +9,8 @@ import os
 import sys
 import shutil
 import re
+import pprint
+import copy
 
 TestGarbledPathNames = False
 
@@ -68,6 +70,48 @@ zerofilename = os.path.join(testdir, 'allzero.1m.bin')
 makesuredir(configdir)
 shutil.copy('bypy.json', configdir)
 by = bypy.ByPy(configdir=configdir, debug=1, verbose=1)
+
+def testmergeinto():
+	fromc = {
+		'a': {
+			'a1': 1,
+			'a2': 2
+		},
+		'b': {
+			'b1': 10,
+			'b2': 20
+		}
+	}
+
+	to = {
+		'a': {
+			'a1': 9,
+			'a3': 3
+		},
+		'b': {
+			'b2': 90,
+			'b3': 30,
+		},
+		'c': {
+			'c1': 100
+		}
+	}
+	toorig = copy.deepcopy(to)
+
+	pprint.pprint(fromc)
+	pprint.pprint(to)
+	bypy.cached.mergeinto(fromc, to)
+	pprint.pprint(to)
+	print(repr(to))
+	assert to == {u'a': {u'a1': 9, u'a3': 3, u'a2': 2}, u'c': {u'c1': 100}, u'b': {u'b1': 10, u'b2': 90, u'b3': 30}}
+
+	to = toorig
+	pprint.pprint(fromc)
+	pprint.pprint(to)
+	bypy.cached.mergeinto(fromc, to, False)
+	pprint.pprint(to)
+	print(repr(to))
+	assert to == {u'a': {u'a1': 1, u'a3': 3, u'a2': 2}, u'c': {u'c1': 100}, u'b': {u'b1': 10, u'b2': 20, u'b3': 30}}
 
 def prepare():
 	# preparation
@@ -159,6 +203,7 @@ def syncdown():
 	mpr.empty()
 
 def main():
+	testmergeinto()
 	prepare()
 	emptyremote()
 	uploaddir()

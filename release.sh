@@ -21,7 +21,7 @@ done
 if [ "$build" -eq 1 ]
 then
 	rm -Rf dist/*
-	python3 setup.py sdist bdist_wheel -r testpypi
+	python3 setup.py sdist bdist_wheel
 fi
 
 if [ "$actual" -eq 0 ]
