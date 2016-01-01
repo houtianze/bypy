@@ -11,6 +11,7 @@ import shutil
 import re
 import pprint
 import copy
+import time
 
 TestGarbledPathNames = False
 
@@ -207,10 +208,16 @@ def main():
 	prepare()
 	emptyremote()
 	uploaddir()
+	# sleep is the cure for hanging request <scorn>
+	time.sleep(2)
 	getquota()
+	time.sleep(2)
 	compare()
+	time.sleep(2)
 	downdir()
+	time.sleep(2)
 	syncup()
+	time.sleep(2)
 	syncdown()
 	os.remove(zerofilename)
 	shutil.rmtree(configdir, ignore_errors=True)

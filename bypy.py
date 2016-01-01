@@ -3346,6 +3346,71 @@ if not specified, it defaults to the root directory
 		else:
 			return EFileNotFound
 
+	def __cdl_act(self, r, args):
+		pprint.pprint(r.json())
+		return ENoError
+
+	def __cdl_add(self, source_url, rpath, timeout):
+		pinfo("Adding cloud download task:")
+		pinfo("{} =cdl=> {}".format(source_url, rpath))
+		pars = {
+			'method': 'add_task',
+			'source_url': source_url,
+			'save_path': rpath,
+			'timeout': 3600 }
+		return self.__post(pcsurl + 'services/cloud_dl', pars, self.__cdl_act)
+
+	def cdl_add(self, source_url, save_path = '/', timeout = 3600):
+		''' Usage: cld_add <source_url> [save_path] [timeout] - add an offline (cloud) download task
+  source_url - the URL to download file from.
+  save_path - path on PCS to save file to. default is to save to root directory '/'.
+  timeout - timeout in seconds. default is 3600 seconds.
+		'''
+		rpath = get_pcs_path(save_path)
+		if rpath == AppPcsPath:
+			rpath += '/' # this is for correct splitting in __get_file_info()
+		subret = self.__get_file_info(rpath)
+		if subret == ENoError and self.__remote_json['isdir']:
+			filename = source_url.split('/')[-1]
+			rpath += filename
+		return self.__cdl_add(source_url, rpath, timeout)
+
+	def __cdl_query(self, task_ids, op_type):
+		pars = {
+			'method': 'query_task',
+			'task_ids': task_ids,
+			'op_type': op_type}
+		return self.__post(pcsurl + 'services/cloud_dl', pars, self.__cdl_act)
+
+	def cdl_query(self, task_ids, op_type = 1):
+		''' Usage: cld_query <task_ids>  - query existing offline (cloud) download tasks
+  task_ids - task ids seperated by comma (,).
+  op_type - 0 for task info; 1 for progress info. default is 1
+		'''
+		return self.__cdl_query(task_ids, op_type)
+
+	def __cdl_list(self):
+		pars = {
+			'method': 'list_task' }
+		return self.__post(pcsurl + 'services/cloud_dl', pars, self.__cdl_act)
+
+	def cdl_list(self):
+		''' Usage: cld_list - list offline (cloud) download tasks
+		'''
+		return self.__cdl_list()
+
+	def __cdl_cancel(self, task_id):
+		pars = {
+			'method': 'cancel_task',
+			'task_id': task_id }
+		return self.__post(pcsurl + 'services/cloud_dl', pars, self.__cdl_act)
+
+	def cdl_cancel(self, task_id):
+		''' Usage: cld_cancel <task_id>  - cancel an offline (cloud) download task
+  task_id - id of the task to be canceled.
+		'''
+		return self.__cdl_cancel(task_id)
+
 # put all xslidian's bduss extensions here, i never tried out them though
 class PanAPI(ByPy):
 	IEBDUSSExpired = -6
