@@ -223,12 +223,13 @@ def cdl():
 def main():
 	testmergeinto()
 	prepare()
+	# sleep is the cure for hanging request <scorn>
 	time.sleep(2)
 	emptyremote()
 	time.sleep(2)
 	cdl()
+	time.sleep(2)
 	uploaddir()
-	# sleep is the cure for hanging request <scorn>
 	time.sleep(2)
 	getquota()
 	time.sleep(2)
