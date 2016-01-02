@@ -421,27 +421,6 @@ def remove_backslash(s):
 rb = remove_backslash
 
 # http://stackoverflow.com/questions/9403986/python-3-traceback-fails-when-no-exception-is-active
-def py3_format_stack(**kwargs):
-	if sys.exc_info() == (None, None, None):
-		return []
-
-	return traceback.format_stack(**kwargs)
-
-def py3_print_stack(**kwargs):
-	if sys.exc_info() == (None, None, None):
-		return print("http://stackoverflow.com/questions/9403986/python-3-traceback-fails-when-no-exception-is-active")
-	else:
-		return traceback.print_stack(**kwargs)
-
-if sys.version_info[0] == 3 and sys.version_info[1] < 5:
-	format_stack = py3_format_stack
-	print_stack = py3_print_stack
-else:
-	format_stack = traceback.format_stack
-	print_stack = traceback.print_stack
-
-def format_stack_str(**kwargs):
-	return ''.join(format_stack(**kwargs))
 
 # marshaling
 def str2bool(s):
@@ -616,7 +595,7 @@ def copyfile(src, dst):
 		shutil.copyfile(src, dst)
 	except (shutil.Error, IOError) as ex:
 		perr("Fail to copy '{}' to '{}'.\nException:\n{}\nStack:{}\n".format(
-			src, dst, ex, format_stack_str()))
+			src, dst, ex, traceback.format_stack()))
 		result = EFailToCreateLocalFile
 
 	return result
@@ -627,7 +606,7 @@ def movefile(src, dst):
 		shutil.move(src, dst)
 	except (shutil.Error, OSError) as ex:
 		perr("Fail to move '{}' to '{}'.\nException:\n{}\nStack:\n{}\n".format(
-			src, dst, ex, format_stack_str()))
+			src, dst, ex, traceback.format_stack()))
 		result = EFailToCreateLocalFile
 
 	return result
@@ -641,7 +620,7 @@ def removefile(path, verbose = False):
 			os.remove(path)
 	except Exception as ex:
 		perr("Fail to remove local fle '{}'.\nException:\n{}\nStack:{}\n".format(
-			path, ex, format_stack_str()))
+			path, ex, traceback.format_stack()))
 		result = EFailToDeleteFile
 
 	return result
@@ -655,7 +634,7 @@ def removedir(path, verbose = False):
 			shutil.rmtree(path)
 	except Exception as ex:
 		perr("Fail to remove local directory '{}'.\nException:\n{}\nStack:{}\n".format(
-			path, ex, format_stack_str()))
+			path, ex, traceback.format_stack()))
 		result = EFailToDeleteDir
 
 	return result
@@ -671,7 +650,7 @@ def makedir(path, mode = 0o777, verbose = False):
 			os.makedirs(path, mode)
 		except os.error as ex:
 			perr("Failed at creating local dir '{}'.\nException:\n{}\nStack:{}\n".format(
-				path, ex, format_stack_str()))
+				path, ex, traceback.format_stack()))
 			result = EFailToCreateLocalDir
 
 	return result
@@ -681,8 +660,9 @@ def getfilesize(path):
 	size = -1
 	try:
 		size = os.path.getsize(path)
-	except os.error:
-		perr("Exception occured while getting size of '{}'. Exception:\n{}".format(path, format_stack_str()))
+	except os.error as ex:
+		perr("Exception occured while getting size of '{}'. Exception:\n{}\nStack:\n{}".format(
+			path, ex, traceback.format_stack()))
 
 	return size
 
@@ -691,8 +671,9 @@ def getfilemtime(path):
 	mtime = -1
 	try:
 		mtime = os.path.getmtime(path)
-	except os.error:
-		perr("Exception occured while getting modification time of '{}'. Exception:\n{}".format(path, format_stack_str()))
+	except os.error as ex:
+		perr("Exception occured while getting modification time of '{}'. Exception:\n{}\nStack:\n{}".format(
+			path, ex, traceback.format_stack()))
 
 	return mtime
 
@@ -878,8 +859,9 @@ class cached(object):
 					cached.cacheloaded = True
 					if cached.verbose:
 						pr("Hash Cache File loaded.")
-				except (EOFError, TypeError, ValueError):
-					perr("Fail to load the Hash Cache, no caching. Exception:\n{}".format(format_stack_str()))
+				except (EOFError, TypeError, ValueError) as ex:
+					perr("Fail to load the Hash Cache, no caching. Exception:\n{}\nStack:\n{}".format(
+						ex, traceback.format_stack()))
 					cached.cache = existingcache
 			else:
 				if cached.verbose:
@@ -907,7 +889,7 @@ class cached(object):
 				saved = True
 				cached.dirty = False
 			except Exception as ex:
-				perr("Failed to save Hash Cache. Exception:\n{}\nStack:\n{}".format(ex, format_stack_str()))
+				perr("Failed to save Hash Cache. Exception:\n{}\nStack:\n{}".format(ex, traceback.format_stack()))
 		else:
 			if cached.verbose:
 				pr("Skip saving Hash Cache since it has not been updated.")
@@ -1144,11 +1126,11 @@ class RequestsRequester(object):
 			try:
 				import urllib3 as ul3
 				ul3.disable_warnings()
-			except:
+			except Exception as ex:
 				perr("Failed to disable warnings for Urllib3.\n"
 					"Possibly the requests library is out of date?\n"
-					"You can upgrade it by running '{}'.\n"
-					"Exception:\n{}".format(PipUpgradeCommand, format_stack_str()))
+					"You can upgrade it by running '{}'.\nException:\n{}\nStack:{}".format(
+						PipUpgradeCommand, ex, traceback.format_stack()))
 			# i don't know why under Ubuntu, 'pip install requests' doesn't install the requests.packages.* packages
 				pass
 
@@ -1242,7 +1224,7 @@ class ByPy(object):
 						f.write(resp.read())
 				except IOError as ex:
 					perr("Fail download CA Certs to '{}'.\nException:\n{}\nStack:{}\n".format(
-						self.__certpath, ex, format_stack_str()))
+						self.__certpath, ex, traceback.format_stack()))
 
 					result = EDownloadCerts
 
@@ -1434,18 +1416,15 @@ class ByPy(object):
 					pf = perr
 					msg = "Error JSON returned:{}\nError code: {}\nError Description: {}".format(dj, ec, et)
 				pf(msg)
-		except Exception:
+		except Exception as ex:
 			perr('Error parsing JSON Error Code from:\n{}'.format(rb(r.text)))
-			perr('Exception:\n{}'.format(format_stack_str()))
+			perr('Exception:\n{}\nStack:\n{}'.format(ex, traceback.format_stack()))
 
 	def __dump_exception(self, ex, url, pars, r, act):
 		if self.debug or self.verbose:
 			perr("Error accessing '{}'".format(url))
 			if ex and isinstance(ex, Exception) and self.debug:
-				perr("Exception:\n{}".format(ex))
-			tb = format_stack_str()
-			if tb:
-				pr("Stack:\n" + tb)
+				perr("Exception:\n{}\nStack:\n{}".format(ex, traceback.format_stack()))
 			perr("Function: {}".format(act.__name__))
 			perr("Website parameters: {}".format(pars))
 			if hasattr(r, 'status_code'):
@@ -1728,9 +1707,9 @@ class ByPy(object):
 				self.pd("Token loaded:")
 				self.pd(self.__json)
 				return True
-		except IOError:
-			perr('Error while loading baidu pcs token:')
-			perr(format_stack_str())
+		except IOError as ex:
+			perr("Error while loading baidu pcs token.")
+			perr("Exception:\n{}\nStack:{}".format(ex, traceback.format_stack()))
 			return False
 
 	def __store_json_only(self, j):
@@ -1748,16 +1727,16 @@ class ByPy(object):
 			return ENoError
 		except Exception as ex:
 			perr("Exception occured while trying to store access token:\n" \
-					"Exception:\n{}\nStack:\n{}".format(ex, format_stack_str()))
+					"Exception:\n{}\nStack:\n{}".format(ex, traceback.format_stack()))
 			return EFileWrite
 
 	def __store_json(self, r):
 		j = {}
 		try:
 			j = r.json()
-		except Exception:
+		except Exception as ex:
 			perr("Failed to decode JSON:\n" \
-				"Exception:\n{}".format(format_stack_str()))
+					"Exception:\n{}\nStack:{}".format(ex, traceback.format_stack()))
 			perr("Error response:\n{}".format(r.text));
 			pinfo('-' * 64)
 			pinfo("""This is most likely caused by authorization errors.
@@ -2428,9 +2407,9 @@ try to create a file at PCS by combining slices, having MD5s specified
 						digests = filter(None, contents.split())
 						for d in digests:
 							self.__slice_md5s.append(d)
-				except IOError:
-					perr("Exception occured while reading file '{}'. Exception:\n{}".format(
-						localfile, format_stack_str()))
+				except IOError as ex:
+					perr("Exception occured while reading file '{}'. Exception:\n{}\nStack:\n{}".format(
+						localfile, ex, traceback.format_stack()))
 			else:
 				for arg in args:
 					self.__slice_md5s.append(arg)
@@ -2466,7 +2445,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 		if not parse_ok:
 			self.__remote_json = {}
-			perr("Invalid JSON: {}\n{}".format(j, format_stack_str()))
+			perr("Invalid JSON:\n{}".format(j))
 			return EInvalidJson
 
 	# no longer used
@@ -3350,8 +3329,8 @@ if not specified, it defaults to the root directory
 					self.__hashcachepath, backup))
 				cached.cleancache()
 				return ENoError
-			except:
-				perr("Exception:\n{}".format(format_stack_str()))
+			except Exception as ex:
+				perr("Exception:\n{}\nStack:\n{}".format(ex, traceback.format_stack()))
 				return EException
 		else:
 			return EFileNotFound
@@ -3535,9 +3514,9 @@ class PanAPI(ByPy):
 				self.pd("BDUSS loaded: {}".format(self.__bduss))
 				self.__cookies = {'BDUSS': self.__bduss}
 				return True
-		except IOError:
-			self.pd('Error loading BDUSS:')
-			self.pd(format_stack_str())
+		except IOError as ex:
+			self.pd("Error loading BDUSS:")
+			self.pd("Exception:\n{}\nStack:\n{}".format(ex, traceback.format_stack()))
 			return False
 
 	# overriding
@@ -3719,8 +3698,6 @@ def onexit(retcode = ENoError):
 
 def sighandler(signum, frame):
 	pr("Signal {} received, Abort".format(signum))
-	pr("Stack:\n")
-	print_stack(frame)
 	onexit(EAbort)
 
 # http://www.gnu.org/software/libc/manual/html_node/Basic-Signal-Handling.html
@@ -3933,7 +3910,7 @@ def main(argv=None): # IGNORE:C0111
 		# will sometimes give exception ...
 		perr("Exception occurred:")
 		pr("Exception: {}".format(ex))
-		pr(format_stack_str())
+		pr(traceback.format_stack())
 		pr("Abort")
 		# raise
 
