@@ -47,7 +47,7 @@ def ifany(list, require):
 
 def filterregex(list, regex):
 	rec = re.compile(regex)
-	return filter(lambda x: rec.search(x), list)
+	return filter(lambda x: rec and isinstance(x, basestring) and rec.search(x), list)
 
 def makesuredir(dirname):
 	if not os.path.exists(dirname):
@@ -203,10 +203,30 @@ def syncdown():
 	assertsame()
 	mpr.empty()
 
+def cdl():
+	banner("Offline (cloud) download")
+	result = by.cdl_cancel(123)
+	assert int(result) == 36016
+	mpr.empty()
+	assert by.cdl_list() == bypy.ENoError
+	# {u'request_id': 353951550, u'task_info': [], u'total': 0}
+	assert filterregex(mpr.getq(), r"'total'\s*:\s*0")
+	mpr.empty()
+	assert by.cdl_query(123) == bypy.ENoError
+	assert filterregex(mpr.getq(), r"'result'\s*:\s*1")
+	mpr.empty()
+	assert by.cdl_add("http://dl.client.baidu.com/BaiduKuaijie/BaiduKuaijie_Setup.exe", testdir) == bypy.ENoError
+	assert filterregex(mpr.getq(), r"'task_id'\s*:\s*\d+")
+	assert by.cdl_addmon("http://dl.client.baidu.com/BaiduKuaijie/BaiduKuaijie_Setup.exe", testdir) == bypy.ENoError
+	mpr.empty()
+
 def main():
 	testmergeinto()
 	prepare()
+	time.sleep(2)
 	emptyremote()
+	time.sleep(2)
+	cdl()
 	uploaddir()
 	# sleep is the cure for hanging request <scorn>
 	time.sleep(2)
@@ -219,6 +239,10 @@ def main():
 	syncup()
 	time.sleep(2)
 	syncdown()
+	time.sleep(2)
+	cdl()
+
+	# clean up
 	os.remove(zerofilename)
 	shutil.rmtree(configdir, ignore_errors=True)
 

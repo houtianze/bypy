@@ -35,7 +35,7 @@ from __future__ import print_function
 from __future__ import division
 
 ### special variables that say about this module
-__version__ = '1.2.4'
+__version__ = '1.2.5'
 
 ### return (error) codes
 # they are put at the top because:
@@ -421,21 +421,27 @@ def remove_backslash(s):
 rb = remove_backslash
 
 # http://stackoverflow.com/questions/9403986/python-3-traceback-fails-when-no-exception-is-active
-def format_exc(**kwargs):
-	if sys.version_info[0] == 3:
-		if sys.exc_info() == (None, None, None):
-			return []
+def py3_format_stack(**kwargs):
+	if sys.exc_info() == (None, None, None):
+		return []
 
 	return traceback.format_stack(**kwargs)
 
-def format_exc_str(**kwargs):
-	return ''.join(format_exc(**kwargs))
-
-def print_stack(**kwargs):
+def py3_print_stack(**kwargs):
 	if sys.exc_info() == (None, None, None):
-		return None
+		return print("http://stackoverflow.com/questions/9403986/python-3-traceback-fails-when-no-exception-is-active")
 	else:
 		return traceback.print_stack(**kwargs)
+
+if sys.version_info[0] == 3 and sys.version_info[1] < 5:
+	format_stack = py3_format_stack
+	print_stack = py3_print_stack
+else:
+	format_stack = traceback.format_stack
+	print_stack = traceback.print_stack
+
+def format_stack_str(**kwargs):
+	return ''.join(format_stack(**kwargs))
 
 # marshaling
 def str2bool(s):
@@ -610,7 +616,7 @@ def copyfile(src, dst):
 		shutil.copyfile(src, dst)
 	except (shutil.Error, IOError) as ex:
 		perr("Fail to copy '{}' to '{}'.\nException:\n{}\nStack:{}\n".format(
-			src, dst, ex, format_exc_str()))
+			src, dst, ex, format_stack_str()))
 		result = EFailToCreateLocalFile
 
 	return result
@@ -621,7 +627,7 @@ def movefile(src, dst):
 		shutil.move(src, dst)
 	except (shutil.Error, OSError) as ex:
 		perr("Fail to move '{}' to '{}'.\nException:\n{}\nStack:\n{}\n".format(
-			src, dst, ex, format_exc_str()))
+			src, dst, ex, format_stack_str()))
 		result = EFailToCreateLocalFile
 
 	return result
@@ -635,7 +641,7 @@ def removefile(path, verbose = False):
 			os.remove(path)
 	except Exception as ex:
 		perr("Fail to remove local fle '{}'.\nException:\n{}\nStack:{}\n".format(
-			path, ex, format_exc_str()))
+			path, ex, format_stack_str()))
 		result = EFailToDeleteFile
 
 	return result
@@ -649,7 +655,7 @@ def removedir(path, verbose = False):
 			shutil.rmtree(path)
 	except Exception as ex:
 		perr("Fail to remove local directory '{}'.\nException:\n{}\nStack:{}\n".format(
-			path, ex, format_exc_str()))
+			path, ex, format_stack_str()))
 		result = EFailToDeleteDir
 
 	return result
@@ -665,7 +671,7 @@ def makedir(path, mode = 0o777, verbose = False):
 			os.makedirs(path, mode)
 		except os.error as ex:
 			perr("Failed at creating local dir '{}'.\nException:\n{}\nStack:{}\n".format(
-				path, ex, format_exc_str()))
+				path, ex, format_stack_str()))
 			result = EFailToCreateLocalDir
 
 	return result
@@ -676,7 +682,7 @@ def getfilesize(path):
 	try:
 		size = os.path.getsize(path)
 	except os.error:
-		perr("Exception occured while getting size of '{}'. Exception:\n{}".format(path, format_exc_str()))
+		perr("Exception occured while getting size of '{}'. Exception:\n{}".format(path, format_stack_str()))
 
 	return size
 
@@ -686,7 +692,7 @@ def getfilemtime(path):
 	try:
 		mtime = os.path.getmtime(path)
 	except os.error:
-		perr("Exception occured while getting modification time of '{}'. Exception:\n{}".format(path, format_exc_str()))
+		perr("Exception occured while getting modification time of '{}'. Exception:\n{}".format(path, format_stack_str()))
 
 	return mtime
 
@@ -873,7 +879,7 @@ class cached(object):
 					if cached.verbose:
 						pr("Hash Cache File loaded.")
 				except (EOFError, TypeError, ValueError):
-					perr("Fail to load the Hash Cache, no caching. Exception:\n{}".format(format_exc_str()))
+					perr("Fail to load the Hash Cache, no caching. Exception:\n{}".format(format_stack_str()))
 					cached.cache = existingcache
 			else:
 				if cached.verbose:
@@ -900,8 +906,8 @@ class cached(object):
 					pr("Hash Cache saved.")
 				saved = True
 				cached.dirty = False
-			except Exception:
-				perr("Failed to save Hash Cache. Exception:\n{}".format(format_exc_str()))
+			except Exception as ex:
+				perr("Failed to save Hash Cache. Exception:\n{}\nStack:\n{}".format(ex, format_stack_str()))
 		else:
 			if cached.verbose:
 				pr("Skip saving Hash Cache since it has not been updated.")
@@ -1142,7 +1148,7 @@ class RequestsRequester(object):
 				perr("Failed to disable warnings for Urllib3.\n"
 					"Possibly the requests library is out of date?\n"
 					"You can upgrade it by running '{}'.\n"
-					"Exception:\n{}".format(PipUpgradeCommand, format_exc_str()))
+					"Exception:\n{}".format(PipUpgradeCommand, format_stack_str()))
 			# i don't know why under Ubuntu, 'pip install requests' doesn't install the requests.packages.* packages
 				pass
 
@@ -1236,7 +1242,7 @@ class ByPy(object):
 						f.write(resp.read())
 				except IOError as ex:
 					perr("Fail download CA Certs to '{}'.\nException:\n{}\nStack:{}\n".format(
-						self.__certpath, ex, format_exc_str()))
+						self.__certpath, ex, format_stack_str()))
 
 					result = EDownloadCerts
 
@@ -1430,16 +1436,16 @@ class ByPy(object):
 				pf(msg)
 		except Exception:
 			perr('Error parsing JSON Error Code from:\n{}'.format(rb(r.text)))
-			perr('Exception:\n{}'.format(format_exc_str()))
+			perr('Exception:\n{}'.format(format_stack_str()))
 
 	def __dump_exception(self, ex, url, pars, r, act):
 		if self.debug or self.verbose:
 			perr("Error accessing '{}'".format(url))
 			if ex and isinstance(ex, Exception) and self.debug:
 				perr("Exception:\n{}".format(ex))
-			tb = format_exc_str()
+			tb = format_stack_str()
 			if tb:
-				pr("Traceback:\n" + tb)
+				pr("Stack:\n" + tb)
 			perr("Function: {}".format(act.__name__))
 			perr("Website parameters: {}".format(pars))
 			if hasattr(r, 'status_code'):
@@ -1537,9 +1543,13 @@ class ByPy(object):
 					ec == 31064 or # sc == 403 file is not authorized
 					ec == 31065 or # sc == 400 directory is full
 					ec == 31066 or # sc == 403 (indeed 404) file does not exist
+					ec == 36016 or # sc == 404 Task was not found
 					# the following was found by xslidian, but i have never ecountered before
 					ec == 31390):  # sc == 404 # {"error_code":31390,"error_msg":"Illegal File"} # r.url.find('http://bcscdn.baidu.com/bcs-cdn/wenxintishi') == 0
 					result = ec
+					# TODO: Move this out to cdl_cancel() ?
+					if ec == 36016:
+						pr(r.json())
 					if dumpex:
 						self.__dump_exception(None, url, pars, r, act)
 				else:
@@ -1720,7 +1730,7 @@ class ByPy(object):
 				return True
 		except IOError:
 			perr('Error while loading baidu pcs token:')
-			perr(format_exc_str())
+			perr(format_stack_str())
 			return False
 
 	def __store_json_only(self, j):
@@ -1736,9 +1746,9 @@ class ByPy(object):
 
 			os.chmod(self.__tokenpath, tokenmode)
 			return ENoError
-		except Exception:
+		except Exception as ex:
 			perr("Exception occured while trying to store access token:\n" \
-				"Exception:\n{}".format(format_exc_str()))
+					"Exception:\n{}\nStack:\n{}".format(ex, format_stack_str()))
 			return EFileWrite
 
 	def __store_json(self, r):
@@ -1747,7 +1757,7 @@ class ByPy(object):
 			j = r.json()
 		except Exception:
 			perr("Failed to decode JSON:\n" \
-				"Exception:\n{}".format(format_exc_str()))
+				"Exception:\n{}".format(format_stack_str()))
 			perr("Error response:\n{}".format(r.text));
 			pinfo('-' * 64)
 			pinfo("""This is most likely caused by authorization errors.
@@ -2420,7 +2430,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 							self.__slice_md5s.append(d)
 				except IOError:
 					perr("Exception occured while reading file '{}'. Exception:\n{}".format(
-						localfile, format_exc_str()))
+						localfile, format_stack_str()))
 			else:
 				for arg in args:
 					self.__slice_md5s.append(arg)
@@ -2456,7 +2466,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 		if not parse_ok:
 			self.__remote_json = {}
-			perr("Invalid JSON: {}\n{}".format(j, format_exc_str()))
+			perr("Invalid JSON: {}\n{}".format(j, format_stack_str()))
 			return EInvalidJson
 
 	# no longer used
@@ -3341,53 +3351,146 @@ if not specified, it defaults to the root directory
 				cached.cleancache()
 				return ENoError
 			except:
-				perr("Exception:\n{}".format(format_exc_str()))
+				perr("Exception:\n{}".format(format_stack_str()))
 				return EException
 		else:
 			return EFileNotFound
 
 	def __cdl_act(self, r, args):
-		pprint.pprint(r.json())
+		pr(pprint.pformat(r.json()))
 		return ENoError
 
-	def __cdl_add(self, source_url, rpath, timeout):
-		pinfo("Adding cloud download task:")
-		pinfo("{} =cdl=> {}".format(source_url, rpath))
+	def __prepare_cdl_add(self, source_url, rpath, timeout):
+		pr("Adding cloud download task:")
+		pr("{} =cdl=> {}".format(source_url, rpath))
 		pars = {
 			'method': 'add_task',
 			'source_url': source_url,
 			'save_path': rpath,
 			'timeout': 3600 }
+		return pars
+
+	def __cdl_add(self, source_url, rpath, timeout):
+		pars = self.__prepare_cdl_add(source_url, rpath, timeout)
 		return self.__post(pcsurl + 'services/cloud_dl', pars, self.__cdl_act)
 
+	def __get_cdl_dest(self, source_url, save_path):
+		rpath = get_pcs_path(save_path)
+		# download to /apps/bypy root
+		if rpath == AppPcsPath \
+			or (ENoError == self.__get_file_info(rpath) \
+				and self.__remote_json['isdir']):
+			filename = source_url.split('/')[-1]
+			rpath += '/' + filename
+		return rpath
+
 	def cdl_add(self, source_url, save_path = '/', timeout = 3600):
-		''' Usage: cld_add <source_url> [save_path] [timeout] - add an offline (cloud) download task
+		''' Usage: cdl_add <source_url> [save_path] [timeout] - add an offline (cloud) download task
   source_url - the URL to download file from.
   save_path - path on PCS to save file to. default is to save to root directory '/'.
   timeout - timeout in seconds. default is 3600 seconds.
 		'''
-		rpath = get_pcs_path(save_path)
-		if rpath == AppPcsPath:
-			rpath += '/' # this is for correct splitting in __get_file_info()
-		subret = self.__get_file_info(rpath)
-		if subret == ENoError and self.__remote_json['isdir']:
-			filename = source_url.split('/')[-1]
-			rpath += filename
+		rpath = self.__get_cdl_dest(source_url, save_path)
 		return self.__cdl_add(source_url, rpath, timeout)
 
-	def __cdl_query(self, task_ids, op_type):
+	def __get_cdl_query_pars(self, task_ids, op_type):
 		pars = {
 			'method': 'query_task',
 			'task_ids': task_ids,
 			'op_type': op_type}
+		return pars
+
+	def __cdl_query(self, task_ids, op_type):
+		pars =  self.__get_cdl_query_pars(task_ids, op_type)
 		return self.__post(pcsurl + 'services/cloud_dl', pars, self.__cdl_act)
 
 	def cdl_query(self, task_ids, op_type = 1):
-		''' Usage: cld_query <task_ids>  - query existing offline (cloud) download tasks
+		''' Usage: cdl_query <task_ids>  - query existing offline (cloud) download tasks
   task_ids - task ids seperated by comma (,).
   op_type - 0 for task info; 1 for progress info. default is 1
 		'''
 		return self.__cdl_query(task_ids, op_type)
+
+	def __cdl_mon_act(self, r, args):
+		try:
+			task_id, start_time, done = args
+			j = r.json()
+			ti = j['task_info'][str(task_id)]
+			if ('file_size' not in ti) or ('finished_size' not in ti):
+				done[0] = True
+				pr(j)
+			else:
+				total = int(ti['file_size'])
+				finish = int(ti['finished_size'])
+				done[0] = (total != 0 and (total == finish))
+				pprgr(finish, total, start_time)
+				if done[0]:
+					pr(pprint.pformat(j))
+			return ENoError
+		except Exception as ex:
+			perr("Exception while monitoring offline (cloud) download task:\n{}".format(ex))
+			perr("Baidu returned:\n{}".format(rb(r.text)))
+			return EInvalidJson
+
+	def __cdl_addmon_act(self, r, args):
+		try:
+			args[0] = r.json()
+			pr(pprint.pformat(args[0]))
+			return ENoError
+		except Exception as ex:
+			perr("Exception while adding offline (cloud) download task:\n{}".format(ex))
+			perr("Baidu returned:\n{}".format(rb(r.text)))
+			return EInvalidJson
+
+	def __cdl_sighandler(self, signum, frame):
+		pr("Cancelling offline (cloud) download task: {}".format(self.__cdl_task_id))
+		result = self.__cdl_cancel(self.__cdl_task_id)
+		pr("Result: {}".format(result))
+		onexit(EAbort)
+
+	def __cdl_addmon(self, source_url, rpath, timeout = 3600):
+		pars = self.__prepare_cdl_add(source_url, rpath, timeout)
+		jc = [{}] # out param
+		result = self.__post(pcsurl + 'services/cloud_dl',
+			pars, self.__cdl_addmon_act, jc)
+		if result == ENoError:
+			if not 'task_id' in jc[0]:
+				return EInvalidJson
+			task_id = jc[0]['task_id']
+			pars = self.__get_cdl_query_pars(task_id, 1)
+			start_time = time.time()
+			done = [ False ] # out param
+			# cancel task on Ctrl-C
+			pr("Press Ctrl-C to cancel the download task")
+			self.__cdl_task_id = task_id
+			setsighandler(signal.SIGINT, self.__cdl_sighandler)
+			setsighandler(signal.SIGHUP, self.__cdl_sighandler)
+			try:
+				while True:
+					result = self.__post(
+						pcsurl + 'services/cloud_dl', pars, self.__cdl_mon_act,
+						(task_id, start_time, done))
+					if result == ENoError:
+						if done[0] == True:
+							return ENoError
+					else:
+						return result
+					time.sleep(5)
+			except KeyboardInterrupt:
+				pr("Canceling offline (cloud) downloa task: {}".format(task_id))
+				self.__cdl_cancel(task_id)
+				return EAbort
+		else:
+			return result
+
+	def cdl_addmon(self, source_url, save_path = '/', timeout = 3600):
+		''' Usage: cdl_addmon <source_url> [save_path] [timeout] - add an offline (cloud) download task and monitor the download progress
+  source_url - the URL to download file from.
+  save_path - path on PCS to save file to. default is to save to root directory '/'.
+  timeout - timeout in seconds. default is 3600 seconds.
+		'''
+		rpath = self.__get_cdl_dest(source_url, save_path)
+		return self.__cdl_addmon(source_url, rpath, timeout)
 
 	def __cdl_list(self):
 		pars = {
@@ -3395,7 +3498,7 @@ if not specified, it defaults to the root directory
 		return self.__post(pcsurl + 'services/cloud_dl', pars, self.__cdl_act)
 
 	def cdl_list(self):
-		''' Usage: cld_list - list offline (cloud) download tasks
+		''' Usage: cdl_list - list offline (cloud) download tasks
 		'''
 		return self.__cdl_list()
 
@@ -3406,7 +3509,7 @@ if not specified, it defaults to the root directory
 		return self.__post(pcsurl + 'services/cloud_dl', pars, self.__cdl_act)
 
 	def cdl_cancel(self, task_id):
-		''' Usage: cld_cancel <task_id>  - cancel an offline (cloud) download task
+		''' Usage: cdl_cancel <task_id>  - cancel an offline (cloud) download task
   task_id - id of the task to be canceled.
 		'''
 		return self.__cdl_cancel(task_id)
@@ -3434,7 +3537,7 @@ class PanAPI(ByPy):
 				return True
 		except IOError:
 			self.pd('Error loading BDUSS:')
-			self.pd(format_exc_str())
+			self.pd(format_stack_str())
 			return False
 
 	# overriding
@@ -3622,8 +3725,10 @@ def sighandler(signum, frame):
 
 # http://www.gnu.org/software/libc/manual/html_node/Basic-Signal-Handling.html
 def setsighandler(signum, handler):
-	if signal.signal(signum, handler) == signal.SIG_IGN:
+	oldhandler = signal.signal(signum, handler)
+	if oldhandler == signal.SIG_IGN:
 		signal.signal(signum, signal.SIG_IGN)
+	return oldhandler
 
 def setuphandlers():
 	if sys.platform == 'win32':
@@ -3828,7 +3933,7 @@ def main(argv=None): # IGNORE:C0111
 		# will sometimes give exception ...
 		perr("Exception occurred:")
 		pr("Exception: {}".format(ex))
-		pr(format_exc_str())
+		pr(format_stack_str())
 		pr("Abort")
 		# raise
 
