@@ -2,10 +2,13 @@
 # coding=utf-8
 
 from setuptools import setup,find_packages
+import pypandoc
 
 import bypy
 doclist = bypy.__doc__.split("---")
-long_desc = doclist[1].strip()
+long_desc = doclist[1].strip() + '\n\n'
+long_desc += pypandoc.convert('HISTORY.md', 'rst')
+print(long_desc)
 
 setup(
 	name='bypy',

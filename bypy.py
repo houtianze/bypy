@@ -22,7 +22,10 @@ Python client for Baidu Yun (https://github.com/houtianze/bypy)
 ---
 
 It provides file operations like: list, download, upload, syncup, syncdown, etc.
+
 The main purpose is to utilize Baidu Yun in Linux environments (e.g. Raspberry Pi)
+
+For more information, please refer to https://github.com/houtianze/bypy
 
 ---
 @author:     Hou Tianze (GitHub: houtianze) and contributors
