@@ -82,6 +82,7 @@ or (sys.version_info[0] == 3 and sys.version_info[1] < 3):
 	print("Error: Incorrect Python version. You need 2.7 / 3.3 or above")
 	sys.exit(EIncorrectPythonVersion)
 import os
+import io
 import locale
 import codecs
 SystemLanguageCode, SystemEncoding = locale.getdefaultlocale()
@@ -850,7 +851,7 @@ class cached(object):
 
 			if os.path.exists(cached.hashcachepath):
 				try:
-					with open(cached.hashcachepath, 'r') as f:
+					with io.open(cached.hashcachepath, 'r', encoding = 'utf-8') as f:
 						cached.cache = json.load(f)
 						if existingcache: # not empty
 							if cached.verbose:
@@ -881,7 +882,7 @@ class cached(object):
 				pr("Saving Hash Cache...")
 
 			try:
-				with open(cached.hashcachepath, 'w') as f:
+				with io.open(cached.hashcachepath, 'w', encoding = 'utf-8') as f:
 					json.dump(cached.cache, f)
 					f.close()
 				if cached.verbose:
@@ -927,7 +928,7 @@ class cached(object):
 @cached
 def md5(filename, slice = OneM):
 	m = hashlib.md5()
-	with open(filename, "rb") as f:
+	with io.open(filename, 'rb') as f:
 		while True:
 			buf = f.read(slice)
 			if buf:
@@ -941,7 +942,7 @@ def md5(filename, slice = OneM):
 @cached
 def slice_md5(filename):
 	m = hashlib.md5()
-	with open(filename, "rb") as f:
+	with io.open(filename, 'rb') as f:
 		buf = f.read(256 * OneK)
 		m.update(buf)
 
@@ -949,7 +950,7 @@ def slice_md5(filename):
 
 @cached
 def crc32(filename, slice = OneM):
-	with open(filename, "rb") as f:
+	with io.open(filename, 'rb') as f:
 		buf = f.read(slice)
 		crc = binascii.crc32(buf)
 		while True:
@@ -1185,7 +1186,7 @@ class ByPy(object):
 		if os.path.exists(PicklePath):
 			oldcache = {}
 			try:
-				with open(PicklePath, 'rb') as f:
+				with io.open(PicklePath, 'rb') as f:
 					oldcache = pickleload(f)
 				cached.loadcache(oldcache)
 				cached.savecache(True)
@@ -1220,7 +1221,7 @@ class ByPy(object):
 					# perform a simple download from github
 					CACertUrl = 'https://raw.githubusercontent.com/houtianze/bypy/master/bypy.cacerts.pem'
 					resp = ulr.urlopen(CACertUrl)
-					with open(self.__certspath, 'wb') as f:
+					with io.open(self.__certspath, 'wb') as f:
 						f.write(resp.read())
 				except IOError as ex:
 					perr("Fail download CA Certs to '{}'.\nException:\n{}\nStack:{}\n".format(
@@ -1701,7 +1702,7 @@ class ByPy(object):
 
 	def __load_local_json(self):
 		try:
-			with open(self.__tokenpath, 'r') as infile:
+			with io.open(self.__tokenpath, 'r', encoding = 'utf-8') as infile:
 				self.__json = json.load(infile)
 				self.__access_token = self.__json['access_token']
 				self.pd("Token loaded:")
@@ -1720,7 +1721,7 @@ class ByPy(object):
 		self.pd(self.__json)
 		tokenmode = 0o600
 		try:
-			with open(self.__tokenpath, 'w') as outfile:
+			with io.open(self.__tokenpath, 'w', encoding = 'utf-8') as outfile:
 				json.dump(self.__json, outfile)
 
 			os.chmod(self.__tokenpath, tokenmode)
@@ -2142,7 +2143,7 @@ get information of the given path (dir / file) at Baidu Yun.
 
 		i = 0
 		ec = ENoError
-		with open(self.__current_file, 'rb') as f:
+		with io.open(self.__current_file, 'rb') as f:
 			start_time = time.time()
 			while i < pieces:
 				self.__current_slice = f.read(slice)
@@ -2225,7 +2226,7 @@ get information of the given path (dir / file) at Baidu Yun.
 			'ondup' : ondup }
 		self.__add_isrev_param(ondup, pars)
 
-		with open(localpath, "rb") as f:
+		with io.open(localpath, 'rb') as f:
 			return self.__post(cpcsurl + 'file',
 				pars, self.__upload_one_file_act, remotepath,
 				# wants to be proper? properness doesn't work
@@ -2402,7 +2403,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 		if args:
 			if args[0].upper() == 'L':
 				try:
-					with open(args[1:], 'r') as f:
+					with io.open(args[1:], 'r', encoding = 'utf-8') as f:
 						contents = f.read()
 						digests = filter(None, contents.split())
 						for d in digests:
@@ -2460,7 +2461,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 	# NO LONGER IN USE
 	def __downfile_act(self, r, args):
 		rfile, offset = args
-		with open(self.__current_file, 'r+b' if offset > 0 else 'wb') as f:
+		with io.open(self.__current_file, 'r+b' if offset > 0 else 'wb') as f:
 			if offset > 0:
 				f.seek(offset)
 
@@ -2497,7 +2498,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 		if len(r.content) != expectedBytes:
 			return ERequestFailed
 		else:
-			with open(self.__current_file, 'r+b' if offset > 0 else 'wb') as f:
+			with io.open(self.__current_file, 'r+b' if offset > 0 else 'wb') as f:
 				if offset > 0:
 					f.seek(offset)
 
@@ -2662,7 +2663,7 @@ To stream a file using downfile, you can use the 'mkfifo' trick with omxplayer e
 
 	def __stream_act_actual(self, r, args):
 		pipe, csize = args
-		with open(pipe, 'wb') as f:
+		with io.open(pipe, 'wb') as f:
 			for chunk in r.iter_content(chunk_size = csize):
 				if chunk: # filter out keep-alive new chunks
 					f.write(chunk)
@@ -3509,7 +3510,7 @@ class PanAPI(ByPy):
 
 	def __load_local_bduss(self):
 		try:
-			with open(self.__bdusspath, 'rb') as infile:
+			with io.open(self.__bdusspath, 'rb') as infile:
 				self.__bduss = infile.readline().strip()
 				self.pd("BDUSS loaded: {}".format(self.__bduss))
 				self.__cookies = {'BDUSS': self.__bduss}
