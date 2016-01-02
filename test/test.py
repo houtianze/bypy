@@ -224,10 +224,10 @@ def main():
 	testmergeinto()
 	prepare()
 	# sleep is the cure for hanging request <scorn>
+	cdl()
 	time.sleep(2)
 	emptyremote()
 	time.sleep(2)
-	cdl()
 	time.sleep(2)
 	uploaddir()
 	time.sleep(2)
