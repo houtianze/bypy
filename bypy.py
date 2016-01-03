@@ -429,8 +429,8 @@ rb = remove_backslash
 def formatex(ex):
 	s = ''
 	if ex and isinstance(ex, Exception):
-		s = "Exception:\n{}\nStack:{}".format(
-			ex, ''.join(traceback.format_stack()))
+		s = "Exception:\n{} - {}\nStack:{}".format(
+			type(ex), ex, ''.join(traceback.format_stack()))
 
 	return s
 
@@ -714,6 +714,25 @@ def joinpath(first, second, sep = os.sep):
 
 	return head + tail
 
+# CAN Python make Unicode right?
+# http://houtianze.github.io/python/unicode/json/2016/01/03/another-python-unicode-fisaco-on-json.html
+def py2_jsondump(data, filename):
+	with io.open(filename, 'w', encoding = 'utf-8') as f:
+		f.write(json.dumps(data, f, ensure_ascii = False, sort_keys = True, indent = 2))
+
+def py3_jsondump(data, filename):
+	with io.open(filename, 'w', encoding = 'utf-8') as f:
+		return json.dump(data, f, ensure_ascii = False, sort_keys = True, indent = 2)
+
+def jsonload(filename):
+	with io.open(filename, 'r', encoding = 'utf-8') as f:
+		return json.load(f)
+
+if sys.version_info[0] == 2:
+	jsondump = py2_jsondump
+elif sys.version_info[0] == 3:
+	jsondump = py3_jsondump
+
 def unused():
 	''' just prevent unused warnings '''
 	inspect.stack()
@@ -862,12 +881,11 @@ class cached(object):
 
 			if os.path.exists(cached.hashcachepath):
 				try:
-					with io.open(cached.hashcachepath, 'r', encoding = 'utf-8') as f:
-						cached.cache = json.load(f)
-						if existingcache: # not empty
-							if cached.verbose:
-								pr("Merging with existing Hash Cache")
-							mergeinto(existingcache, cached.cache)
+					cached.cache = jsonload(cached.hashcachepath)
+					if existingcache: # not empty
+						if cached.verbose:
+							pr("Merging with existing Hash Cache")
+						mergeinto(existingcache, cached.cache)
 					cached.cacheloaded = True
 					if cached.verbose:
 						pr("Hash Cache File loaded.")
@@ -890,11 +908,8 @@ class cached(object):
 		if cached.dirty or force_saving:
 			if cached.verbose:
 				pr("Saving Hash Cache...")
-
 			try:
-				with io.open(cached.hashcachepath, 'w', encoding = 'utf-8') as f:
-					json.dump(cached.cache, f)
-					f.close()
+				jsondump(cached.cache, cached.hashcachepath)
 				if cached.verbose:
 					pr("Hash Cache saved.")
 				saved = True
@@ -1711,12 +1726,11 @@ class ByPy(object):
 
 	def __load_local_json(self):
 		try:
-			with io.open(self.__tokenpath, 'r', encoding = 'utf-8') as infile:
-				self.__json = json.load(infile)
-				self.__access_token = self.__json['access_token']
-				self.pd("Token loaded:")
-				self.pd(self.__json)
-				return True
+			self.__json = jsonload(self.__tokenpath)
+			self.__access_token = self.__json['access_token']
+			self.pd("Token loaded:")
+			self.pd(self.__json)
+			return True
 		except IOError as ex:
 			perr("Error while loading baidu pcs token.\n{}".formatex(ex))
 			return False
@@ -1729,9 +1743,7 @@ class ByPy(object):
 		self.pd(self.__json)
 		tokenmode = 0o600
 		try:
-			with io.open(self.__tokenpath, 'w', encoding = 'utf-8') as outfile:
-				json.dump(self.__json, outfile)
-
+			jsondump(self.__json, self.__tokenpath)
 			os.chmod(self.__tokenpath, tokenmode)
 			return ENoError
 		except Exception as ex:
