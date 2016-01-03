@@ -12,6 +12,8 @@ import re
 import pprint
 import copy
 import time
+if sys.version_info[0] == 3:
+	basestring = str
 
 TestGarbledPathNames = False
 
