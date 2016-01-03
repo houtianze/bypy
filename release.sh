@@ -3,7 +3,8 @@
 actual=0
 build=0
 upload=0
-while getopts "abu" opt; do
+testit=0
+while getopts "abut" opt; do
 	case "$opt" in
 	a)
 		actual=1
@@ -15,8 +16,23 @@ while getopts "abu" opt; do
 		build=1
 		upload=1
 		;;
+	t)
+		testit=1
+		;;
 	esac
 done
+
+if [ "$testit" -eq 1 ]
+then
+	python2 -m pyflakes bypy.py test/test.py
+	python2 setup.py test
+	python2 -m doctest -v bypy.py
+
+	python3 -m pyflakes bypy.py test/test.py
+	python3 setup.py test
+	python3 -m doctest -v bypy.py
+fi
+
 
 if [ "$build" -eq 1 ]
 then
