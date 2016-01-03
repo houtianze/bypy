@@ -38,7 +38,7 @@ from __future__ import print_function
 from __future__ import division
 
 ### special variables that say about this module
-__version__ = '1.2.6'
+__version__ = '1.2.7'
 
 ### return (error) codes
 # they are put at the top because:
@@ -795,7 +795,13 @@ class cached(object):
 					and info['mtime'] == getfilemtime_int(path) \
 					and self.f.__name__ in info \
 					and cached.usecache:
-					result = info[self.f.__name__]
+					# NOTE: behavior change: hexlify & unhexlify
+					#result = info[self.f.__name__]
+					# TODO: HACK here
+					if self.f.__name__ == 'crc32': # it's a int (long), can't unhexlify
+						result = info[self.f.__name__]
+					else:
+						result = binascii.unhexlify(info[self.f.__name__])
 					if cached.debug:
 						pdbg("Cache hit for file '{}',\n{}: {}\nsize: {}\nmtime: {}".format(
 							path, self.f.__name__,
@@ -823,7 +829,13 @@ class cached(object):
 		cached.dirty = True
 		info['size'] = getfilesize(path)
 		info['mtime'] = getfilemtime_int(path)
-		info[self.f.__name__] = value
+		# NOTE: behavior change: hexlify & unhexlify
+		#info[self.f.__name__] = value
+		# TODO: HACK here
+		if self.f.__name__ == 'crc32': # it's a int (long), can't hexlify
+			info[self.f.__name__] = value
+		else:
+			info[self.f.__name__] = binascii.hexlify(value)
 		if cached.debug:
 			situation = "Storing cache"
 			if cached.usecache:
@@ -872,6 +884,24 @@ class cached(object):
 		return conflicts
 
 	@staticmethod
+	def ishexchar(c):
+		return (c >= '0' and c <= '9') or (c >= 'a' and c <= 'f') or (c >= 'A' and c <= 'F')
+
+	# pay the history debt ..., hashes were in binary format (bytes) in pickle
+	@staticmethod
+	def isbincache(cache):
+		for absdir in cache:
+			entry = cache[absdir]
+			for file in entry:
+				info = entry[file]
+				if 'md5' in info:
+					md5 = info['md5']
+					for c in md5:
+						if not cached.ishexchar(c):
+							return True
+		return False
+
+	@staticmethod
 	def loadcache(existingcache = {}):
 		# load cache even we don't use cached hash values,
 		# because we will save (possibly updated) and hash values
@@ -882,9 +912,15 @@ class cached(object):
 			if os.path.exists(cached.hashcachepath):
 				try:
 					cached.cache = jsonload(cached.hashcachepath)
+					# pay the history debt ...
+					# TODO: Remove sometime later when no-body uses the old bin format cache
+					if cached.isbincache(cached.cache):
+						pinfo("ONE TIME conversion for binary format Hash Cache ...")
+						ByPy.stringifypickle(cached.cache)
+						pinfo("ONE TIME conversion finished")
 					if existingcache: # not empty
 						if cached.verbose:
-							pr("Merging with existing Hash Cache")
+							pinfo("Merging with existing Hash Cache")
 						mergeinto(existingcache, cached.cache)
 					cached.cacheloaded = True
 					if cached.verbose:
@@ -1178,6 +1214,29 @@ class RequestsRequester(object):
 class ByPy(object):
 	'''The main class of the bypy program'''
 
+	# TODO: Move this function out
+	@staticmethod
+	def convertbincache(info, key):
+		if key in info:
+			binhash = info[key]
+			strhash = binascii.hexlify(binhash)
+			info[key] = strhash
+
+	# in Pickle, i saved the hash (MD5, CRC32) in binary format (bytes)
+	# now i need to pay the price to save them using string format ...
+	# TODO: Rename
+	@staticmethod
+	def stringifypickle(picklecache):
+		for absdir in picklecache:
+			entry = picklecache[absdir]
+			for file in entry:
+				info = entry[file]
+				# 'crc32' is still stored as int (long),
+				# as it's supported by JSON, and can't be hexlified
+				#for key in ['md5', 'slice_md5', 'crc32']:
+				for key in ['md5', 'slice_md5']:
+					ByPy.convertbincache(info, key)
+
 	# TODO: Apply to configdir instead of ~/.bypy
 	@staticmethod
 	def migratesettings():
@@ -1213,6 +1272,7 @@ class ByPy(object):
 			try:
 				with io.open(PicklePath, 'rb') as f:
 					oldcache = pickleload(f)
+				ByPy.stringifypickle(oldcache)
 				cached.loadcache(oldcache)
 				cached.savecache(True)
 				pinfo("Contents of Pickle (old format hash cache) '{}' "

@@ -41,3 +41,4 @@ nosetests.xml
 ### personal
 ## PyCharm
 #.idea/
+.idea/workspace.xml
