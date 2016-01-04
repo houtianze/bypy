@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -o errexit
+
 actual=0
 build=0
 upload=0
@@ -60,10 +62,12 @@ fi
 . ~/Documents/t/venv27/bin/activate
 pip install -U bypy $indexopt
 bypy -V
+bypy quota
 deactivate
 . ~/Documents/t/venv34/bin/activate
 pip install -U bypy $indexopt
 bypy -V
+bypy quota
 deactivate
 
 # vim: tabstop=4 noexpandtab shiftwidth=4 softtabstop=4 ff=unix fileencoding=utf-8

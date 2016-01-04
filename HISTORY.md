@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.2.9: Fix formatex() Syntax Error; Handle (110, 'ETIMEDOUT')
 - 1.2.8: Fix a Syntax Error; Handle {'error_code': 0, 'error_msg': 'no error'}
 - 1.2.7: Fix Hash Cache JSON saving (need to using string for Hashes)
 - 1.2.6: Fix Hash Cache JSON dumping (`Unicode` again)

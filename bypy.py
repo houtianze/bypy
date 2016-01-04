@@ -38,7 +38,7 @@ from __future__ import print_function
 from __future__ import division
 
 ### special variables that say about this module
-__version__ = '1.2.8'
+__version__ = '1.2.9'
 
 ### return (error) codes
 # they are put at the top because:
@@ -1696,7 +1696,8 @@ class ByPy(object):
 			# OpenSSL SysCallError
 			if ex.args == (10054, 'WSAECONNRESET') \
 			or ex.args == (10053, 'WSAECONNABORTED') \
-			or ex.args == (104, 'ECONNRESET'):
+			or ex.args == (104, 'ECONNRESET') \
+			or ex.args == (110, 'ETIMEDOUT'):
 				result = ERequestFailed
 				if dumpex:
 					self.__dump_exception(ex, url, pars, r, act)
@@ -1805,7 +1806,7 @@ class ByPy(object):
 			self.pd(self.__json)
 			return True
 		except IOError as ex:
-			perr("Error while loading baidu pcs token.\n{}".formatex(ex))
+			perr("Error while loading baidu pcs token.\n{}".format(formatex(ex)))
 			return False
 
 	def __store_json_only(self, j):
@@ -3504,7 +3505,7 @@ if not specified, it defaults to the root directory
 					pr(pprint.pformat(j))
 			return ENoError
 		except Exception as ex:
-			perr("Exception while monitoring offline (cloud) download task:\n{}".formatex(ex))
+			perr("Exception while monitoring offline (cloud) download task:\n{}".format(formatex(ex)))
 			perr("Baidu returned:\n{}".format(rb(r.text)))
 			return EInvalidJson
 
@@ -3514,7 +3515,7 @@ if not specified, it defaults to the root directory
 			pr(pprint.pformat(args[0]))
 			return ENoError
 		except Exception as ex:
-			perr("Exception while adding offline (cloud) download task:\n{}".formatex(ex))
+			perr("Exception while adding offline (cloud) download task:\n{}".format(formatex(ex)))
 			perr("Baidu returned:\n{}".format(rb(r.text)))
 			return EInvalidJson
 
