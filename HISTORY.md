@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.2.8: Fix a Syntax Error; Handle {'error_code': 0, 'error_msg': 'no error'}
 - 1.2.7: Fix Hash Cache JSON saving (need to using string for Hashes)
 - 1.2.6: Fix Hash Cache JSON dumping (`Unicode` again)
 - 1.2.5: Add in offline (cloud) download; Fix stack printing

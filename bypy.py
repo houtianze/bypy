@@ -38,7 +38,7 @@ from __future__ import print_function
 from __future__ import division
 
 ### special variables that say about this module
-__version__ = '1.2.7'
+__version__ = '1.2.8'
 
 ### return (error) codes
 # they are put at the top because:
@@ -913,7 +913,7 @@ class cached(object):
 				try:
 					cached.cache = jsonload(cached.hashcachepath)
 					# pay the history debt ...
-					# TODO: Remove sometime later when no-body uses the old bin format cache
+					# TODO: Remove some time later when no-body uses the old bin format cache
 					if cached.isbincache(cached.cache):
 						pinfo("ONE TIME conversion for binary format Hash Cache ...")
 						ByPy.stringifypickle(cached.cache)
@@ -921,7 +921,7 @@ class cached(object):
 					if existingcache: # not empty
 						if cached.verbose:
 							pinfo("Merging with existing Hash Cache")
-						mergeinto(existingcache, cached.cache)
+						cached.mergeinto(existingcache, cached.cache)
 					cached.cacheloaded = True
 					if cached.verbose:
 						pr("Hash Cache File loaded.")
@@ -1570,6 +1570,19 @@ class ByPy(object):
 			#self.pd("Response: {}".format(rb(r.text)), 3)
 			if sc == requests.codes.ok or sc == 206: # 206 Partial Content
 				if sc == requests.codes.ok:
+					# #162 https://github.com/houtianze/bypy/pull/162
+					# handle response like this:  {"error_code":0,"error_msg":"no error","request_id":70768340515255385}
+					if not ('method' in pars and pars['method'] == 'download'):
+						try:
+							j = r.json()
+							if 'error_code' in j and j['error_code'] == 0 and 'error_msg' in j and j['error_msg'] == 'no error':
+								self.pd("Unexpected response: {}".format(j))
+								return ERequestFailed
+						except Exception as ex:
+							perr(formatex(ex))
+							# TODO: Shall i return this?
+							return ERequestFailed
+
 					self.pd("200 OK, processing action")
 				else:
 					self.pd("206 Partial Content (this is OK), processing action")
@@ -2052,17 +2065,21 @@ Possible fixes:
 			return EHashMismatch
 
 	def __get_file_info_act(self, r, args):
-		remotefile = args
-		j = r.json()
-		self.pd("List json: {}".format(j))
-		l = j['list']
-		for f in l:
-			if f['path'] == remotefile: # case-sensitive
-				self.__remote_json = f
-				self.pd("File info json: {}".format(self.__remote_json))
-				return ENoError;
-
-		return EFileNotFound
+		try:
+			remotefile = args
+			j = r.json()
+			self.pd("List json: {}".format(j))
+			l = j['list']
+			for f in l:
+				if f['path'] == remotefile: # case-sensitive
+					self.__remote_json = f
+					self.pd("File info json: {}".format(self.__remote_json))
+					return ENoError;
+	
+			return EFileNotFound
+		except KeyError as ex:
+			perr(formatex(ex))
+			return ERequestFailed
 
 	# the 'meta' command sucks, since it doesn't supply MD5 ...
 	# now the JSON is written to self.__remote_json, due to Python call-by-reference chaos

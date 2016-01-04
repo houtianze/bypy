@@ -242,8 +242,6 @@ def main():
 	syncup()
 	time.sleep(2)
 	syncdown()
-	time.sleep(2)
-	cdl()
 
 	# clean up
 	os.remove(zerofilename)
