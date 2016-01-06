@@ -429,7 +429,7 @@ rb = remove_backslash
 def formatex(ex):
 	s = ''
 	if ex and isinstance(ex, Exception):
-		s = "Exception:\n{} - {}\nStack:{}".format(
+		s = "Exception:\n{} - {}\nStack:\n{}".format(
 			type(ex), ex, ''.join(traceback.format_stack()))
 
 	return s
@@ -1806,7 +1806,7 @@ class ByPy(object):
 			self.pd(self.__json)
 			return True
 		except IOError as ex:
-			perr("Error while loading baidu pcs token.\n{}".format(formatex(ex)))
+			self.pd("Error while loading baidu pcs token.\n{}".format(formatex(ex)))
 			return False
 
 	def __store_json_only(self, j):

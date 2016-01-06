@@ -1,2 +1,3 @@
-requests[security]
+#requests[security]
+requests
 pypandoc
