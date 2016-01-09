@@ -77,8 +77,8 @@ FileSystemEncoding = sys.getfilesystemencoding()
 
 ## Import-related constant strings
 PipBinaryName = 'pip' + str(sys.version_info[0])
-PipInstallCommand = PipBinaryName + ' install requests[security]'
-PipUpgradeCommand = PipBinaryName + ' install -U requests[security]'
+PipInstallCommand = PipBinaryName + ' install requests'
+PipUpgradeCommand = PipBinaryName + ' install -U requests'
 if sys.version_info[0] < 2 \
 or (sys.version_info[0] == 2 and sys.version_info[1] < 7) \
 or (sys.version_info[0] == 3 and sys.version_info[1] < 3):
@@ -1697,7 +1697,8 @@ class ByPy(object):
 			if ex.args == (10054, 'WSAECONNRESET') \
 			or ex.args == (10053, 'WSAECONNABORTED') \
 			or ex.args == (104, 'ECONNRESET') \
-			or ex.args == (110, 'ETIMEDOUT'):
+			or ex.args == (110, 'ETIMEDOUT') \
+			or ex.args == (32, 'EPIPE'):
 				result = ERequestFailed
 				if dumpex:
 					self.__dump_exception(ex, url, pars, r, act)

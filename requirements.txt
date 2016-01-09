@@ -1,3 +1,2 @@
 #requests[security]
 requests
-pypandoc

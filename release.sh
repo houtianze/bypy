@@ -4,6 +4,7 @@ set -o errexit
 
 actual=0
 build=0
+install=0
 upload=0
 testit=0
 while getopts "abut" opt; do
@@ -17,12 +18,26 @@ while getopts "abut" opt; do
 	u)
 		build=1
 		upload=1
+		testit=1
+		install=1
+		;;
+	i)
+		install=1
 		;;
 	t)
 		testit=1
 		;;
 	esac
 done
+
+if [ "$actual" -eq 0 ]
+then
+	repoopt="-r testpypi"
+	indexopt="-i https://testpypi.python.org/simple/"
+else
+	repoopt=""
+	indexopt=""
+fi
 
 if [ "$testit" -eq 1 ]
 then
@@ -42,15 +57,6 @@ then
 	python3 setup.py sdist bdist_wheel
 fi
 
-if [ "$actual" -eq 0 ]
-then
-	repoopt="-r testpypi"
-	indexopt="-i https://testpypi.python.org/simple/"
-else
-	repoopt=""
-	indexopt=""
-fi
-
 uploadcmd="twine upload dist/* $repoopt"
 if [ "$upload" -eq 0 ]
 then
@@ -59,15 +65,18 @@ else
 	eval "$uploadcmd"
 fi
 
-. ~/Documents/t/venv27/bin/activate
-pip install -U bypy $indexopt
-bypy -V
-bypy quota
-deactivate
-. ~/Documents/t/venv34/bin/activate
-pip install -U bypy $indexopt
-bypy -V
-bypy quota
-deactivate
+if [ "$install" -eq 1 ]
+then
+	. ~/Documents/t/venv27/bin/activate
+	pip install -U bypy $indexopt
+	bypy -V
+	bypy quota
+	deactivate
+	. ~/Documents/t/venv34/bin/activate
+	pip install -U bypy $indexopt
+	bypy -V
+	bypy quota
+	deactivate
+fi
 
 # vim: tabstop=4 noexpandtab shiftwidth=4 softtabstop=4 ff=unix fileencoding=utf-8

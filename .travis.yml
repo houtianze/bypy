@@ -6,8 +6,12 @@ python:
   - "3.5"
 # command to install dependencies,
 # e.g. pip install -r requirements.txt --use-mirrors
+before_install:
+ - sudo apt-get update -qq
+ - sudo apt-get install -y pandoc
 install:
  - pip install -r requirements.txt
+ - pip install pypandoc
  - pip install pyflakes
  - pip install coverage
  - pip install coveralls
