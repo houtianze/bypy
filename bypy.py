@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # encoding: utf-8
+# PYTHON_ARGCOMPLETE_OK
 # ===  IMPORTANT  ====
 # NOTE: In order to support non-ASCII file names,
 #       your system's locale MUST be set to 'utf-8'
@@ -161,6 +162,7 @@ import math
 from os.path import expanduser
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
+from argcomplete import autocomplete
 ## non-standard python library, needs 'pip install ...'
 try:
 	import requests
@@ -3836,6 +3838,7 @@ def getparser():
 	# setup argument parser
 	epilog = "Commands:\n"
 	summary = []
+	commands = [] # a list of subcommands to use for autocompletion
 	for k, v in ByPy.__dict__.items():
 		if callable(v) and v.__doc__:
 			help = v.__doc__.strip()
@@ -3844,6 +3847,7 @@ def getparser():
 				pos_body = pos + len(HelpMarker)
 				helpbody = help[pos_body:]
 				helpline = helpbody.split('\n')[0].strip() + '\n'
+				commands.append(v.__name__) # append command name
 				if helpline.find('help') == 0:
 					summary.insert(0, helpline)
 				else:
@@ -3888,7 +3892,7 @@ def getparser():
 	parser.add_argument(CleanOptionShort, CleanOptionLong, dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean settings and hash cache [default: %(default)s]")
 
 	# the MAIN parameter - what command to perform
-	parser.add_argument("command", nargs='*', help = "operations (quota, list, etc)")
+	parser.add_argument("command", nargs='*', help = "operations (quota, list, etc)", choices = commands, default = "help")
 
 	return parser;
 
@@ -3925,6 +3929,7 @@ def main(argv=None): # IGNORE:C0111
 		setuphandlers()
 
 		parser = getparser()
+		autocomplete(parser)
 		args = parser.parse_args()
 
 		# house-keeping reminder
