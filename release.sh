@@ -7,7 +7,7 @@ build=0
 install=0
 upload=0
 testit=0
-while getopts "abut" opt; do
+while getopts "abuit" opt; do
 	case "$opt" in
 	a)
 		actual=1

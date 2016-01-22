@@ -64,6 +64,7 @@ sys.path.append(bypydir)
 configdir = 'configdir'
 downloaddir = 'downdir'
 testdir = 'testdir'
+sharedir = 'sharedir'
 import bypy
 # monkey patch all the way
 mpr = StorePrinter(bypy.pr)
@@ -116,6 +117,11 @@ def testmergeinto():
 	print(repr(to))
 	assert to == {u'a': {u'a1': 1, u'a3': 3, u'a2': 2}, u'c': {u'c1': 100}, u'b': {u'b1': 10, u'b2': 20, u'b3': 30}}
 
+def createdummyfile(filename, size, value = 0):
+	with open(filename, 'wb') as f:
+		ba = bytearray([value] * size)
+		f.write(ba)
+
 def prepare():
 	# preparation
 	if 'refresh' in sys.argv:
@@ -128,9 +134,15 @@ def prepare():
 	assert by.list('/') == bypy.ENoError
 	print("Response: {}".format(by.response.json()))
 	mpr.empty()
-	with open(zerofilename, 'wb') as f:
-		zeros = bytearray(1024 * 1024)
-		f.write(zeros)
+	createdummyfile(zerofilename, 1024 * 1024)
+
+	makesuredir(sharedir)
+	sharesubdir = sharedir + '/subdir'
+	makesuredir(sharesubdir)
+	createdummyfile(sharedir + '/1M0.bin', 1024 * 1024)
+	createdummyfile(sharedir + '/1M1.bin', 1024 * 1024, 1)
+	createdummyfile(sharesubdir + '/1M2.bin', 1024 * 1024, 2)
+
 	if TestGarbledPathNames:
 		jd = testdir.encode() + os.sep.encode() + b'garble\xec\xeddir'
 		jf = testdir.encode() + os.sep.encode() + b'garble\xea\xebfile'
@@ -222,10 +234,22 @@ def cdl():
 	assert by.cdl_addmon("http://dl.client.baidu.com/BaiduKuaijie/BaiduKuaijie_Setup.exe", testdir) == bypy.ENoError
 	mpr.empty()
 
+def testshare():
+	banner("Share")
+	#assert bypy.ENoError == by.share(sharedir, '/', True, True)
+	assert bypy.ENoError == by.share(sharedir)
+	assert filterregex(mpr.getq(), r"bypy accept /1M0.bin")
+	assert filterregex(mpr.getq(), r"bypy accept /1M1.bin")
+	assert filterregex(mpr.getq(), r"bypy accept /subdir/1M2.bin")
+	mpr.empty()
+
 def main():
 	testmergeinto()
 	prepare()
-	# sleep is the cure for hanging request <scorn>
+	time.sleep(2)
+	testshare()
+	time.sleep(2)
+	# sleep sometime helps preventing hanging requests <scorn>
 	cdl()
 	time.sleep(2)
 	emptyremote()
@@ -246,6 +270,7 @@ def main():
 	# clean up
 	os.remove(zerofilename)
 	shutil.rmtree(configdir, ignore_errors=True)
+	shutil.rmtree(sharedir, ignore_errors=True)
 
 # this is barely a sanity test, more to be added
 if __name__ == "__main__":

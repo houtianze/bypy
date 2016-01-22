@@ -2,12 +2,18 @@
 # coding=utf-8
 
 from setuptools import setup,find_packages
-import pypandoc
 
 import bypy
 doclist = bypy.__doc__.split("---")
 long_desc = doclist[1].strip() + '\n\n'
-long_desc += pypandoc.convert('HISTORY.md', 'rst')
+try:
+	import pypandoc
+	long_desc += pypandoc.convert('HISTORY.md', 'rst')
+except Exception as ex:
+	print("Error: PanDoc not found\n{}".format(ex))
+	with open('HISTORY.md') as f:
+		long_desc += f.read()
+
 print(long_desc)
 
 setup(

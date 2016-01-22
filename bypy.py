@@ -38,7 +38,7 @@ from __future__ import print_function
 from __future__ import division
 
 ### special variables that say about this module
-__version__ = '1.2.9'
+__version__ = '1.2.10'
 
 ### return (error) codes
 # they are put at the top because:
@@ -65,6 +65,7 @@ ERequestFailed = 150 # request failed
 ECacheNotLoaded = 160
 EMigrationFailed = 170
 EDownloadCerts = 180
+EUserRejected = 190 # user's decision
 EFatal = -1 # No way to continue
 # internal errors
 IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload the whole file.
@@ -114,19 +115,21 @@ if not (sys.stdout.encoding and sys.stdout.encoding.lower() == 'utf-8'):
 		codecs.lookup(encoding_to_use)
 		'\u6c49\u5b57'.encode(encoding_to_use) # '汉字'
 		print("Encoding for stdout / stderr: {}".format(encoding_to_use))
+		sys.stdout = codecs.getwriter(encoding_to_use)(sys.stdout)
+		sys.stderr = codecs.getwriter(encoding_to_use)(sys.stderr)
 	except: # (LookupError, TypeError, UnicodeEncodeError):
 		encoding_to_use = 'utf-8'
 		# in Python 3.x sys.exc_clear() is removed and unnecessary
 		#if hasattr(sys, 'exc_clear'):
 		#	sys.exc_clear()
-		print("WARNING: Can't detect encoding for stdout / stderr, assume it's 'UTF-8'.\n"
-			  "Files with non-ASCII names may not be handled correctly.\n")
-	sys.stdout = codecs.getwriter(encoding_to_use)(sys.stdout)
-	sys.stderr = codecs.getwriter(encoding_to_use)(sys.stderr)
+		print('!' * 160)
+		print("ERROR: Can't detect encoding for stdout / stderr. Files with non-ASCII names will most likely fail")
+		print('!' * 160)
 
 import signal
 import time
 import shutil
+import tempfile
 import posixpath
 import traceback
 import inspect
@@ -269,6 +272,8 @@ HomeDir = expanduser('~')
 ConfigDir = HomeDir + os.sep + '.bypy'
 TokenFileName = 'bypy.json'
 TokenFilePath = ConfigDir + os.sep + TokenFileName
+SettingFileName= 'bypy.setting.json'
+SettingFilePath= ConfigDir + os.sep + SettingFileName
 HashCacheFileName = 'bypy.hashcache.json'
 HashCachePath = ConfigDir + os.sep + HashCacheFileName
 PickleFileName = 'bypy.pickle'
@@ -278,6 +283,9 @@ ByPyCertsPath = ConfigDir + os.sep + ByPyCertsFileName
 # Old setting locations, should be moved to ~/.bypy to be clean
 OldTokenFilePath = HomeDir + os.sep + '.bypy.json'
 OldPicklePath = HomeDir + os.sep + '.bypy.pickle'
+RemoteTempDir = AppPcsPath + '/.bypytemp'
+SettingKey_OverwriteRemoteTempDir = 'overwriteRemoteTempDir'
+
 ## default config values
 # TODO: Does the following User-Agent emulation help?
 #UserAgent = None # According to xslidian, User-Agent affects download.
@@ -297,6 +305,8 @@ PrintFlushPeriodInSec = 5.0
 # save cache if more than 10 minutes passed
 last_cache_save = time.time()
 CacheSavePeriodInSec = 10 * 60.0
+# share retries
+ShareRapidUploadRetries = 3
 ## program switches
 CleanOptionShort= '-c'
 CleanOptionLong= '--clean'
@@ -1310,11 +1320,18 @@ class ByPy(object):
 						f.write(resp.read())
 				except IOError as ex:
 					perr("Fail download CA Certs to '{}'.\n{}".format(
-						self.__certpath, formatex(ex)))
+						self.__certspath, formatex(ex)))
 
 					result = EDownloadCerts
 
 		return result
+
+	def savesetting(self):
+		try:
+			jsondump(self.__setting, self.__settingpath)
+		except Exception as ex:
+			perr("Failed to save settings.\n{}".format(formatex(ex)))
+			# complaining is enough, no need more actions as this is non-critical
 
 	def __init__(self,
 		slice_size = DefaultSliceSize,
@@ -1349,6 +1366,13 @@ class ByPy(object):
 		self.__configdir = configdir.rstrip("/\\ ")
 		# os.path.join() may not handle unicode well on Python 2.7
 		self.__tokenpath = configdir + os.sep + TokenFileName
+		self.__settingpath = configdir + os.sep + SettingFileName
+		self.__setting = {}
+		if os.path.exists(self.__settingpath):
+			try:
+				self.__setting = jsonload(self.__settingpath)
+			except Exception as ex:
+				perr("Error loading settings: {}, using default settings".format(formatex(ex)))
 		self.__hashcachepath = configdir + os.sep + HashCacheFileName
 		cached.hashcachepath = self.__hashcachepath
 		self.__certspath = configdir + os.sep + ByPyCertsFileName
@@ -1511,6 +1535,7 @@ class ByPy(object):
 			if self.debug:
 				perr(formatex(ex))
 			perr("Function: {}".format(act.__name__))
+			perr("Full URL: {}".format(r.url))
 			perr("Website parameters: {}".format(pars))
 			if hasattr(r, 'status_code'):
 				perr("HTTP Response Status Code: {}".format(r.status_code))
@@ -1562,6 +1587,7 @@ class ByPy(object):
 			r = self.__requester.request(method, url, params = parsnew, timeout = self.__timeout, verify = self.__checkssl, **kwargs)
 			self.response = r
 			sc = r.status_code
+			self.pd("Full URL: {}".format(r.url))
 			self.pd("HTTP Status Code: {}".format(sc))
 			# BUGFIX: DON'T do this, if we are downloading a big file,
 			# the program will eat A LOT of memeory and potentialy hang / get killed
@@ -1737,6 +1763,7 @@ class ByPy(object):
 					time.sleep(delay)
 					perr("Request Try #{} / {}".format(i + 1, tries))
 				else:
+					result = EMaxRetry
 					perr("Maximum number ({}) of tries failed.".format(tries))
 					if self.__quit_when_fail:
 						onexit(EMaxRetry)
@@ -2077,7 +2104,7 @@ Possible fixes:
 					self.__remote_json = f
 					self.pd("File info json: {}".format(self.__remote_json))
 					return ENoError;
-	
+
 			return EFileNotFound
 		except KeyError as ex:
 			perr(formatex(ex))
@@ -2165,9 +2192,13 @@ get information of the given path (dir / file) at Baidu Yun.
 		return self.__get(pcsurl + 'file', pars,
 			self.__meta_act, (rpath, fmt))
 
+	# this 'is_revision' parameter sometimes gives the following error (e.g. for rapidupload):
+	# {u'error_code': 31066, u'error_msg': u'file does not exist'}
+	# and maintain it is also an extra burden, so it's disabled for now
 	def __add_isrev_param(self, ondup, pars):
-		if self.__isrev and ondup != 'newcopy':
-			pars['is_revision'] = 1
+		pass
+		#if self.__isrev and ondup != 'newcopy':
+		#	pars['is_revision'] = 1
 
 	def __combine_file_act(self, r, args):
 		result = self.__verify_current_file(r.json(), False)
@@ -2286,18 +2317,11 @@ get information of the given path (dir / file) at Baidu Yun.
 		else:
 			return ENoError
 
-	def __rapidupload_file(self, localpath, remotepath, ondup = 'overwrite'):
-		self.__current_file_md5 = md5(self.__current_file)
-		self.__current_file_slice_md5 = slice_md5(self.__current_file)
-		self.__current_file_crc32 = crc32(self.__current_file)
-
-		md5str = binascii.hexlify(self.__current_file_md5)
-		slicemd5str =  binascii.hexlify(self.__current_file_slice_md5)
-		crcstr = hex(self.__current_file_crc32)
+	def __rapidupload_file_post(self, rpath, size, md5str, slicemd5str, crcstr, ondup = 'overwrite'):
 		pars = {
 			'method' : 'rapidupload',
-			'path' : remotepath,
-			'content-length' : self.__current_file_size,
+			'path' : rpath,
+			'content-length' : size,
 			'content-md5' : md5str,
 			'slice-md5' : slicemd5str,
 			'content-crc32' : crcstr,
@@ -2305,8 +2329,25 @@ get information of the given path (dir / file) at Baidu Yun.
 		self.__add_isrev_param(ondup, pars)
 
 		self.pd("RapidUploading Length: {} MD5: {}, Slice-MD5: {}, CRC: {}".format(
-			self.__current_file_size, md5str, slicemd5str, crcstr))
+			size, md5str, slicemd5str, crcstr))
 		return self.__post(pcsurl + 'file', pars, self.__rapidupload_file_act)
+
+	def __get_hashes_for_rapidupload(self, lpath, setlocalfile = False):
+		if setlocalfile:
+			self.__current_file = lpath
+			self.__current_file_size = getfilesize(lpath)
+
+		self.__current_file_md5 = md5(self.__current_file)
+		self.__current_file_slice_md5 = slice_md5(self.__current_file)
+		self.__current_file_crc32 = crc32(self.__current_file)
+
+	def __rapidupload_file(self, lpath, rpath, ondup = 'overwrite', setlocalfile = False):
+		self.__get_hashes_for_rapidupload(lpath, setlocalfile)
+
+		md5str = binascii.hexlify(self.__current_file_md5)
+		slicemd5str =  binascii.hexlify(self.__current_file_slice_md5)
+		crcstr = hex(self.__current_file_crc32)
+		return self.__rapidupload_file_post(rpath, self.__current_file_size, md5str, slicemd5str, crcstr, ondup)
 
 	def __upload_one_file_act(self, r, args):
 		result = self.__verify_current_file(r.json(), False)
@@ -2375,6 +2416,7 @@ get information of the given path (dir / file) at Baidu Yun.
 					if not self.shalloverwrite("Remote file '{}' exists but is different, "
 							"do you want to overwrite it? [y/N]".format(rfile)):
 						upload = False
+				self.__isrev = False
 
 			if upload:
 				fileresult = self.__upload_file(lfile, rfile, ondup)
@@ -2470,11 +2512,9 @@ upload a file or directory (recursively)
 				rpath = get_pcs_path(rpath)
 				# avoid uploading a file and destroy a directory by accident
 				subresult = self.__get_file_info(rpath)
-				if subresult == ENoError: # remove path exists, check is dir or file
+				if subresult == ENoError: # remote path exists, check is dir or file
 					if self.__remote_json['isdir']: # do this only for dir
 						rpath += '/' + lpathbase # rpath is guaranteed no '/' ended
-					else: # rpath is a file
-						self.__isrev = True
 			self.pd("remote path is '{}'".format(rpath))
 			return self.__upload_file(lpath, rpath, ondup)
 		elif os.path.isdir(lpath):
@@ -2643,7 +2683,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 			if 'Range' in headers:
 				rangemagic = base64.standard_b64encode(headers['Range'][6:].encode('utf-8'))
 				self.pd("headers['Range'][6:]: {} {}".format(headers['Range'][6:], rangemagic))
-				pars['ru'] = rangemagic
+				#pars['ru'] = rangemagic
 
 			#headers['User-Agent'] = 'netdisk;5.2.7.2;PC;PC-Windows;6.2.9200;WindowsBaiduYunGuanJia'
 
@@ -2888,6 +2928,9 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 
 		return result
 
+	def __downdir(self, rpath, lpath):
+		return self.__walk_remote_dir(rpath, self.__proceed_downdir, (rpath, lpath))
+
 	def downdir(self, remotepath = None, localpath = None):
 		''' Usage: downdir <remotedir> [localdir] - \
 download a remote directory (recursively)
@@ -2896,13 +2939,10 @@ download a remote directory (recursively)
 		'''
 		rpath = get_pcs_path(remotepath)
 		lpath = localpath
-
 		if not lpath:
 			lpath = '' # empty string does it, no need '.'
-
 		lpath = lpath.rstrip('/\\ ')
-
-		return self.__walk_remote_dir(rpath, self.__proceed_downdir, (rpath, lpath))
+		return self.__downdir(rpath, lpath)
 
 	def __mkdir_act(self, r, args):
 		if self.verbose:
@@ -3592,6 +3632,209 @@ if not specified, it defaults to the root directory
 		'''
 		return self.__cdl_cancel(task_id)
 
+	def __get_accept_cmd(self, rpath):
+		md5str = binascii.hexlify(self.__current_file_md5)
+		slicemd5str =  binascii.hexlify(self.__current_file_slice_md5)
+		crcstr = hex(self.__current_file_crc32)
+		remotepath = rpath[AppPcsPathLen:]
+		if len(remotepath) == 0:
+			remotepath = 'PATH_NAME_MISSING'
+		cmd = "bypy accept {} {} {} {} {}".format(
+			remotepath, self.__current_file_size, md5str, slicemd5str, crcstr)
+		return cmd
+
+	def __share_local_file(self, lpath, rpath, fast):
+		filesize = getfilesize(lpath)
+		if filesize < MinRapidUploadFileSize:
+			perr("File size ({}) of '{}' is too small (must be greater or equal than {}) to be shared".format(
+				human_size(filesize), lpath, human_size(MinRapidUploadFileSize)))
+			return EParameter
+
+		if fast:
+			self.__get_hashes_for_rapidupload(lpath, setlocalfile = True)
+			pr(self.__get_accept_cmd(rpath))
+			return ENoError
+
+		ulrpath = RemoteTempDir + '/' + posixpath.basename(lpath)
+		result = self.__upload_file(lpath, ulrpath)
+		if result != ENoError:
+			perr("Unable to share as uploading failed")
+			return result
+		i = 0
+		while i < ShareRapidUploadRetries:
+			i += 1
+			result = self.__rapidupload_file(lpath, ulrpath, setlocalfile = True)
+			if result == ENoError: # or result == IEMD5NotFound: # we _need_ to retry if MD5 not found
+				break;
+			else:
+				self.pd("Retrying #{} for sharing '{}'".format(i, lpath))
+				time.sleep(1)
+
+		if result == ENoError:
+			pr(self.__get_accept_cmd(rpath))
+			return ENoError
+		elif result == IEMD5NotFound:
+			pr("# Sharing (RapidUpload) not possible for '{}', error: {}".format(lpath, result))
+			return result
+		else:
+			pr("# Error sharing '{}', error: {}".format(lpath, result))
+			return result
+
+	def __share_local_dir(self, lpath, rpath, fast):
+		result = ENoError
+		for walk in self.__walk_normal_file(lpath):
+			(dirpath, dirnames, filenames) = walk
+			for filename in filenames:
+				rpart = os.path.relpath(dirpath, lpath)
+				if rpart == '.':
+					rpart = ''
+				subr = self.__share_local_file(
+					joinpath(dirpath, filename),
+					posixpath.join(rpath, rpart, filename),
+					fast)
+				if subr != ENoError:
+					result = subr
+		return result
+
+	# assuming the caller asks once only
+	def __ok_to_use_remote_temp_dir(self):
+		if SettingKey_OverwriteRemoteTempDir in self.__setting and \
+		self.__setting[SettingKey_OverwriteRemoteTempDir]:
+			return True
+
+		# need to check existence of the remote temp dir
+		fir = self.__get_file_info(RemoteTempDir)
+		if fir == ENoError: # path exists
+			msg = '''
+In order to use this functionality, we need to use a temporary directory '{}' \
+at Baidu Cloud Storage. However, this remote path exists already.
+Is it OK to empty this directory? (Unless coincidentally you uploaded files there, \
+it's probably safe to allow this)
+y/N/a (yes/NO/always)?
+'''.format(RemoteTempDir).strip()
+			ans = ask(msg).lower()
+			if len(ans) >= 0:
+				a = ans[0]
+				if a == 'y':
+					return True
+				elif a == 'a':
+					# persist
+					self.__setting[SettingKey_OverwriteRemoteTempDir] = True
+					self.savesetting()
+					return True
+				else:
+					return False
+			else:
+				return False
+		elif fir == EFileNotFound:
+			return True
+		elif fir == ERequestFailed:
+			perr("Request to get info of the remote temp dir '{}' failed, can't continue.".format(RemoteTempDir))
+			return False
+		else:
+			assert 0 == "Future work handling (more return code) needed"
+			return False
+
+	def __share_local(self, lpath, rpath, fast):
+		if not os.path.exists(lpath):
+			perr("Local path '{}' does not exist.".format(lpath))
+			return EParameter
+
+		if not self.__ok_to_use_remote_temp_dir():
+			perr("Can't continue unless you allow the program to use the remote temporary directory '{}'".format(RemoteTempDir))
+			return EUserRejected
+
+		if fast:
+			pr("# fast (unverified) sharing, no network I/O needed (for local sharing), but the other person may not be able to accept some of your files")
+		if os.path.isfile(lpath):
+			# keep the same file name
+			lname = os.path.basename(lpath)
+			rfile = joinpath(rpath, lname, '/')
+			return self.__share_local_file(lpath, rfile, fast)
+		elif os.path.isdir(lpath):
+			return self.__share_local_dir(lpath, rpath, fast)
+		else:
+			perr("Local path '{}' is not a file or directory.".format(lpath))
+			return EParameter
+
+	def __share_remote_file(self, tmpdir, rpath, srpath, fast):
+		rdir, rfile = posixpath.split(rpath)
+		lpath = joinpath(tmpdir, rfile)
+		subr = self.__downfile(rpath, lpath)
+		if subr != ENoError:
+			perr("Fatal: Error {} while downloading remote file '{}'".format(subr, rpath))
+			return subr
+
+		return self.__share_local_file(lpath, srpath, fast)
+
+	def __proceed_share_remote(self, rpath, dirjs, filejs, args):
+		tmpdir, srpath, fast = args
+		result = ENoError
+		rpathlen = len(rpath)
+		for filej in filejs:
+			rfile = filej['path']
+			subr = self.__share_remote_file(tmpdir, rfile, joinpath(srpath, rfile[rpathlen:], sep = '/'), fast)
+			if subr != ENoError:
+				result = subr
+		return result
+
+	def __share_remote_dir(self, tmpdir, rpath, srpath, fast):
+		return self.__walk_remote_dir(rpath, self.__proceed_share_remote, (tmpdir, srpath, fast))
+
+	def __share_remote(self, tmpdir, rpath, srpath, fast): # srpath - share remote path (full path)
+		subr = self.__get_file_info(rpath)
+		if ENoError == subr:
+			if 'isdir' in self.__remote_json:
+				if self.__remote_json['isdir']:
+					return self.__share_remote_dir(tmpdir, rpath, srpath, fast)
+				else:
+					return self.__share_remote_file(tmpdir, rpath, srpath, fast)
+			else:
+				perr("Malformed path info JSON '{}' returned".format(self.__remote_json))
+				return EFatal
+		elif EFileNotFound == subr:
+			perr("Remote path '{}' does not exist".format(rpath))
+			return subr
+		else:
+			perr("Error {} while getting info for remote path '{}'".format(subr, rpath))
+			return subr
+
+	def share(self, path = '.', sharepath = '/', islocal = True, fast = False):
+		if islocal:
+			lpath = path
+			rpath = get_pcs_path(sharepath)
+			result = self.__share_local(lpath, rpath, fast)
+			if not fast:
+				# not critical
+				self.__delete(RemoteTempDir)
+			return result
+		else:
+			rpath = get_pcs_path(path)
+			srpath = get_pcs_path(sharepath)
+			tmpdir = tempfile.mkdtemp(prefix = 'bypy_')
+			self.pd("Using local temporary directory '{}' for sharing".format(tmpdir))
+			try:
+				result = self.__share_remote(tmpdir, rpath, srpath, fast)
+			except Exception as ex:
+				result = EFatal
+				perr("Exception while sharing remote path '{}'.\n{}".format(
+					rpath, formatex(ex)))
+			finally:
+				removedir(tmpdir)
+			return result
+
+	def __accept(self, rpath, size, md5str, slicemd5str, crcstr):
+		# we have no file to verify against
+		verify = self.__verify
+		self.__verify = False
+		result = self.__rapidupload_file_post(rpath, size, md5str, slicemd5str, crcstr)
+		self.__verify = verify
+		return result
+
+	def accept(self, remotepath, size, md5str, slicemd5str, crcstr):
+		rpath = get_pcs_path(remotepath)
+		return self.__accept(rpath, size, md5str, slicemd5str, crcstr)
+
 # put all xslidian's bduss extensions here, i never tried out them though
 class PanAPI(ByPy):
 	IEBDUSSExpired = -6
@@ -3781,6 +4024,7 @@ class PanAPI(ByPy):
 		return self.__post(PanAPI.PanAPIUrl + 'revision/revert?app_id=250528',
 						   {}, self.__panapi_revision_revert_act, pars, data = pars, cookies = self.__cookies )
 
+# TODO: Make it a method of ByPy and save settings here?
 def onexit(retcode = ENoError):
 	# saving is the most important
 	# we save, but don't clean, why?
