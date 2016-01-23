@@ -237,10 +237,16 @@ def cdl():
 def testshare():
 	banner("Share")
 	#assert bypy.ENoError == by.share(sharedir, '/', True, True)
-	assert bypy.ENoError == by.share(sharedir)
-	assert filterregex(mpr.getq(), r"bypy accept /1M0.bin")
-	assert filterregex(mpr.getq(), r"bypy accept /1M1.bin")
-	assert filterregex(mpr.getq(), r"bypy accept /subdir/1M2.bin")
+	assert bypy.ENoError == by.share(sharedir, sharedir)
+	assert filterregex(mpr.getq(), r"bypy accept /{}/1M0.bin".format(sharedir))
+	assert filterregex(mpr.getq(), r"bypy accept /{}/1M1.bin".format(sharedir))
+	assert filterregex(mpr.getq(), r"bypy accept /{}/subdir/1M2.bin".format(sharedir))
+	mpr.empty()
+	assert bypy.ENoError == by.upload(sharedir, sharedir)
+	assert bypy.ENoError == by.share(sharedir, sharedir, False)
+	assert filterregex(mpr.getq(), r"bypy accept /{}/1M0.bin".format(sharedir))
+	assert filterregex(mpr.getq(), r"bypy accept /{}/1M1.bin".format(sharedir))
+	#assert filterregex(mpr.getq(), r"bypy accept /{}/subdir/1M2.bin".format(sharedir))
 	mpr.empty()
 
 def main():
@@ -248,6 +254,7 @@ def main():
 	prepare()
 	time.sleep(2)
 	testshare()
+	sys.exit(0)
 	time.sleep(2)
 	# sleep sometime helps preventing hanging requests <scorn>
 	cdl()

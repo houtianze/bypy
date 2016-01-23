@@ -38,7 +38,7 @@ from __future__ import print_function
 from __future__ import division
 
 ### special variables that say about this module
-__version__ = '1.2.10'
+__version__ = '1.2.11'
 
 ### return (error) codes
 # they are put at the top because:
@@ -1479,6 +1479,7 @@ class ByPy(object):
 		self.__cookies = {}
 		# TODO: whether this works is still to be tried out
 		self.__isrev = False
+		self.__rapiduploaded = False
 
 		# store the response object, mainly for testing.
 		self.response = object()
@@ -1535,16 +1536,17 @@ class ByPy(object):
 			if self.debug:
 				perr(formatex(ex))
 			perr("Function: {}".format(act.__name__))
-			perr("Full URL: {}".format(r.url))
 			perr("Website parameters: {}".format(pars))
-			if hasattr(r, 'status_code'):
-				perr("HTTP Response Status Code: {}".format(r.status_code))
-				if (r.status_code != 200 and r.status_code != 206) \
-					or (not ('method' in pars and pars['method'] == 'download') \
-						and url.find('method=download') == -1 \
-						and url.find('baidupcs.com/file/') == -1):
-					self.__print_error_json(r)
-					perr("Website returned: {}".format(rb(r.text)))
+			if r:
+				perr("Full URL: {}".format(r.url))
+				if hasattr(r, 'status_code'):
+					perr("HTTP Response Status Code: {}".format(r.status_code))
+					if (r.status_code != 200 and r.status_code != 206) \
+						or (not ('method' in pars and pars['method'] == 'download') \
+							and url.find('method=download') == -1 \
+							and url.find('baidupcs.com/file/') == -1):
+						self.__print_error_json(r)
+						perr("Website returned: {}".format(rb(r.text)))
 
 	# child class override this to to customize error handling
 	def __handle_more_response_error(self, r, sc, ec, act, actargs):
@@ -1853,15 +1855,9 @@ class ByPy(object):
 				formatex(ex)))
 			return EFileWrite
 
-	def __store_json(self, r):
-		j = {}
-		try:
-			j = r.json()
-		except Exception as ex:
-			perr("Failed to decode JSON:\n{}".format(formatex(ex)))
-			perr("Error response:\n{}".format(r.text));
-			pinfo('-' * 64)
-			pinfo("""This is most likely caused by authorization errors.
+	def __prompt_clean(self):
+		pinfo('-' * 64)
+		pinfo("""This is most likely caused by authorization errors.
 Possible causes:
  - You didn't run this program for a long time (more than a month).
  - You changed your Baidu password after authorizing this program.
@@ -1872,7 +1868,17 @@ Possible fixes:
  2. If (1) still doesn't solve the problem, you may have to go to:
     https://passport.baidu.com/accountbind
     and remove the authorization of this program, and then re-run this program.""".format(CleanOptionShort))
-			return EInvalidJson
+		return EInvalidJson
+
+	def __store_json(self, r):
+		j = {}
+		try:
+			j = r.json()
+		except Exception as ex:
+			perr("Failed to decode JSON:\n{}".format(formatex(ex)))
+			perr("Error response:\n{}".format(r.text));
+			return self.__prompt_clean()
+
 		return self.__store_json_only(j)
 
 	def __server_auth_act(self, r, args):
@@ -1907,6 +1913,7 @@ Possible fixes:
 			pr("Successfully authorized")
 		else:
 			perr("Fatal: All server authorizations failed.")
+			self.__prompt_clean()
 
 		return result
 
@@ -1976,6 +1983,7 @@ Possible fixes:
 				pr("Token successfully refreshed")
 			else:
 				perr("Token-refreshing on all the servers failed")
+				self.__prompt_clean()
 
 			return result
 		else:
@@ -2457,7 +2465,9 @@ get information of the given path (dir / file) at Baidu Yun.
 			result = self.__rapidupload_file(localpath, remotepath, ondup)
 			if result == ENoError:
 				self.pv("RapidUpload: '{}' =R=> '{}' OK.".format(localpath, remotepath))
+				self.__rapiduploaded = True
 			else:
+				self.__rapiduploaded = False
 				if not self.__rapiduploadonly:
 					self.pd("'{}' can't be RapidUploaded, now trying normal uploading.".format(
 						self.__current_file))
@@ -3660,15 +3670,17 @@ if not specified, it defaults to the root directory
 		if result != ENoError:
 			perr("Unable to share as uploading failed")
 			return result
-		i = 0
-		while i < ShareRapidUploadRetries:
-			i += 1
-			result = self.__rapidupload_file(lpath, ulrpath, setlocalfile = True)
-			if result == ENoError: # or result == IEMD5NotFound: # we _need_ to retry if MD5 not found
-				break;
-			else:
-				self.pd("Retrying #{} for sharing '{}'".format(i, lpath))
-				time.sleep(1)
+
+		if not self.__rapiduploaded:
+			i = 0
+			while i < ShareRapidUploadRetries:
+				i += 1
+				result = self.__rapidupload_file(lpath, ulrpath, setlocalfile = True)
+				if result == ENoError: # or result == IEMD5NotFound: # retrying if MD5 not found _may_ make the file available?
+					break;
+				else:
+					self.pd("Retrying #{} for sharing '{}'".format(i, lpath))
+					time.sleep(1)
 
 		if result == ENoError:
 			pr(self.__get_accept_cmd(rpath))
@@ -3800,6 +3812,8 @@ y/N/a (yes/NO/always)?
 			return subr
 
 	def share(self, path = '.', sharepath = '/', islocal = True, fast = False):
+		islocal = str2bool(islocal)
+		fast = str2bool(fast)
 		if islocal:
 			lpath = path
 			rpath = get_pcs_path(sharepath)
@@ -3829,6 +3843,10 @@ y/N/a (yes/NO/always)?
 		self.__verify = False
 		result = self.__rapidupload_file_post(rpath, size, md5str, slicemd5str, crcstr)
 		self.__verify = verify
+		if result == ENoError:
+			self.pv("Accepted: {}".format(rpath))
+		else:
+			perr("Unable to accept: {}, Error: {}".format(rpath, result))
 		return result
 
 	def accept(self, remotepath, size, md5str, slicemd5str, crcstr):

@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.2.11: Fix Exception in error dump introduced in 1.2.10
 - 1.2.10: Handle (32, 'EPIPE'); Warn LOUDLY on encoding failures; Remove 'is_revision'
 - 1.2.9: Fix formatex() Syntax Error; Handle (110, 'ETIMEDOUT')
 - 1.2.8: Fix a Syntax Error; Handle {'error_code': 0, 'error_msg': 'no error'}
