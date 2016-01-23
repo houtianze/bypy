@@ -102,8 +102,8 @@ import codecs
 SystemLanguageCode, SystemEncoding = locale.getdefaultlocale()
 # we have warned Windows users, so the following is for *nix users only
 if SystemEncoding:
-	sysenc = SystemEncoding.upper()
-	if sysenc != 'UTF-8' and sysenc != 'UTF8':
+	sysencu = SystemEncoding.upper()
+	if sysencu != 'UTF-8' and sysencu != 'UTF8':
 		err = "WARNING: System locale is not 'UTF-8'.\n" \
 			  "Files with non-ASCII names may not be handled correctly.\n" \
 			  "You should set your System Locale to 'UTF-8'.\n" \
@@ -122,7 +122,7 @@ else:
 stdenc = sys.stdout.encoding
 if stdenc:
 	stdencu = stdenc.upper()
-	if not (sysencu == 'UTF8' or sysencu == 'UTF-8'):
+	if not (stdencu == 'UTF8' or encu == 'UTF-8'):
 		print("Encoding for StdOut: {}".format(stdenc))
 		try:
 			'\u6c49\u5b57'.encode(stdenc) # '汉字'
