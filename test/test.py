@@ -73,6 +73,7 @@ bypy.pr = mpr.pr
 zerofilename = os.path.join(testdir, 'allzero.1m.bin')
 makesuredir(configdir)
 shutil.copy('bypy.json', configdir)
+shutil.copy('bypy.setting.json', configdir)
 by = bypy.ByPy(configdir=configdir, debug=1, verbose=1)
 
 def testmergeinto():
@@ -246,7 +247,7 @@ def testshare():
 	assert bypy.ENoError == by.share(sharedir, sharedir, False)
 	assert filterregex(mpr.getq(), r"bypy accept /{}/1M0.bin".format(sharedir))
 	assert filterregex(mpr.getq(), r"bypy accept /{}/1M1.bin".format(sharedir))
-	#assert filterregex(mpr.getq(), r"bypy accept /{}/subdir/1M2.bin".format(sharedir))
+	assert filterregex(mpr.getq(), r"bypy accept /{}/subdir/1M2.bin".format(sharedir))
 	mpr.empty()
 
 def main():
@@ -254,7 +255,6 @@ def main():
 	prepare()
 	time.sleep(2)
 	testshare()
-	sys.exit(0)
 	time.sleep(2)
 	# sleep sometime helps preventing hanging requests <scorn>
 	cdl()

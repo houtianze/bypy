@@ -39,6 +39,7 @@ nosetests.xml
 .pydevproject
 
 ### personal
+*.swp
 ## PyCharm
 #.idea/
 #.idea/workspace.xml

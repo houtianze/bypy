@@ -3780,18 +3780,17 @@ y/N/a (yes/NO/always)?
 		return self.__share_local_file(lpath, srpath, fast)
 
 	def __proceed_share_remote(self, rpath, dirjs, filejs, args):
-		tmpdir, srpath, fast = args
+		remoterootlen, tmpdir, srpath, fast = args
 		result = ENoError
-		rpathlen = len(rpath)
 		for filej in filejs:
 			rfile = filej['path']
-			subr = self.__share_remote_file(tmpdir, rfile, joinpath(srpath, rfile[rpathlen:], sep = '/'), fast)
+			subr = self.__share_remote_file(tmpdir, rfile, joinpath(srpath, rfile[remoterootlen:], sep = '/'), fast)
 			if subr != ENoError:
 				result = subr
 		return result
 
 	def __share_remote_dir(self, tmpdir, rpath, srpath, fast):
-		return self.__walk_remote_dir(rpath, self.__proceed_share_remote, (tmpdir, srpath, fast))
+		return self.__walk_remote_dir(rpath, self.__proceed_share_remote, (len(rpath), tmpdir, srpath, fast))
 
 	def __share_remote(self, tmpdir, rpath, srpath, fast): # srpath - share remote path (full path)
 		subr = self.__get_file_info(rpath)
