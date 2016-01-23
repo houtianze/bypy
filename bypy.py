@@ -165,7 +165,6 @@ import math
 from os.path import expanduser
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
-from argcomplete import autocomplete
 ## non-standard python library, needs 'pip install ...'
 try:
 	import requests
@@ -4102,18 +4101,22 @@ def getparser():
 	summary = []
 	commands = [] # a list of subcommands to use for autocompletion
 	for k, v in ByPy.__dict__.items():
-		if callable(v) and v.__doc__:
-			help = v.__doc__.strip()
-			pos = help.find(HelpMarker)
-			if pos != -1:
-				pos_body = pos + len(HelpMarker)
-				helpbody = help[pos_body:]
-				helpline = helpbody.split('\n')[0].strip() + '\n'
+		if callable(v):
+			if not (len(v.__name__) >=2 and v.__name__[:2] == '__'):
 				commands.append(v.__name__) # append command name
-				if helpline.find('help') == 0:
-					summary.insert(0, helpline)
-				else:
-					summary.append(helpline)
+
+			if v.__doc__:
+				help = v.__doc__.strip()
+				pos = help.find(HelpMarker)
+				if pos != -1:
+					pos_body = pos + len(HelpMarker)
+					helpbody = help[pos_body:]
+					helpline = helpbody.split('\n')[0].strip() + '\n'
+					if helpline.find('help') == 0:
+						summary.insert(0, helpline)
+					else:
+						summary.append(helpline)
+	commands.sort()
 
 	remaining = summary[1:]
 	remaining.sort()
@@ -4191,7 +4194,12 @@ def main(argv=None): # IGNORE:C0111
 		setuphandlers()
 
 		parser = getparser()
-		autocomplete(parser)
+		try:
+			from argcomplete import autocomplete
+			autocomplete(parser)
+		except Exception as ex:
+			# we don't have access the command arguments (debug / verbose) yet, so just ignore this
+			pass
 		args = parser.parse_args()
 
 		# house-keeping reminder
