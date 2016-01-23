@@ -39,7 +39,7 @@ from __future__ import print_function
 from __future__ import division
 
 ### special variables that say about this module
-__version__ = '1.2.12'
+__version__ = '1.2.13'
 
 ### return (error) codes
 # they are put at the top because:
@@ -71,9 +71,17 @@ EFatal = -1 # No way to continue
 # internal errors
 IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload the whole file.
 
+def bannerwarn(msg):
+	print('!' * 160)
+	print(msg)
+	print('!' * 160)
+
 ### imports
 # version check must pass before any further action
 import sys
+if sys.platform.startswith('win32'):
+	bannerwarn("You are running Python on Windows, which doesn't support Unicode so well.\n"
+		"Files with non-ASCII names may not be handled correctly.")
 
 FileSystemEncoding = sys.getfilesystemencoding()
 
@@ -90,42 +98,42 @@ import os
 import io
 import locale
 import codecs
+
 SystemLanguageCode, SystemEncoding = locale.getdefaultlocale()
-if SystemEncoding and not sys.platform.startswith('win32'):
+# we have warned Windows users, so the following is for *nix users only
+if SystemEncoding:
 	sysenc = SystemEncoding.upper()
 	if sysenc != 'UTF-8' and sysenc != 'UTF8':
 		err = "WARNING: System locale is not 'UTF-8'.\n" \
 			  "Files with non-ASCII names may not be handled correctly.\n" \
 			  "You should set your System Locale to 'UTF-8'.\n" \
-			  "Current locale is '{}'\n".format(SystemEncoding)
-		print(err)
-		# ex = Exception(err)
-		# raise ex
-if not SystemEncoding:
+			  "Current locale is '{}'".format(SystemEncoding)
+		bannerwarn(err)
+else:
 	# ASSUME UTF-8 encoding, if for whatever reason,
 	# we can't get the default system encoding
 	SystemEncoding = 'utf-8'
-	print("WARNING: Can't detect the system encoding, assume it's 'UTF-8'\n" \
-		  "Files with non-ASCII names may not be handled correctly.\n" )
+	bannerwarn("WARNING: Can't detect the system encoding, assume it's 'UTF-8'.\n"
+		  "Files with non-ASCII names may not be handled correctly." )
+
 # no idea who screws the sys.stdout.encoding
 # the locale is 'UTF-8', sys.stdin.encoding is 'UTF-8',
 # BUT, sys.stdout.encoding is None ...
-if not (sys.stdout.encoding and sys.stdout.encoding.lower() == 'utf-8'):
-	encoding_to_use = sys.stdout.encoding
-	try:
-		codecs.lookup(encoding_to_use)
-		'\u6c49\u5b57'.encode(encoding_to_use) # '汉字'
-		print("Encoding for stdout / stderr: {}".format(encoding_to_use))
-		sys.stdout = codecs.getwriter(encoding_to_use)(sys.stdout)
-		sys.stderr = codecs.getwriter(encoding_to_use)(sys.stderr)
-	except: # (LookupError, TypeError, UnicodeEncodeError):
-		encoding_to_use = 'utf-8'
-		# in Python 3.x sys.exc_clear() is removed and unnecessary
-		#if hasattr(sys, 'exc_clear'):
-		#	sys.exc_clear()
-		print('!' * 160)
-		print("ERROR: Can't detect encoding for stdout / stderr. Files with non-ASCII names will most likely fail")
-		print('!' * 160)
+stdenc = sys.stdout.encoding
+if stdenc:
+	stdencu = stdenc.upper()
+	if not (sysencu == 'UTF8' or sysencu == 'UTF-8'):
+		print("Encoding for StdOut: {}".format(stdenc))
+		try:
+			'\u6c49\u5b57'.encode(stdenc) # '汉字'
+			#sys.stdout = codecs.getwriter(stdenc)(sys.stdout)
+			#sys.stderr = codecs.getwriter(stdenc)(sys.stderr)
+		except: # (LookupError, TypeError, UnicodeEncodeError):
+			bannerwarn("WARNING: StdOut encoding '{}' is unable to encode CJK strings.\n" \
+			  "Files with non-ASCII names may not be handled correctly.".format(stdenc))
+else:
+	bannerwarn("WARNING: StdOut encoding is '{}'.\n" \
+	  "Files with non-ASCII names may not be handled correctly.".format(stdenc))
 
 import signal
 import time
@@ -4099,12 +4107,8 @@ def getparser():
 	# setup argument parser
 	epilog = "Commands:\n"
 	summary = []
-	commands = [] # a list of subcommands to use for autocompletion
 	for k, v in ByPy.__dict__.items():
 		if callable(v):
-			if not (len(v.__name__) >=2 and v.__name__[:2] == '__'):
-				commands.append(v.__name__) # append command name
-
 			if v.__doc__:
 				help = v.__doc__.strip()
 				pos = help.find(HelpMarker)
@@ -4116,7 +4120,7 @@ def getparser():
 						summary.insert(0, helpline)
 					else:
 						summary.append(helpline)
-	commands.sort()
+					#commands.append(v.__name__) # append command name
 
 	remaining = summary[1:]
 	remaining.sort()
@@ -4157,7 +4161,7 @@ def getparser():
 	parser.add_argument(CleanOptionShort, CleanOptionLong, dest="clean", action="count", default=0, help="1: clean settings (remove the token file) 2: clean settings and hash cache [default: %(default)s]")
 
 	# the MAIN parameter - what command to perform
-	parser.add_argument("command", nargs='*', help = "operations (quota, list, etc)", choices = commands, default = "help")
+	parser.add_argument("command", nargs='*', help = "operations (quota, list, etc)")
 
 	return parser;
 
@@ -4194,12 +4198,6 @@ def main(argv=None): # IGNORE:C0111
 		setuphandlers()
 
 		parser = getparser()
-		try:
-			from argcomplete import autocomplete
-			autocomplete(parser)
-		except Exception as ex:
-			# we don't have access the command arguments (debug / verbose) yet, so just ignore this
-			pass
 		args = parser.parse_args()
 
 		# house-keeping reminder
