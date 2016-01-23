@@ -122,7 +122,7 @@ else:
 stdenc = sys.stdout.encoding
 if stdenc:
 	stdencu = stdenc.upper()
-	if not (stdencu == 'UTF8' or encu == 'UTF-8'):
+	if not (stdencu == 'UTF8' or stdencu == 'UTF-8'):
 		print("Encoding for StdOut: {}".format(stdenc))
 		try:
 			'\u6c49\u5b57'.encode(stdenc) # '汉字'
