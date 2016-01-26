@@ -197,6 +197,7 @@ def downdir():
 	banner("Downloading dir")
 	shutil.rmtree(downloaddir, ignore_errors=True)
 	assert by.downdir(testdir, downloaddir) == bypy.ENoError
+	assert by.download(testdir, downloaddir) == bypy.ENoError
 	assert by.compare(testdir, downloaddir) == bypy.ENoError
 	assertsame()
 	mpr.empty()

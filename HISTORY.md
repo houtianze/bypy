@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.2.14: Add in `download` command
 - 1.2.13: Remove argcomplete; Improve encoding handling prompting
 - 1.2.12: Add in (optional) argcomplete
 - 1.2.11: Fix Exception in error dump introduced in 1.2.10

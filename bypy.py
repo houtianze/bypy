@@ -39,7 +39,7 @@ from __future__ import print_function
 from __future__ import division
 
 ### special variables that say about this module
-__version__ = '1.2.13'
+__version__ = '1.2.14'
 
 ### return (error) codes
 # they are put at the top because:
@@ -227,7 +227,7 @@ SIPrefixTimes = {
 ApiKey = 'q8WE4EpCsau1oS0MplgMKNBn' # replace with your own ApiKey if you use your own appid
 SecretKey = '' # replace with your own SecretKey if you use your own appid
 # NOTE: no trailing '/'
-AppPcsPath = '/apps/bypy' # change this to the App's direcotry you specified when creating the app
+AppPcsPath = '/apps/bypy' # change this to the App's directory you specified when creating the app
 AppPcsPathLen = len(AppPcsPath)
 
 ## Baidu PCS URLs etc.
@@ -1470,7 +1470,7 @@ class ByPy(object):
 			pr("Verbose level = {}".format(verbose))
 			pr("Debug level = {}".format(debug))
 			# these informations are useful for debugging
-			pr("Config direcotry: '{}'".format(self.__configdir))
+			pr("Config directory: '{}'".format(self.__configdir))
 			pr("Token file: '{}'".format(self.__tokenpath))
 			pr("Hash Cache file: '{}'".format(self.__hashcachepath))
 			pr("App root path at Baidu Yun '{}'".format(AppPcsPath))
@@ -1537,7 +1537,7 @@ class ByPy(object):
 					msg = "Error JSON returned:{}\nError code: {}\nError Description: {}".format(dj, ec, et)
 				pf(msg)
 		except Exception as ex:
-			perr('Error parsing JSON Error Code from:\n{}\n'.format(rb(r.text), formatex(ex)))
+			perr('Error parsing JSON Error Code from:\n{}\n{}'.format(rb(r.text), formatex(ex)))
 
 	def __dump_exception(self, ex, url, pars, r, act):
 		if self.debug or self.verbose:
@@ -1546,9 +1546,11 @@ class ByPy(object):
 				perr(formatex(ex))
 			perr("Function: {}".format(act.__name__))
 			perr("Website parameters: {}".format(pars))
-			if r:
-				perr("Full URL: {}".format(r.url))
-				if hasattr(r, 'status_code'):
+			if r != None:
+				# just playing it safe
+				if hasattr(r, 'url'):
+					perr("Full URL: {}".format(r.url))
+				if hasattr(r, 'status_code') and hasattr(r, 'text'):
 					perr("HTTP Response Status Code: {}".format(r.status_code))
 					if (r.status_code != 200 and r.status_code != 206) \
 						or (not ('method' in pars and pars['method'] == 'download') \
@@ -2132,6 +2134,20 @@ Possible fixes:
 	# https://stackoverflow.com/questions/986006/python-how-do-i-pass-a-variable-by-reference
 	# as if not enough confusion in Python call-by-reference
 	def __get_file_info(self, remotefile, **kwargs):
+		if remotefile == AppPcsPath: # root path
+			# fake it
+			rj = {}
+			rj['isdir'] = 1
+			rj['ctime'] = 0
+			rj['fs_id'] = 0
+			rj['mtime'] = 0
+			rj['path'] = AppPcsPath
+			rj['md5'] = ''
+			rj['size'] = 0
+			self.__remote_json = rj
+			self.pd("File info json: {}".format(self.__remote_json))
+			return ENoError
+
 		rdir, rfile = posixpath.split(remotefile)
 		self.pd("__get_file_info(): rdir : {} | rfile: {}".format(rdir, rfile))
 		if rdir and rfile:
@@ -2145,6 +2161,10 @@ Possible fixes:
 		else:
 			perr("Invalid remotefile '{}' specified.".format(remotefile))
 			return EArgument
+
+	def get_file_info(self, remotefile = '/'):
+		rpath = get_pcs_path(remotefile)
+		return self.__get_file_info(rpath)
 
 	def __list_act(self, r, args):
 		(remotedir, fmt) = args
@@ -2191,8 +2211,15 @@ Possible fixes:
 	def __meta_act(self, r, args):
 		return self.__list_act(r, args)
 
-	# multi-file meta is not implemented for it's low usage
-	def meta(self, remotepath, fmt = '$t $u $f $s $c $m $i $b'):
+	def __meta(self, rpath, fmt):
+		pars = {
+			'method' : 'meta',
+			'path' : rpath }
+		return self.__get(pcsurl + 'file', pars,
+			self.__meta_act, (rpath, fmt))
+
+	# multi-file meta is not implemented for its low usage
+	def meta(self, remotepath = '/', fmt = '$t $u $f $s $c $m $i $b'):
 		''' Usage: meta <remotepath> [format] - \
 get information of the given path (dir / file) at Baidu Yun.
   remotepath - the remote path
@@ -2203,11 +2230,7 @@ get information of the given path (dir / file) at Baidu Yun.
 	$u - Has sub directory or not
 '''
 		rpath = get_pcs_path(remotepath)
-		pars = {
-			'method' : 'meta',
-			'path' : rpath }
-		return self.__get(pcsurl + 'file', pars,
-			self.__meta_act, (rpath, fmt))
+		return self.__meta(rpath, fmt)
 
 	# this 'is_revision' parameter sometimes gives the following error (e.g. for rapidupload):
 	# {u'error_code': 31066, u'error_msg': u'file does not exist'}
@@ -2516,7 +2539,7 @@ upload a file or directory (recursively)
 		lpathbase = os.path.basename(lpath)
 		rpath = remotepath
 		if not lpath:
-			# so, if you don't specify the local path, it will always be the current direcotry
+			# so, if you don't specify the local path, it will always be the current directory
 			# and thus isdir(localpath) is always true
 			lpath = os.path.abspath(".")
 			self.pd("localpath not set, set it to current directory '{}'".format(localpath))
@@ -2768,7 +2791,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 				if pieces > 1:
 					offset = (pieces - 1) * self.__dl_chunk_size
 		elif os.path.isdir(localfile):
-			if not self.shalloverwrite("Same-name direcotry '{}' exists, "
+			if not self.shalloverwrite("Same-name directory '{}' exists, "
 				"do you want to remove it? [y/N]".format(localfile)):
 				pinfo("Same-name directory '{}' exists, skip downloading".format(localfile))
 				return ENoError
@@ -2795,9 +2818,9 @@ try to create a file at PCS by combining slices, having MD5s specified
 download a remote file.
   remotefile - remote file at Baidu Yun (after app root directory at Baidu Yun)
   localpath - local path.
-    if it ends with '/' or '\\', it specifies the local direcotry
-    if it specifies an existing directory, it is the local direcotry
-    if not specified, the local direcotry is the current directory '.'
+    if it ends with '/' or '\\', it specifies the local directory
+    if it specifies an existing directory, it is the local directory
+    if not specified, the local directory is the current directory '.'
     otherwise, it specifies the local file name
 To stream a file using downfile, you can use the 'mkfifo' trick with omxplayer etc.:
   mkfifo /tmp/omx
@@ -2951,10 +2974,10 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 		return self.__walk_remote_dir(rpath, self.__proceed_downdir, (rpath, lpath))
 
 	def downdir(self, remotepath = None, localpath = None):
-		''' Usage: downdir <remotedir> [localdir] - \
+		''' Usage: downdir [remotedir] [localdir] - \
 download a remote directory (recursively)
-  remotedir - remote directory at Baidu Yun (after app root directory at Baidu Yun)
-  localdir - local directory. if not specified, it is set to the current direcotry
+  remotedir - remote directory at Baidu Yun (after app root directory), if not specified, it is set to the root directory at Baidu Yun
+  localdir - local directory. if not specified, it is set to the current directory
 		'''
 		rpath = get_pcs_path(remotepath)
 		lpath = localpath
@@ -2962,6 +2985,37 @@ download a remote directory (recursively)
 			lpath = '' # empty string does it, no need '.'
 		lpath = lpath.rstrip('/\\ ')
 		return self.__downdir(rpath, lpath)
+
+	def __download(self, rpath, lpath):
+		subr = self.__get_file_info(rpath)
+		if ENoError == subr:
+			if 'isdir' in self.__remote_json:
+				if self.__remote_json['isdir']:
+					return self.__downdir(rpath, lpath)
+				else:
+					return self.__downfile(rpath, lpath)
+			else:
+				perr("Malformed path info JSON '{}' returned".format(self.__remote_json))
+				return EFatal
+		elif EFileNotFound == subr:
+			perr("Remote path '{}' does not exist".format(rpath))
+			return subr
+		else:
+			perr("Error {} while getting info for remote path '{}'".format(subr, rpath))
+			return subr
+
+	def download(self, remotepath = '/', localpath = ''):
+		''' Usage: download [remotepath] [localpath] - \
+download a remote directory (recursively) / file
+  remotepath - remote path at Baidu Yun (after app root directory), if not specified, it is set to the root directory at Baidu Yun
+  localpath - local path. if not specified, it is set to the current directory
+		'''
+		rpath = get_pcs_path(remotepath)
+		lpath = localpath
+		if not lpath:
+			lpath = '' # empty string does it, no need '.'
+		lpath = lpath.rstrip('/\\ ')
+		return self.__download(rpath, lpath)
 
 	def __mkdir_act(self, r, args):
 		if self.verbose:
@@ -3292,8 +3346,8 @@ restore a file from the recycle bin
 
 	def compare(self, remotedir = None, localdir = None, skip_remote_only_dirs = False):
 		''' Usage: compare [remotedir] [localdir] - \
-compare the remote direcotry with the local directory
-  remotedir - the remote directory at Baidu Yun (after app's direcotry). \
+compare the remote directory with the local directory
+  remotedir - the remote directory at Baidu Yun (after app's directory). \
 if not specified, it defaults to the root directory.
   localdir - the local directory, if not specified, it defaults to the current directory.
   skip_remote_only_dirs - skip remote-only sub-directories (faster if the remote \
@@ -3333,11 +3387,11 @@ directory is much larger than the local one). it defaults to False.
 
 	def syncdown(self, remotedir = '', localdir = '', deletelocal = False):
 		''' Usage: syncdown [remotedir] [localdir] [deletelocal] - \
-sync down from the remote direcotry to the local directory
-  remotedir - the remote directory at Baidu Yun (after app's direcotry) to sync from. \
+sync down from the remote directory to the local directory
+  remotedir - the remote directory at Baidu Yun (after app's directory) to sync from. \
 if not specified, it defaults to the root directory
   localdir - the local directory to sync to if not specified, it defaults to the current directory.
-  deletelocal - delete local files that are not inside Baidu Yun direcotry, default is False
+  deletelocal - delete local files that are not inside Baidu Yun directory, default is False
 		'''
 		result = ENoError
 		rpath = get_pcs_path(remotedir)
@@ -3396,11 +3450,11 @@ if not specified, it defaults to the root directory
 
 	def syncup(self, localdir = '', remotedir = '', deleteremote = False):
 		''' Usage: syncup [localdir] [remotedir] [deleteremote] - \
-sync up from the local direcotry to the remote directory
+sync up from the local directory to the remote directory
   localdir - the local directory to sync from if not specified, it defaults to the current directory.
-  remotedir - the remote directory at Baidu Yun (after app's direcotry) to sync to. \
+  remotedir - the remote directory at Baidu Yun (after app's directory) to sync to. \
 if not specified, it defaults to the root directory
-  deleteremote - delete remote files that are not inside the local direcotry, default is False
+  deleteremote - delete remote files that are not inside the local directory, default is False
 		'''
 		result = ENoError
 		rpath = get_pcs_path(remotedir)
