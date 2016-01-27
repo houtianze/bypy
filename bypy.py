@@ -1566,7 +1566,7 @@ class ByPy(object):
 	def __get_json(self, r, defaultec = ERequestFailed):
 		try:
 			j = r.json()
-			self.pd("Website returned JSON: {}".foramt(j))
+			self.pd("Website returned JSON: {}".format(j))
 			if 'error_code' in j:
 				return j['error_code']
 			else:
