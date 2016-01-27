@@ -1566,11 +1566,14 @@ class ByPy(object):
 	def __get_json(self, r, defaultec = ERequestFailed):
 		try:
 			j = r.json()
+			self.pd("Website returned JSON: {}".foramt(j))
 			if 'error_code' in j:
 				return j['error_code']
 			else:
 				return defaultec
 		except ValueError:
+			if hasattr(r, 'text'):
+				self.pd("Website Response: {}".format(rb(r.text)))
 			return defaultec
 
 	def __request_work_die(self, ex, url, pars, r, act):
