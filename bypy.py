@@ -39,7 +39,7 @@ from __future__ import print_function
 from __future__ import division
 
 ### special variables that say about this module
-__version__ = '1.2.14'
+__version__ = '1.2.15'
 
 ### return (error) codes
 # they are put at the top because:
@@ -2986,36 +2986,28 @@ download a remote directory (recursively)
 		lpath = lpath.rstrip('/\\ ')
 		return self.__downdir(rpath, lpath)
 
-	def __download(self, rpath, lpath):
-		subr = self.__get_file_info(rpath)
-		if ENoError == subr:
-			if 'isdir' in self.__remote_json:
-				if self.__remote_json['isdir']:
-					return self.__downdir(rpath, lpath)
-				else:
-					return self.__downfile(rpath, lpath)
-			else:
-				perr("Malformed path info JSON '{}' returned".format(self.__remote_json))
-				return EFatal
-		elif EFileNotFound == subr:
-			perr("Remote path '{}' does not exist".format(rpath))
-			return subr
-		else:
-			perr("Error {} while getting info for remote path '{}'".format(subr, rpath))
-			return subr
-
 	def download(self, remotepath = '/', localpath = ''):
 		''' Usage: download [remotepath] [localpath] - \
 download a remote directory (recursively) / file
   remotepath - remote path at Baidu Yun (after app root directory), if not specified, it is set to the root directory at Baidu Yun
   localpath - local path. if not specified, it is set to the current directory
 		'''
-		rpath = get_pcs_path(remotepath)
-		lpath = localpath
-		if not lpath:
-			lpath = '' # empty string does it, no need '.'
-		lpath = lpath.rstrip('/\\ ')
-		return self.__download(rpath, lpath)
+		subr = self.get_file_info(remotepath)
+		if ENoError == subr:
+			if 'isdir' in self.__remote_json:
+				if self.__remote_json['isdir']:
+					return self.downdir(remotepath, localpath)
+				else:
+					return self.downfile(remotepath, localpath)
+			else:
+				perr("Malformed path info JSON '{}' returned".format(self.__remote_json))
+				return EFatal
+		elif EFileNotFound == subr:
+			perr("Remote path '{}' does not exist".format(remotepath))
+			return subr
+		else:
+			perr("Error {} while getting info for remote path '{}'".format(subr, remotepath))
+			return subr
 
 	def __mkdir_act(self, r, args):
 		if self.verbose:
