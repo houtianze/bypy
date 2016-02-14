@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.2.16: Add in proxy prompts
 - 1.2.15: Fix a severe bug (accidental directory deletion) in `download` command intoduced in 1.2.14
 - 1.2.14: Add in `download` command
 - 1.2.13: Remove argcomplete; Improve encoding handling prompting
