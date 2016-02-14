@@ -26,7 +26,12 @@ It provides file operations like: list, download, upload, syncup, syncdown, etc.
 
 The main purpose is to utilize Baidu Yun in Linux environments (e.g. Raspberry Pi)
 
-For more information, please refer to https://github.com/houtianze/bypy
+== NOTE ==
+Proxy is supported by the underlying Requests library, you can activate HTTP proxies by setting the HTTP_PROXY and HTTPS_PROXY environment variables respectively as follows:
+HTTP_PROXY=http://user:password@domain
+HTTPS_PROXY=http://user:password@domain
+(More information: http://docs.python-requests.org/en/master/user/advanced/#proxies)
+Though from my experience, it seems that some proxy servers may not be supported properly.
 
 ---
 @author:     Hou Tianze (GitHub: houtianze) and contributors
@@ -1503,6 +1508,10 @@ class ByPy(object):
 					"You need to authorize this program before using any PCS functions.\n"
 					"Quitting...\n")
 				onexit(result)
+
+		for proxy in ['HTTP_PROXY', 'HTTPS_PROXY']:
+			if proxy in os.environ:
+				pr("{} used: {}".format(proxy, os.environ[proxy]))
 
 	def pv(self, msg, **kwargs):
 		if self.verbose:
