@@ -186,7 +186,7 @@ except:
 		"You need to install it by running '{}".format(PipInstallCommand))
 	raise
 
-from urllib3.exceptions import ReadTimeoutError
+from requests.packages.urllib3.exceptions import ReadTimeoutError
 # there was a WantWriteError uncaught exception for Urllib3:
 # https://github.com/shazow/urllib3/pull/412
 # it was fixed here:
