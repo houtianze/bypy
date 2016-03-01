@@ -186,6 +186,7 @@ except:
 		"You need to install it by running '{}".format(PipInstallCommand))
 	raise
 
+from urllib3.exceptions import ReadTimeoutError
 # there was a WantWriteError uncaught exception for Urllib3:
 # https://github.com/shazow/urllib3/pull/412
 # it was fixed here:
@@ -1688,7 +1689,8 @@ class ByPy(object):
 					if result == ERequestFailed and dumpex:
 						self.__dump_exception(None, url, pars, r, act)
 		except (requests.exceptions.RequestException,
-				socket.error) as ex:
+				socket.error,
+				ReadTimeoutError) as ex:
 			# If certificate check failed, no need to continue
 			# but prompt the user for work-around and quit
 			# why so kludge? because requests' SSLError doesn't set
