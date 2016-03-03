@@ -44,7 +44,7 @@ from __future__ import print_function
 from __future__ import division
 
 ### special variables that say about this module
-__version__ = '1.2.16'
+__version__ = '1.2.17'
 
 ### return (error) codes
 # they are put at the top because:
@@ -199,10 +199,11 @@ except:
 try:
 	from requests.packages.urllib3.exceptions import ReadTimeoutError
 except:
-	from urllib3.exceptions import ReadTimeoutError
-else:
-	print("Something seems wrong with the urllib3 installation.\nQuitting")
-	onexit(EFatal)
+	try:
+		from urllib3.exceptions import ReadTimeoutError
+	except:
+		print("Something seems wrong with the urllib3 installation.\nQuitting")
+		sys.exit(EFatal)
 
 # there was a WantWriteError uncaught exception for Urllib3:
 # https://github.com/shazow/urllib3/pull/412
