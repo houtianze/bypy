@@ -82,9 +82,13 @@ def bannerwarn(msg):
 	print('!' * 160)
 
 ### imports
+import os
+def iswindows():
+	return os.name == 'nt'
+
 # version check must pass before any further action
 import sys
-if sys.platform.startswith('win32'):
+if iswindows():
 	bannerwarn("You are running Python on Windows, which doesn't support Unicode so well.\n"
 		"Files with non-ASCII names may not be handled correctly.")
 
@@ -99,7 +103,6 @@ or (sys.version_info[0] == 2 and sys.version_info[1] < 7) \
 or (sys.version_info[0] == 3 and sys.version_info[1] < 3):
 	print("Error: Incorrect Python version. You need 2.7 / 3.3 or above")
 	sys.exit(EIncorrectPythonVersion)
-import os
 import io
 import locale
 import codecs
@@ -124,6 +127,17 @@ else:
 # no idea who screws the sys.stdout.encoding
 # the locale is 'UTF-8', sys.stdin.encoding is 'UTF-8',
 # BUT, sys.stdout.encoding is None ...
+def fixenc(stdenc):
+	if iswindows():
+		bannerwarn("WARNING: StdOut encoding '{}' is unable to encode CJK strings.\n" \
+			"Files with non-ASCII names may not be handled correctly.".format(stdenc))
+	else:
+		# fix by @xslidian
+		if not stdenc:
+			stdenc = 'utf-8'
+		sys.stdout = codecs.getwriter(stdenc)(sys.stdout)
+		sys.stderr = codecs.getwriter(stdenc)(sys.stderr)
+
 stdenc = sys.stdout.encoding
 if stdenc:
 	stdencu = stdenc.upper()
@@ -131,14 +145,10 @@ if stdenc:
 		print("Encoding for StdOut: {}".format(stdenc))
 		try:
 			'\u6c49\u5b57'.encode(stdenc) # '汉字'
-			#sys.stdout = codecs.getwriter(stdenc)(sys.stdout)
-			#sys.stderr = codecs.getwriter(stdenc)(sys.stderr)
 		except: # (LookupError, TypeError, UnicodeEncodeError):
-			bannerwarn("WARNING: StdOut encoding '{}' is unable to encode CJK strings.\n" \
-			  "Files with non-ASCII names may not be handled correctly.".format(stdenc))
+			fixenc(stdenc)
 else:
-	bannerwarn("WARNING: StdOut encoding is '{}'.\n" \
-	  "Files with non-ASCII names may not be handled correctly.".format(stdenc))
+	fixenc(stdenc)
 
 import signal
 import time
@@ -367,7 +377,7 @@ def prc(msg):
 pr = prc
 
 def prcolorc(msg, fg, bg):
-	if sys.stdout.isatty() and not sys.platform.startswith('win32'):
+	if sys.stdout.isatty() and not iswindows():
 		pr(colorstr(msg, fg, bg))
 	else:
 		pr(msg)
@@ -1107,7 +1117,7 @@ class PathDictTree(dict):
 		place = self
 		if path:
 			# Linux can have file / folder names with '\\'?
-			if sys.platform.startswith('win32'):
+			if iswindows():
 				assert '\\' not in path
 			route = filter(None, path.split('/'))
 			for part in route:
@@ -4136,7 +4146,7 @@ def setsighandler(signum, handler):
 	return oldhandler
 
 def setuphandlers():
-	if sys.platform == 'win32':
+	if iswindows():
 		# setsighandler(signal.CTRL_C_EVENT, sighandler)
 		# setsighandler(signal.CTRL_BREAK_EVENT, sighandler)
 		# bug, see: http://bugs.python.org/issue9524
