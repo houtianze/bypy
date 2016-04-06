@@ -32,6 +32,7 @@ setup(
 		'Topic :: Internet :: WWW/HTTP'],
 	install_requires = [
 		'requests',
-	])
+	],
+	include_package_data=True)
 
 # vim: tabstop=4 noexpandtab shiftwidth=4 softtabstop=4 ff=unix fileencoding=utf-8
