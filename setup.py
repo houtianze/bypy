@@ -48,8 +48,9 @@ setup(
 		'Programming Language :: Python',
 		'Topic :: Utilities',
 		'Topic :: Internet :: WWW/HTTP'],
-	extras_require = {
-		'requests' : ['requests']}
-	)
+	install_requires = [
+		'requests',
+	],
+	include_package_data=True)
 
 # vim: tabstop=4 noexpandtab shiftwidth=4 softtabstop=4 ff=unix fileencoding=utf-8
