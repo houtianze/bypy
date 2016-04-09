@@ -761,7 +761,7 @@ def joinpath(first, second, sep = os.sep):
 # http://houtianze.github.io/python/unicode/json/2016/01/03/another-python-unicode-fisaco-on-json.html
 def py2_jsondump(data, filename):
 	with io.open(filename, 'w', encoding = 'utf-8') as f:
-		f.write(json.dumps(data, ensure_ascii = False, sort_keys = True, indent = 2))
+		f.write(unicode(json.dumps(data, ensure_ascii = False, sort_keys = True, indent = 2)))
 
 def py3_jsondump(data, filename):
 	with io.open(filename, 'w', encoding = 'utf-8') as f:
