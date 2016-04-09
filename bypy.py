@@ -311,6 +311,14 @@ HashCacheFileName = 'bypy.hashcache.json'
 HashCachePath = ConfigDir + os.sep + HashCacheFileName
 PickleFileName = 'bypy.pickle'
 PicklePath = ConfigDir + os.sep + PickleFileName
+# ProgressPath 保存已经上传完成的slice的md5。实现上传文件的断点续传。
+# 文件格式为：
+# {
+# 	abspath: (slice_size, [slice1md5, slice2md5, ...]),
+# }
+#
+ProgressFileName = 'bypy.parts.json'
+ProgressPath = ConfigDir + os.sep + ProgressFileName
 ByPyCertsFileName = 'bypy.cacerts.pem'
 ByPyCertsPath = ConfigDir + os.sep + ByPyCertsFileName
 # Old setting locations, should be moved to ~/.bypy to be clean
@@ -438,12 +446,13 @@ def pprgrc(finish, total, start_time = None, existing = 0,
 	if total > 0:
 		segth = seg * finish // total
 		percent = 100 * finish // total
+		current_batch_percent = 100 * (finish - existing) // total
 	else:
 		segth = seg
 		percent = 100
 	eta = ''
 	now = time.time()
-	if start_time is not None and percent > 5 and finish > 0:
+	if start_time is not None and current_batch_percent > 5 and finish > 0:
 		finishf = float(finish) - float(existing)
 		totalf = float(total)
 		remainf = totalf - float(finish)
@@ -2328,6 +2337,16 @@ get information of the given path (dir / file) at Baidu Yun.
 				#files = { 'file' : (os.path.basename(self.__current_file), self.__current_slice) } )
 				files = { 'file' : ('file', self.__current_slice) } )
 
+	def __update_progress_entry(self, fullpath):
+		progress = jsonload(ProgressPath)
+		progress[fullpath]=(self.__slice_size, self.__slice_md5s)
+		jsondump(progress, ProgressPath)
+
+	def __delete_progress_entry(self, fullpath):
+		progress = jsonload(ProgressPath)
+		progress.remove(fullpath)
+		jsondump(progress, ProgressPath)
+
 	def __upload_file_slices(self, localpath, remotepath, ondup = 'overwrite'):
 		pieces = MaxSlicePieces
 		slice = self.__slice_size
@@ -2345,8 +2364,35 @@ get information of the given path (dir / file) at Baidu Yun.
 
 		i = 0
 		ec = ENoError
+
+		fullpath = os.path.abspath(self.__current_file)
+		progress = {}
+		initial_offset = 0
+		if not os.path.exists(ProgressPath):
+			jsondump(progress, ProgressPath)
+		progress = jsonload(ProgressPath)
+		if fullpath in progress:
+			self.pd("Find the progress entry resume uploading")
+			(slice, md5s) = progress[fullpath]
+			self.__slice_md5s = []
+			with io.open(self.__current_file, 'rb') as f:
+				self.pd("Verifying the md5s. Total count = {}".format(len(md5s)))
+				for md in md5s:
+					cslice = f.read(slice)
+					cm = hashlib.md5(cslice)
+					if (binascii.hexlify(cm.digest()) == md):
+						self.pd("{} verified".format(md))
+						self.__slice_md5s.append(md)
+					else:
+						break
+				self.pd("verified md5 count = {}".format(len(self.__slice_md5s)))
+			i = len(self.__slice_md5s)
+			self.pd("Start from offset {}".format(i*slice))
+			initial_offset = i * slice
+
 		with io.open(self.__current_file, 'rb') as f:
 			start_time = time.time()
+			f.seek(initial_offset, os.SEEK_SET)
 			while i < pieces:
 				self.__current_slice = f.read(slice)
 				m = hashlib.md5()
@@ -2360,7 +2406,8 @@ get information of the given path (dir / file) at Baidu Yun.
 					ec = self.__upload_slice(remotepath)
 					if ec == ENoError:
 						self.pd("Slice MD5 match, continuing next slice")
-						pprgr(f.tell(), self.__current_file_size, start_time)
+						pprgr(f.tell(), self.__current_file_size, start_time, initial_offset)
+						self.__update_progress_entry(fullpath)
 						break
 					elif j < self.__retry:
 						j += 1
@@ -2380,7 +2427,10 @@ get information of the given path (dir / file) at Baidu Yun.
 		else:
 			#self.pd("Sleep 2 seconds before combining, just to be safer.")
 			#time.sleep(2)
-			return self.__combine_file(remotepath, ondup = 'overwrite')
+			ec = self.__combine_file(remotepath, ondup = 'overwrite')
+			if ec == ENoError:
+				self.__delete_progress_entry(fullpath)
+			return ec
 
 	def __rapidupload_file_act(self, r, args):
 		if self.__verify:
