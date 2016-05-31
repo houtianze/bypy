@@ -1960,6 +1960,26 @@ Possible fixes:
 			self.__prompt_clean()
 
 		return result
+	
+	def auto_auth(self, auth_code):
+		pars = {
+			'code' : auth_code,
+			'redirect_uri' : 'oob' }
+
+		result = None
+		for auth in AuthServerList:
+			(url, retry, msg) = auth
+			pr(msg)
+			result = self.__get(url, pars, self.__server_auth_act, retry = retry, addtoken = False)
+			if result == ENoError:
+				break
+
+		if result == ENoError:
+			pr("Successfully authorized")
+		else:
+			perr("Fatal: All server authorizations failed.")
+
+		return result
 
 	def __device_auth_act(self, r, args):
 		dj = r.json()
