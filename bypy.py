@@ -2732,9 +2732,17 @@ try to create a file at PCS by combining slices, having MD5s specified
 	def __down_aria2c(self, remotefile, localfile):
 		url = "{}{}".format(dpcsurl, "file")
 
+		rfile = remotefile
+
+		# in python 2, the urlencode will fail
+		# when the parameters is unicode and has non-ascii characters
+		# we manually encode it
+		if sys.version_info[0] == 2 and isinstance(rfile, unicode):
+			rfile = remotefile.encode("utf-8")
+
 		pars = {
 				"method": "download",
-				"path": remotefile,
+				"path": rfile,
 				"access_token": self.__access_token,
 				}
 
