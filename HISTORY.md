@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.2.18: Add in upload resuming using slices; Fix Unicode issue with py2_jsondump()
 - 1.2.17: Fix UnicodeEncodeError on redirect; Add in retry on urllib3 TimeOutError
 - 1.2.16: Add in proxy prompts
 - 1.2.15: Fix a severe bug (accidental directory deletion) in `download` command intoduced in 1.2.14
