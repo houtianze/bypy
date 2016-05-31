@@ -311,10 +311,10 @@ HashCacheFileName = 'bypy.hashcache.json'
 HashCachePath = ConfigDir + os.sep + HashCacheFileName
 PickleFileName = 'bypy.pickle'
 PicklePath = ConfigDir + os.sep + PickleFileName
-# ProgressPath 保存已经上传完成的slice的md5。实现上传文件的断点续传。
-# 文件格式为：
+# ProgressPath saves the MD5s of uploaded slices, for upload resuming
+# format:
 # {
-# 	abspath: (slice_size, [slice1md5, slice2md5, ...]),
+# 	abspath: [slice_size, [slice1md5, slice2md5, ...]],
 # }
 #
 ProgressFileName = 'bypy.parts.json'
@@ -2387,8 +2387,8 @@ get information of the given path (dir / file) at Baidu Yun.
 						break
 				self.pd("verified md5 count = {}".format(len(self.__slice_md5s)))
 			i = len(self.__slice_md5s)
-			self.pd("Start from offset {}".format(i*slice))
 			initial_offset = i * slice
+			self.pd("Start from offset {}".format(initial_offset))
 
 		with io.open(self.__current_file, 'rb') as f:
 			start_time = time.time()
