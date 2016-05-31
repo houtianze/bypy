@@ -2740,7 +2740,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 		full_url = "{}?{}".format(url, ulp.urlencode(pars))
 
-		cmd = "aria2c -c --user-agent='{}' -k10M -x10 -s10 '{}'".format(UserAgent, full_url)
+		cmd = "aria2c -c --user-agent='{}' -k10M -x10 -s10 -o '{}' '{}'".format(UserAgent, localfile, full_url)
 		self.pd("call: {}".format(cmd))
 		ret = call(cmd, shell=True)
 		self.pd("aria2c exit with status: {}".format(ret))
