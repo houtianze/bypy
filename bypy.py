@@ -809,7 +809,7 @@ class MyPrettyPrinter(pprint.PrettyPrinter):
 			except:
 				convert = True
 			if convert:
-				return ("0x{}".format(binascii.hexlify(obj)), True, False)
+				return ("0x{}".format(obj), True, False)
 		return pprint.PrettyPrinter.format(self, obj, context, maxlevels, level)
 
 # there is room for more space optimization (like using the tree structure),
@@ -853,11 +853,11 @@ class cached(object):
 					if self.f.__name__ == 'crc32': # it's a int (long), can't unhexlify
 						result = info[self.f.__name__]
 					else:
-						result = binascii.unhexlify(info[self.f.__name__])
+						result = info[self.f.__name__]
 					if cached.debug:
 						pdbg("Cache hit for file '{}',\n{}: {}\nsize: {}\nmtime: {}".format(
 							path, self.f.__name__,
-							result if isinstance(result, (int, long, float, complex)) else binascii.hexlify(result),
+							result if isinstance(result, (int, long, float, complex)) else result,
 							info['size'], info['mtime']))
 				else:
 					result = self.f(*args)
@@ -887,14 +887,14 @@ class cached(object):
 		if self.f.__name__ == 'crc32': # it's a int (long), can't hexlify
 			info[self.f.__name__] = value
 		else:
-			info[self.f.__name__] = binascii.hexlify(value)
+			info[self.f.__name__] = value
 		if cached.debug:
 			situation = "Storing cache"
 			if cached.usecache:
 				situation = "Cache miss"
 			pdbg((situation + " for file '{}',\n{}: {}\nsize: {}\nmtime: {}").format(
 				path, self.f.__name__,
-				value if isinstance(value, (int, long, float, complex)) else binascii.hexlify(value),
+				value if isinstance(value, (int, long, float, complex)) else value,
 				info['size'], info['mtime']))
 
 		# periodically save to prevent loss in case of system crash
@@ -1049,7 +1049,7 @@ def md5(filename, slice = OneM):
 			else:
 				break
 
-	return m.digest()
+	return m.hexdigest()
 
 # slice md5 for baidu rapidupload
 @cached
@@ -1059,7 +1059,7 @@ def slice_md5(filename):
 		buf = f.read(256 * OneK)
 		m.update(buf)
 
-	return m.digest()
+	return m.hexdigest()
 
 @cached
 def crc32(filename, slice = OneM):
@@ -1117,7 +1117,7 @@ class PathDictTree(dict):
 			result += "{} - {}/{} - size: {} - md5: {} \n".format(
 				v.type, prefix, k,
 				v.extra['size'] if 'size' in v.extra else '',
-				binascii.hexlify(v.extra['md5']) if 'md5' in v.extra else '')
+				v.extra['md5'] if 'md5' in v.extra else '')
 
 		for k, v in self.items():
 			if v.type == 'D':
@@ -1271,7 +1271,7 @@ class ByPy(object):
 	def convertbincache(info, key):
 		if key in info:
 			binhash = info[key]
-			strhash = binascii.hexlify(binhash)
+			strhash = binhash
 			info[key] = strhash
 
 	# in Pickle, i saved the hash (MD5, CRC32) in binary format (bytes)
@@ -2117,7 +2117,7 @@ Possible fixes:
 			return EHashMismatch
 
 		if 'md5' in j:
-			rmd5 = binascii.unhexlify(j['md5'])
+			rmd5 = j['md5']
 		#elif 'block_list' in j and len(j['block_list']) > 0:
 		#	rmd5 = j['block_list'][0]
 		#else:
@@ -2139,8 +2139,8 @@ Possible fixes:
 			if self.__verify:
 				if not gotlmd5:
 					self.__current_file_md5 = md5(self.__current_file)
-				self.pd("Local file MD5 : {}".format(binascii.hexlify(self.__current_file_md5)))
-				self.pd("Remote file MD5: {}".format(binascii.hexlify(rmd5)))
+				self.pd("Local file MD5 : {}".format(self.__current_file_md5))
+				self.pd("Remote file MD5: {}".format(rmd5))
 
 				if self.__current_file_md5 == rmd5:
 					self.pd("Local file and remote file hashes match")
@@ -2318,7 +2318,7 @@ get information of the given path (dir / file) at Baidu Yun.
 		# otherwise, it makes the uploading slower at the end
 		rsmd5 = j['md5']
 		self.pd("Uploaded MD5 slice: " + rsmd5)
-		if self.__current_slice_md5 == binascii.unhexlify(rsmd5):
+		if self.__current_slice_md5 == rsmd5:
 			self.__slice_md5s.append(rsmd5)
 			self.pv("'{}' >>==> '{}' OK.".format(self.__current_file, args))
 			return ENoError
@@ -2380,7 +2380,7 @@ get information of the given path (dir / file) at Baidu Yun.
 				for md in md5s:
 					cslice = f.read(slice)
 					cm = hashlib.md5(cslice)
-					if (binascii.hexlify(cm.digest()) == md):
+					if (binascii.hexlify(cm.hexdigest()) == md):
 						self.pd("{} verified".format(md))
 						self.__slice_md5s.append(md)
 					else:
@@ -2397,9 +2397,9 @@ get information of the given path (dir / file) at Baidu Yun.
 				self.__current_slice = f.read(slice)
 				m = hashlib.md5()
 				m.update(self.__current_slice)
-				self.__current_slice_md5 = m.digest()
+				self.__current_slice_md5 = m.hexdigest()
 				self.pd("Uploading MD5 slice: {}, #{} / {}".format(
-					binascii.hexlify(self.__current_slice_md5),
+					self.__current_slice_md5,
 					i + 1, pieces))
 				j = 0
 				while True:
@@ -2467,8 +2467,8 @@ get information of the given path (dir / file) at Baidu Yun.
 	def __rapidupload_file(self, lpath, rpath, ondup = 'overwrite', setlocalfile = False):
 		self.__get_hashes_for_rapidupload(lpath, setlocalfile)
 
-		md5str = binascii.hexlify(self.__current_file_md5)
-		slicemd5str =  binascii.hexlify(self.__current_file_slice_md5)
+		md5str = self.__current_file_md5
+		slicemd5str =  self.__current_file_slice_md5
 		crcstr = hex(self.__current_file_crc32)
 		return self.__rapidupload_file_post(rpath, self.__current_file_size, md5str, slicemd5str, crcstr, ondup)
 
@@ -3353,11 +3353,11 @@ restore a file from the recycle bin
 		dlen = len(remotepath) + 1
 		for d in dirjs:
 			self.__remote_dir_contents.get(remotepath[rootlen:]).add(
-				d['path'][dlen:], PathDictTree('D', size = d['size'], md5 = binascii.unhexlify(d['md5'])))
+				d['path'][dlen:], PathDictTree('D', size = d['size'], md5 = d['md5']))
 
 		for f in filejs:
 			self.__remote_dir_contents.get(remotepath[rootlen:]).add(
-				f['path'][dlen:], PathDictTree('F', size = f['size'], md5 = binascii.unhexlify(f['md5'])))
+				f['path'][dlen:], PathDictTree('F', size = f['size'], md5 = f['md5']))
 
 		return ENoError
 
@@ -3781,8 +3781,8 @@ if not specified, it defaults to the root directory
 		return self.__cdl_cancel(task_id)
 
 	def __get_accept_cmd(self, rpath):
-		md5str = binascii.hexlify(self.__current_file_md5)
-		slicemd5str =  binascii.hexlify(self.__current_file_slice_md5)
+		md5str = self.__current_file_md5
+		slicemd5str =  self.__current_file_slice_md5
 		crcstr = hex(self.__current_file_crc32)
 		remotepath = rpath[AppPcsPathLen:]
 		if len(remotepath) == 0:
