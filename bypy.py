@@ -847,13 +847,7 @@ class cached(object):
 					and info['mtime'] == getfilemtime_int(path) \
 					and self.f.__name__ in info \
 					and cached.usecache:
-					# NOTE: behavior change: hexlify & unhexlify
-					#result = info[self.f.__name__]
-					# TODO: HACK here
-					if self.f.__name__ == 'crc32': # it's a int (long), can't unhexlify
-						result = info[self.f.__name__]
-					else:
-						result = info[self.f.__name__]
+					result = info[self.f.__name__]
 					if cached.debug:
 						pdbg("Cache hit for file '{}',\n{}: {}\nsize: {}\nmtime: {}".format(
 							path, self.f.__name__,
@@ -881,13 +875,7 @@ class cached(object):
 		cached.dirty = True
 		info['size'] = getfilesize(path)
 		info['mtime'] = getfilemtime_int(path)
-		# NOTE: behavior change: hexlify & unhexlify
-		#info[self.f.__name__] = value
-		# TODO: HACK here
-		if self.f.__name__ == 'crc32': # it's a int (long), can't hexlify
-			info[self.f.__name__] = value
-		else:
-			info[self.f.__name__] = value
+		info[self.f.__name__] = value
 		if cached.debug:
 			situation = "Storing cache"
 			if cached.usecache:
@@ -2380,7 +2368,7 @@ get information of the given path (dir / file) at Baidu Yun.
 				for md in md5s:
 					cslice = f.read(slice)
 					cm = hashlib.md5(cslice)
-					if (binascii.hexlify(cm.hexdigest()) == md):
+					if (cm.hexdigest() == md):
 						self.pd("{} verified".format(md))
 						self.__slice_md5s.append(md)
 					else:
