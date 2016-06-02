@@ -851,7 +851,7 @@ class cached(object):
 					if cached.debug:
 						pdbg("Cache hit for file '{}',\n{}: {}\nsize: {}\nmtime: {}".format(
 							path, self.f.__name__,
-							result if isinstance(result, (int, long, float, complex)) else result,
+							result,
 							info['size'], info['mtime']))
 				else:
 					result = self.f(*args)
@@ -882,7 +882,7 @@ class cached(object):
 				situation = "Cache miss"
 			pdbg((situation + " for file '{}',\n{}: {}\nsize: {}\nmtime: {}").format(
 				path, self.f.__name__,
-				value if isinstance(value, (int, long, float, complex)) else value,
+				value,
 				info['size'], info['mtime']))
 
 		# periodically save to prevent loss in case of system crash
@@ -1259,7 +1259,7 @@ class ByPy(object):
 	def convertbincache(info, key):
 		if key in info:
 			binhash = info[key]
-			strhash = binhash
+			strhash = binascii.hexlify(binhash)
 			info[key] = strhash
 
 	# in Pickle, i saved the hash (MD5, CRC32) in binary format (bytes)
