@@ -27,6 +27,9 @@ setup(
 	download_url='https://github.com/houtianze/bypy/tarball/' + bypy.__version__,
 	packages=find_packages(),
 	scripts=['bypy', 'bypy.py', 'bypy.py', 'bypygui.pyw'],
+	package_data = {
+		'' : ['*.md']
+	},
 	keywords = ['bypy', 'bypy.py', 'baidu pcs', 'baidu yun', 'baidu pan', 'baidu netdisk',
 				'baidu cloud storage', 'baidu personal cloud storage',
 				'百度云', '百度云盘', '百度网盘', '百度个人云存储'],
@@ -41,6 +44,7 @@ setup(
 		'Operating System :: MacOS :: MacOS X',
 		'Operating System :: Microsoft :: Windows',
 		'Operating System :: POSIX',
+		'Operating System :: Unix',
 		'Programming Language :: Python',
 		'Topic :: Utilities',
 		'Topic :: Internet :: WWW/HTTP'],

@@ -75,6 +75,7 @@ EUserRejected = 190 # user's decision
 EFatal = -1 # No way to continue
 # internal errors
 IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload the whole file.
+IESuperfileCreationFailed = 31081 # superfile create failed
 
 def bannerwarn(msg):
 	print('!' * 160)
@@ -1689,7 +1690,7 @@ class ByPy(object):
 					self.pd("MD5 not found, rapidupload failed")
 					result = ec
 				# superfile create failed
-				elif ec == 31081: # and sc == 404:
+				elif ec == IESuperfileCreationFailed: # and sc == 404:
 					self.pd("Failed to combine files from MD5 slices (superfile create failed)")
 					result = ec
 				# errors that make retrying meaningless
@@ -2382,6 +2383,11 @@ get information of the given path (dir / file) at Baidu Yun.
 					cm = hashlib.md5(cslice)
 					if (binascii.hexlify(cm.digest()) == md):
 						self.pd("{} verified".format(md))
+						# TODO: a more rigorous check would be also verifying
+						# slices exist at Baidu Yun as well (rapidupload test?)
+						# but that's a bit complex. for now, we don't check
+						# this but simply delete the progress entry if later
+						# we got error combining the slices.
 						self.__slice_md5s.append(md)
 					else:
 						break
@@ -2428,7 +2434,10 @@ get information of the given path (dir / file) at Baidu Yun.
 			#self.pd("Sleep 2 seconds before combining, just to be safer.")
 			#time.sleep(2)
 			ec = self.__combine_file(remotepath, ondup = 'overwrite')
-			if ec == ENoError:
+			if ec == ENoError or ec == IESuperfileCreationFailed:
+				# we delete the upload progress entry also when we can't combine
+				# the file, as it might be caused by  the slices uploaded
+				# has expired / become invalid
 				self.__delete_progress_entry(fullpath)
 			return ec
 

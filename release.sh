@@ -1,6 +1,19 @@
 #!/bin/sh
 
 set -o errexit
+#set -x
+
+py2venv="$HOME/Documents/t/venv27"
+py3venv="$HOME/Documents/t/venv34"
+if [ ! -d "$py2venv" ]
+then
+  python2 -m virtualenv "$py2venv"
+fi
+
+if [ ! -d "$py3venv" ]
+then
+  python3 -m venv "$py3venv"
+fi
 
 actual=0
 build=0
@@ -54,7 +67,7 @@ fi
 if [ "$build" -eq 1 ]
 then
 	rm -Rf dist/*
-	python3 setup.py sdist bdist_wheel
+	python3 setup.py sdist # bdist_wheel
 fi
 
 uploadcmd="twine upload dist/* $repoopt"
@@ -67,12 +80,16 @@ fi
 
 if [ "$install" -eq 1 ]
 then
-	. ~/Documents/t/venv27/bin/activate
+	. "$py2venv/bin/activate"
+	pip install requests
+	pip install pypandoc
 	pip install -U bypy $indexopt
 	bypy -V
 	bypy quota
 	deactivate
-	. ~/Documents/t/venv34/bin/activate
+	. "$py3venv/bin/activate"
+	pip install requests
+	pip install pypandoc
 	pip install -U bypy $indexopt
 	bypy -V
 	bypy quota
