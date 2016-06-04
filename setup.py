@@ -26,7 +26,7 @@ setup(
 	url='https://github.com/houtianze/bypy',
 	download_url='https://github.com/houtianze/bypy/tarball/' + bypy.__version__,
 	packages=find_packages(),
-	scripts=['bypy', 'bypy.py', 'bypy.py', 'bypygui.pyw'],
+	scripts=['bypy', 'bypy.bat', 'bypy.py', 'bypygui.pyw'],
 	package_data = {
 		'' : ['*.md']
 	},
