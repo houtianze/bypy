@@ -289,11 +289,12 @@ class BypyGui(tk.Frame):
 		self.threadrunning = False
 
 		self.localPath = tk.StringVar()
+		self.localPath.set('/tmp')
 		self.remotePath = tk.StringVar()
 		self.bLog = tk.IntVar()
 		self.bLog.set(1)
 		self.bSyncDelete = tk.IntVar()
-		self.bSyncDelete.set(1)
+		self.bSyncDelete.set(0)
 		self.progress = tk.IntVar()
 		self.progress.set(0)
 		self.maxProgress = 1000
@@ -359,6 +360,7 @@ class BypyGui(tk.Frame):
 		self.wDownload.bind('<Button-1>', self.startdownload)
 
 		self.wSyncDelete = tk.Checkbutton(self.OpFrame, text = 'Sync Del 同步删除', underline = 7, variable = self.bSyncDelete)
+		self.wSyncDelete.configure(foreground = 'red')
 		self.wSyncDelete.grid(row = 0, column = 4, sticky = Stretch, **GridStyle)
 		self.bind_all('<Alt-l>', lambda e: self.bSyncDelete.set(1 if self.bSyncDelete.get() == 0 else 0))
 		self.wEnableLog = tk.Checkbutton(self.OpFrame, text = 'Log 日志', underline = 2, variable = self.bLog)
