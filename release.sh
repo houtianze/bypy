@@ -12,7 +12,7 @@ fi
 
 if [ ! -d "$py3venv" ]
 then
-  python3 -m venv "$py3venv"
+  python3 -m virtualenv "$py3venv"
 fi
 
 actual=0
