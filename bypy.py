@@ -177,6 +177,8 @@ elif sys.version_info[0] == 3:
 	long = int
 	raw_input = input
 	pickleload = partial(pickle.load, encoding="bytes")
+
+from subprocess import call
 import json
 import hashlib
 import base64
@@ -1395,6 +1397,7 @@ class ByPy(object):
 		configdir = ConfigDir,
 		requester = RequestsRequester,
 		apikey = ApiKey,
+		use_aria2c = False,
 		secretkey = SecretKey):
 
 		super(ByPy, self).__init__()
@@ -1411,6 +1414,9 @@ class ByPy(object):
 		self.__tokenpath = configdir + os.sep + TokenFileName
 		self.__settingpath = configdir + os.sep + SettingFileName
 		self.__setting = {}
+
+		self.use_aria2c = use_aria2c
+
 		if os.path.exists(self.__settingpath):
 			try:
 				self.__setting = jsonload(self.__settingpath)
@@ -2782,6 +2788,31 @@ try to create a file at PCS by combining slices, having MD5s specified
 				else:
 					return EFileWrite
 
+	def __down_aria2c(self, remotefile, localfile):
+		url = "{}{}".format(dpcsurl, "file")
+
+		rfile = remotefile
+
+		# in python 2, the urlencode will fail
+		# when the parameters is unicode and has non-ascii characters
+		# we manually encode it
+		if sys.version_info[0] == 2 and isinstance(rfile, unicode):
+			rfile = remotefile.encode("utf-8")
+
+		pars = {
+				"method": "download",
+				"path": rfile,
+				"access_token": self.__access_token,
+				}
+
+		full_url = "{}?{}".format(url, ulp.urlencode(pars))
+
+		cmd = "aria2c -c --user-agent='{}' -k10M -x10 -s10 -o '{}' '{}'".format(UserAgent, localfile, full_url)
+		self.pd("call: {}".format(cmd))
+		ret = call(cmd, shell=True)
+		self.pd("aria2c exit with status: {}".format(ret))
+		return ret
+
 	# requirment: self.__remote_json is already gotten
 	def __downchunks(self, rfile, start):
 		rsize = self.__remote_json['size']
@@ -2844,6 +2875,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 		return result
 
+
 	def __downfile(self, remotefile, localfile):
 		# TODO: this is a quick patch
 		if not self.__shallinclude(localfile, remotefile, False):
@@ -2903,7 +2935,10 @@ try to create a file at PCS by combining slices, having MD5s specified
 				perr("Fail to make directory '{}'".format(ldir))
 				return result
 
+		if self.use_aria2c:
+			return self.__down_aria2c(rfile, localfile)
 		return self.__downchunks(rfile, offset)
+
 
 	def downfile(self, remotefile, localpath = ''):
 		''' Usage: downfile <remotefile> [localpath] - \
@@ -4292,6 +4327,10 @@ def getparser():
 	parser.add_argument(CaCertsOption, dest="cacerts", help="Specify the path for CA Bundle [default: %(default)s]")
 	parser.add_argument("--mirror", dest="mirror", default=None, help="Specify the PCS mirror (e.g. bj.baidupcs.com. Open 'https://pcs.baidu.com/rest/2.0/pcs/manage?method=listhost' to get the list) to use. [default: " + PcsDomain + "]")
 	parser.add_argument("--rapid-upload-only", dest="rapiduploadonly", action="store_true", help="only upload large files that can be rapidly uploaded")
+
+	# support aria2c
+	parser.add_argument("--use-aria2c", dest="use_aria2c", default=False, action="store_true", help="use aria2c as downloader, default aria2 arguments is:  -c -k10M -x10 -s10")
+
 	# i think there is no need to expose this config option to the command line interface
 	#parser.add_argument("--config-dir", dest="configdir", default=ConfigDir, help="specify the config path [default: %(default)s]")
 
@@ -4396,6 +4435,7 @@ def main(argv=None): # IGNORE:C0111
 					cacerts = args.cacerts,
 					rapiduploadonly = args.rapiduploadonly,
 					mirror = args.mirror,
+					use_aria2c = args.use_aria2c,
 					verbose = args.verbose, debug = args.debug)
 			uargs = []
 			for arg in args.command[1:]:
