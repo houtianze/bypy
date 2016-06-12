@@ -10,6 +10,7 @@ python:
 before_install:
  - sudo apt-get update -qq
  - sudo apt-get install -y pandoc
+ - sudo apt-get install -y aria2
 install:
  - pip install -r requirements.txt
  - pip install pypandoc

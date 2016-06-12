@@ -275,10 +275,16 @@ def main():
 	time.sleep(2)
 	syncdown()
 
+	# test aria2 downloading
+	global by
+	by = bypy.ByPy(configdir=configdir, downloader='aria2', debug=1, verbose=1)
+	downdir()
+
 	# clean up
 	os.remove(zerofilename)
 	shutil.rmtree(configdir, ignore_errors=True)
 	shutil.rmtree(sharedir, ignore_errors=True)
+	shutil.rmtree(downloaddir, ignore_errors=True)
 
 # this is barely a sanity test, more to be added
 if __name__ == "__main__":

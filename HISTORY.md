@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.2.19: Add in aria2 download support
 - 1.2.18: Add in upload resuming using slices; Fix Unicode issue with py2_jsondump(); Fix the pypi setup package
 - 1.2.17: Fix UnicodeEncodeError on redirect; Add in retry on urllib3 TimeOutError
 - 1.2.16: Add in proxy prompts

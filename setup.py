@@ -3,6 +3,7 @@
 
 from setuptools import setup,find_packages
 
+# TODO: make the install clean
 import bypy
 doclist = bypy.__doc__.split("---")
 long_desc = doclist[1].strip() + '\n\n'

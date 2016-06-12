@@ -44,7 +44,7 @@ from __future__ import print_function
 from __future__ import division
 
 ### special variables that say about this module
-__version__ = '1.2.18'
+__version__ = '1.2.19'
 
 ### return (error) codes
 # they are put at the top because:
@@ -76,6 +76,12 @@ EFatal = -1 # No way to continue
 # internal errors
 IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload the whole file.
 IESuperfileCreationFailed = 31081 # superfile create failed
+
+DownloaderAria2 = 'aria2'
+Downloaders = [DownloaderAria2]
+DownloaderDefaultArgs = {
+	DownloaderAria2 : "-c -k10M -x8 -s8"
+}
 
 def bannerwarn(msg):
 	print('!' * 160)
@@ -178,7 +184,6 @@ elif sys.version_info[0] == 3:
 	raw_input = input
 	pickleload = partial(pickle.load, encoding="bytes")
 
-from subprocess import call
 import json
 import hashlib
 import base64
@@ -191,6 +196,7 @@ import math
 from os.path import expanduser
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
+import subprocess
 ## non-standard python library, needs 'pip install ...'
 try:
 	import requests
@@ -1378,6 +1384,7 @@ class ByPy(object):
 			perr("Failed to save settings.\n{}".format(formatex(ex)))
 			# complaining is enough, no need more actions as this is non-critical
 
+	# TODO: this constructor is getting fat ...
 	def __init__(self,
 		slice_size = DefaultSliceSize,
 		dl_chunk_size = DefaultDlChunkSize,
@@ -1397,7 +1404,8 @@ class ByPy(object):
 		configdir = ConfigDir,
 		requester = RequestsRequester,
 		apikey = ApiKey,
-		use_aria2c = False,
+		downloader = "",
+		downloader_args = "",
 		secretkey = SecretKey):
 
 		super(ByPy, self).__init__()
@@ -1415,7 +1423,14 @@ class ByPy(object):
 		self.__settingpath = configdir + os.sep + SettingFileName
 		self.__setting = {}
 
-		self.use_aria2c = use_aria2c
+		self.__downloader = downloader.lower().strip()
+		if downloader_args:
+			self.__downloader_args = downloader_args
+		else:
+			if downloader in DownloaderDefaultArgs:
+				self.__downloader_args = DownloaderDefaultArgs[downloader]
+			else:
+				self.__downloader_args = ''
 
 		if os.path.exists(self.__settingpath):
 			try:
@@ -2791,26 +2806,21 @@ try to create a file at PCS by combining slices, having MD5s specified
 	def __down_aria2c(self, remotefile, localfile):
 		url = "{}{}".format(dpcsurl, "file")
 
-		rfile = remotefile
-
-		# in python 2, the urlencode will fail
-		# when the parameters is unicode and has non-ascii characters
-		# we manually encode it
-		if sys.version_info[0] == 2 and isinstance(rfile, unicode):
-			rfile = remotefile.encode("utf-8")
-
+		# i think encoding in UTF-8 before escaping is presumably the best practice
+		# http://stackoverflow.com/a/913653/404271
 		pars = {
-				"method": "download",
-				"path": rfile,
-				"access_token": self.__access_token,
-				}
+			"method": "download",
+			"path": remotefile.encode('utf-8'),
+			"access_token": self.__access_token,
+			}
 
 		full_url = "{}?{}".format(url, ulp.urlencode(pars))
 
-		cmd = "aria2c -c --user-agent='{}' -k10M -x10 -s10 -o '{}' '{}'".format(UserAgent, localfile, full_url)
+		cmd = "aria2c --user-agent='{}' {} -o '{}' '{}'".format(UserAgent, self.__downloader_args, localfile, full_url)
 		self.pd("call: {}".format(cmd))
-		ret = call(cmd, shell=True)
-		self.pd("aria2c exit with status: {}".format(ret))
+		ret = subprocess.call(cmd, shell = True)
+		self.pd("aria2c exited with status: {}".format(ret))
+		# TODO: map return codes to our internal errors
 		return ret
 
 	# requirment: self.__remote_json is already gotten
@@ -2935,10 +2945,10 @@ try to create a file at PCS by combining slices, having MD5s specified
 				perr("Fail to make directory '{}'".format(ldir))
 				return result
 
-		if self.use_aria2c:
+		if self.__downloader[:5] == DownloaderAria2:
 			return self.__down_aria2c(rfile, localfile)
-		return self.__downchunks(rfile, offset)
-
+		else:
+			return self.__downchunks(rfile, offset)
 
 	def downfile(self, remotefile, localpath = ''):
 		''' Usage: downfile <remotefile> [localpath] - \
@@ -4317,7 +4327,7 @@ def getparser():
 	parser.add_argument("-t", "--timeout", dest="timeout", default=60, help="network timeout in seconds [default: %(default)s]")
 	parser.add_argument("-s", "--slice", dest="slice", default=DefaultSliceSize, help="size of file upload slice (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultSliceInMB))
 	parser.add_argument("--chunk", dest="chunk", default=DefaultDlChunkSize, help="size of file download chunk (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(DefaultDlChunkSize // OneM))
-	parser.add_argument("-e", "--verify", dest="verify", action="store_true", default=False, help="Verify upload / download [default : %(default)s]")
+	parser.add_argument("-e", "--verify", dest="verify", action="store_true", default=False, help="verify upload / download [default : %(default)s]")
 	parser.add_argument("-f", "--force-hash", dest="forcehash", action="store_true", help="force file MD5 / CRC32 calculation instead of using cached value")
 	parser.add_argument("--resume-download", dest="resumedl", default=True, help="resume instead of restarting when downloading if local file already exists [default: %(default)s]")
 	parser.add_argument("--include-regex", dest="incregex", default='', help="regular expression of files to include. if not specified (default), everything is included. for download, the regex applies to the remote files; for upload, the regex applies to the local files. to exclude files, think about your regex, some tips here: https://stackoverflow.com/questions/406230/regular-expression-to-match-string-not-containing-a-word [default: %(default)s]")
@@ -4329,7 +4339,8 @@ def getparser():
 	parser.add_argument("--rapid-upload-only", dest="rapiduploadonly", action="store_true", help="only upload large files that can be rapidly uploaded")
 
 	# support aria2c
-	parser.add_argument("--use-aria2c", dest="use_aria2c", default=False, action="store_true", help="use aria2c as downloader, default aria2 arguments is:  -c -k10M -x10 -s10")
+	parser.add_argument("--downloader", dest="downloader", default="", help="downloader to use (use python if not specified). valid values: {} [default: %(default)s]".format(Downloaders))
+	parser.add_argument("--downloader-arguments", dest="downloader_args", default="", help="arguments for the downloader, default values: {} [default: %(default)s]".format(DownloaderDefaultArgs))
 
 	# i think there is no need to expose this config option to the command line interface
 	#parser.add_argument("--config-dir", dest="configdir", default=ConfigDir, help="specify the config path [default: %(default)s]")
@@ -4435,7 +4446,8 @@ def main(argv=None): # IGNORE:C0111
 					cacerts = args.cacerts,
 					rapiduploadonly = args.rapiduploadonly,
 					mirror = args.mirror,
-					use_aria2c = args.use_aria2c,
+					downloader = args.downloader,
+					downloader_args = args.downloader_args,
 					verbose = args.verbose, debug = args.debug)
 			uargs = []
 			for arg in args.command[1:]:
@@ -4459,7 +4471,7 @@ def main(argv=None): # IGNORE:C0111
 		# will sometimes give exception ...
 		perr("Exception occurred:\n{}".format(formatex(ex)))
 		pr("Abort")
-		# raise
+		raise
 
 	onexit(result)
 
