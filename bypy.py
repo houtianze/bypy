@@ -44,7 +44,7 @@ from __future__ import print_function
 from __future__ import division
 
 ### special variables that say about this module
-__version__ = '1.2.19'
+__version__ = '1.2.20'
 
 ### return (error) codes
 # they are put at the top because:
@@ -2366,7 +2366,7 @@ get information of the given path (dir / file) at Baidu Yun.
 
 	def __delete_progress_entry(self, fullpath):
 		progress = jsonload(ProgressPath)
-		progress.remove(fullpath)
+		del progress[fullpath]
 		jsondump(progress, ProgressPath)
 
 	def __upload_file_slices(self, localpath, remotepath, ondup = 'overwrite'):
@@ -2820,7 +2820,9 @@ try to create a file at PCS by combining slices, having MD5s specified
 		self.pd("call: {}".format(cmd))
 		ret = subprocess.call(cmd, shell = True)
 		self.pd("aria2c exited with status: {}".format(ret))
-		# TODO: map return codes to our internal errors
+		# TODO: a finer map return codes to our internal errors
+		if ret != ENoError:
+			ret == ERequestFailed
 		return ret
 
 	# requirment: self.__remote_json is already gotten
