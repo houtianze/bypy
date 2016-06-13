@@ -44,7 +44,7 @@ from __future__ import print_function
 from __future__ import division
 
 ### special variables that say about this module
-__version__ = '1.2.20'
+__version__ = '1.2.21'
 
 ### return (error) codes
 # they are put at the top because:
@@ -80,7 +80,7 @@ IESuperfileCreationFailed = 31081 # superfile create failed
 DownloaderAria2 = 'aria2'
 Downloaders = [DownloaderAria2]
 DownloaderDefaultArgs = {
-	DownloaderAria2 : "-c -k10M -x8 -s8"
+	DownloaderAria2 : "-c -k10M -x4 -s4  --file-allocation=none"
 }
 
 def bannerwarn(msg):
