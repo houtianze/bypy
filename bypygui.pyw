@@ -452,7 +452,7 @@ class BypyGui(tk.Frame):
 					self.bSyncDelete.get())).start()
 
 	def downloadproc(self, rpath, lpath):
-		if rpath[-1] == '/':
+		if len(rpath) == 0 or rpath[-1] == '/':
 			self.byp.downdir(rpath, lpath)
 		else:
 			self.byp.downfile(rpath, lpath)
