@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.2.22: Fix "TypeError: b'xxxxxx' is not JSON serializable" for cache
 - 1.2.21: Support aria2 downloading resuming (disable preallocation)
 - 1.2.20: Fix an error in upload resuming; Add in retries for aria2
 - 1.2.19: Add in aria2 download support
