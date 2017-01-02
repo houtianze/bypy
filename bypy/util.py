@@ -18,6 +18,12 @@ import codecs
 import threading
 import traceback
 import shutil
+# unify Python 2 and 3
+if sys.version_info[0] == 3:
+	unicode = str
+	basestring = str
+	long = int
+	raw_input = input
 
 from . import const
 from . import printer_console
