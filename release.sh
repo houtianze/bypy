@@ -57,7 +57,7 @@ doctest() {
 
 installtest() {
 	. "$1"
-	pip uninstall bypy
+	pip uninstall -y bypy
 	pip install requests
 	pip install pypandoc
 	pip install -U bypy $indexopt
