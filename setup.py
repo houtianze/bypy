@@ -1,36 +1,43 @@
 #!/usr/bin/env python
 # coding=utf-8
 
-from setuptools import setup,find_packages
+from setuptools import setup
 
-# TODO: make the install clean
-import bypy
-doclist = bypy.__doc__.split("---")
-long_desc = doclist[1].strip() + '\n\n'
-try:
-	import pypandoc
-	long_desc += pypandoc.convert('HISTORY.md', 'rst')
-except Exception as ex:
-	print("Error: PanDoc not found\n{}".format(ex))
-	with open('HISTORY.md') as f:
-		long_desc += f.read()
+from bypy import const
 
-print(long_desc)
+long_desc = ''
+with open('README.rst') as f:
+	long_desc = f.read()
+
+long_desc += '\n\n'
+
+with open('HISTORY.rst') as f:
+	long_desc += f.read()
 
 setup(
-	name='bypy',
-	version=bypy.__version__,
-	description='Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网盘 Python 客户端',
+	name=const.__title__,
+	version=const.__version__,
+	description=const.__desc__,
 	long_description=long_desc,
-	author='Hou Tianze',
-	license='MIT',
-	url='https://github.com/houtianze/bypy',
-	download_url='https://github.com/houtianze/bypy/tarball/' + bypy.__version__,
-	packages=find_packages(),
-	scripts=['bypy', 'bypy.bat', 'bypy.py', 'bypygui.pyw'],
+	author=const.__author__,
+	author_email='houtianze@users.noreply.github.com',
+	license=const.__license__,
+	url=const.__url__,
+	download_url='https://github.com/houtianze/bypy/tarball/' + const.__version__,
+	#packages=find_packages(),
+	packages=['bypy', 'bypy.test'],
 	package_data = {
-		'' : ['*.md']
+		'bypy' : ['*.rst', '*.pem']
 	},
+	entry_points = {
+		'console_scripts': [
+			'bypy = bypy.bypy:main'
+		],
+		'gui_scripts': [
+			'bypygui = bypy.gui:main'
+		]
+	},
+	test_suite='bypy.test',
 	keywords = ['bypy', 'bypy.py', 'baidu pcs', 'baidu yun', 'baidu pan', 'baidu netdisk',
 				'baidu cloud storage', 'baidu personal cloud storage',
 				'百度云', '百度云盘', '百度网盘', '百度个人云存储'],
@@ -52,6 +59,7 @@ setup(
 	install_requires = [
 		'requests',
 	],
-	include_package_data=True)
+	include_package_data=True
+)
 
 # vim: tabstop=4 noexpandtab shiftwidth=4 softtabstop=4 ff=unix fileencoding=utf-8

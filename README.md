@@ -199,5 +199,9 @@ Tips / Sharing
 Please go to [wiki](../../wiki)
 
 ===
-Copyright 2015: Hou Tianze (GitHub: houtianze)
+
+PCS API Document: http://developer.baidu.com/wiki/index.php?title=docs/pcs/rest/file_data_apis_list
+
+===
+Copyright 2015: Hou Tianze and contributors (see https://github.com/houtianze/bypy/graphs/contributors for more details)
 License: MIT
