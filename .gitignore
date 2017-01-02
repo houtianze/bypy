@@ -43,3 +43,5 @@ nosetests.xml
 ## PyCharm
 #.idea/
 #.idea/workspace.xml
+bypy/test/downdir/
+bypy/test/sharedir/
