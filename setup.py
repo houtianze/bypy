@@ -5,11 +5,13 @@ from setuptools import setup
 
 from bypy import const
 
-long_desc = ''
-with open('README.rst') as f:
-	long_desc = f.read()
+long_desc = '''\
+Documents:
+~~~~~~~~~~
+See: https://github.com/houtianze/bypy
 
-long_desc += '\n\n'
+
+'''
 
 with open('HISTORY.rst') as f:
 	long_desc += f.read()

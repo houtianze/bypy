@@ -2,5 +2,5 @@
 
 import pypandoc
 
-for md in ['README', 'HISTORY', 'CONTRIBUTING']:
+for md in ['HISTORY']:
 	pypandoc.convert_file(md + '.md', 'rst', outputfile=md + '.rst')
