@@ -42,11 +42,10 @@ API权限限制，程序只能存取百度云端\ ``/apps/bypy``\ 目录下面�
 运行
 ----
 
--  作为独立程序
--  运行 ``bypy``
+-  作为独立程序: 运行 ``bypy``
    (或者``python -m bypy``\ ，或者\ ``python3 -m bypy``\ ）
 
-可以看到命令行支持的全部命令和参数。 - 作为一个包，在代码中使用 -
+可以看到命令行支持的全部命令和参数。 - 作为一个包，在代码中使用:
 ``import bypy``
 
 简单的图形界面： 运行 ``bypygui``
@@ -63,7 +62,7 @@ API权限限制，程序只能存取百度云端\ ``/apps/bypy``\ 目录下面�
     bypy
 
 第一次运行时需要授权，只需跑任何一个命令（比如
-``bypy.py info``\ ）然后跟着说明（登陆等）来授权即可。授权只需一次，一旦成功，以后不会再出现授权提示.
+``bypy info``\ ）然后跟着说明（登陆等）来授权即可。授权只需一次，一旦成功，以后不会再出现授权提示.
 
 更详细的了解某一个命令：
 
@@ -107,7 +106,7 @@ or
 
     bypy compare
 
-更多命令和详细解释请见运行\ ``bypy.py``\ 的输出。
+更多命令和详细解释请见运行\ ``bypy``\ 的输出。
 
 调试
 ----
@@ -177,8 +176,8 @@ To get help and a list of available commands:
 
     bypy
 
-To authorize for first time use, run any commands e.g. ``bypy.py info``
-and follow the instructiongs (login etc). This is a one-time requirement
+To authorize for first time use, run any commands e.g. ``bypy info`` and
+follow the instructions (login etc). This is a one-time requirement
 only.
 
 To get more details about certain command:
@@ -225,7 +224,7 @@ PCS (which I think is very useful):**
     bypy compare
 
 To get more information about the commands, check the output of
-``bypy.py``.
+``bypy``.
 
 Debug
 -----

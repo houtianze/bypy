@@ -21,7 +21,8 @@ install:
 script:
  - pyflakes bypy
  - echo "[disabled] python -m doctest -v bypy.py"
- - python -m coverage run -m bypy.test
+ - echo "python -m coverage run -m bypy.test"
+ - python -m coverage run -m bypy
 notifications:
   email:
     on_success: change # default: change

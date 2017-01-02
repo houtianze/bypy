@@ -35,12 +35,10 @@ sudo pip install requests
 
 运行
 ---
-- 作为独立程序
-  - 运行 `bypy` (或者`python -m bypy`，或者`python3 -m bypy`）
+- 作为独立程序: 运行 `bypy` (或者`python -m bypy`，或者`python3 -m bypy`）
 
   可以看到命令行支持的全部命令和参数。
-- 作为一个包，在代码中使用
-  - `import bypy`
+- 作为一个包，在代码中使用: `import bypy`
 
 简单的图形界面：
 运行 `bypygui`
@@ -54,7 +52,7 @@ sudo pip install requests
 bypy
 ```
 
-第一次运行时需要授权，只需跑任何一个命令（比如 `bypy.py info`）然后跟着说明（登陆等）来授权即可。授权只需一次，一旦成功，以后不会再出现授权提示.
+第一次运行时需要授权，只需跑任何一个命令（比如 `bypy info`）然后跟着说明（登陆等）来授权即可。授权只需一次，一旦成功，以后不会再出现授权提示.
 
 更详细的了解某一个命令：
 ```
@@ -89,7 +87,7 @@ bypy downdir /
 bypy compare
 ```
 
-更多命令和详细解释请见运行`bypy.py`的输出。
+更多命令和详细解释请见运行`bypy`的输出。
 
 调试
 ---
@@ -146,7 +144,7 @@ To get help and a list of available commands:
 bypy
 ```
 
-To authorize for first time use, run any commands e.g. `bypy.py info` and follow the instructiongs (login etc). This is a one-time requirement only.
+To authorize for first time use, run any commands e.g. `bypy info` and follow the instructions (login etc). This is a one-time requirement only.
 
 To get more details about certain command:
 ```
@@ -181,7 +179,7 @@ bypy downdir /
 bypy compare
 ```
 
-To get more information about the commands, check the output of `bypy.py`.
+To get more information about the commands, check the output of `bypy`.
 
 Debug
 ---
@@ -200,3 +198,4 @@ PCS API Document: http://developer.baidu.com/wiki/index.php?title=docs/pcs/rest/
 ===
 Copyright 2015: Hou Tianze and contributors (see https://github.com/houtianze/bypy/graphs/contributors for more details)
 License: MIT
+
