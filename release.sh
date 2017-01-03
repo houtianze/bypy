@@ -34,10 +34,7 @@ parsearg() {
 			build=1
 			;;
 		u)
-			build=1
 			upload=1
-			testit=1
-			install=1
 			;;
 		i)
 			install=1
@@ -57,8 +54,14 @@ doctest() {
 
 installtest() {
 	. "$1"
+	# due to requests not in testpypi
+	if [ $actual -eq 0 ]
+	then
+		pip install requests
+	else
+		pip uninstall -y requests
+	fi
 	pip uninstall -y bypy
-	pip uninstall -y requests
 	pip install -U bypy $indexopt
 	bypy -V
 	bypy quota
