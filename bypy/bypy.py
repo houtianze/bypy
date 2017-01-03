@@ -50,12 +50,10 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 # unify Python 2 and 3
 if sys.version_info[0] == 2:
-	import urllib2 as ulr
 	import urllib as ulp
 	import cPickle as pickle
 	pickleload = pickle.load
 elif sys.version_info[0] == 3:
-	import urllib.request as ulr
 	import urllib.parse as ulp
 	import pickle
 	unicode = str
@@ -75,7 +73,7 @@ from .util import (
 	jsondump, jsonload, formatex, rb,
 	joinpath, get_pcs_path, print_pcs_list, str2bool, str2int,
 	human_size, interpret_size, ls_time, ls_type,
-	makedir, removedir, copyfile, movefile, removefile, getfilesize,
+	makedir, removedir, movefile, removefile, getfilesize,
 	MyPrettyPrinter)
 from .chkreq import (check_requirements, CheckResult)
 from .requester import RequestsRequester
@@ -167,26 +165,6 @@ class ByPy(object):
 
 		return result
 
-	def getcertfile(self):
-		result = const.ENoError
-		if not os.path.exists(self.__certspath):
-			if os.path.exists(const.ByPyCertsFileName):
-				result = copyfile(const.ByPyCertsFileName, self.__certspath)
-			else:
-				try:
-					# perform a simple download from github
-					CACertUrl = 'https://raw.githubusercontent.com/houtianze/bypy/master/bypy.cacerts.pem'
-					resp = ulr.urlopen(CACertUrl)
-					with io.open(self.__certspath, 'wb') as f:
-						f.write(resp.read())
-				except IOError as ex:
-					perr("Fail download CA Certs to '{}'.\n{}".format(
-						self.__certspath, formatex(ex)))
-
-					result = const.EDownloadCerts
-
-		return result
-
 	# TODO: save settings here?
 	def quit(retcode = const.ENoError):
 		# saving is the most important
@@ -264,9 +242,7 @@ class ByPy(object):
 				perr("Error loading settings: {}, using default settings".format(formatex(ex)))
 		self.__hashcachepath = configdir + os.sep + const.HashCacheFileName
 		cached.hashcachepath = self.__hashcachepath
-		self.__certspath = configdir + os.sep + const.ByPyCertsFileName
-		# it doesn't matter if it failed, we can disable SSL verification anyway
-		self.getcertfile()
+		self.__certspath = os.path.join(os.path.dirname(__file__), const.ByPyCertsFileName)
 
 		self.__requester = requester
 		self.__apikey = apikey
@@ -308,15 +284,13 @@ class ByPy(object):
 		self.__followlink = followlink;
 		self.__rapiduploadonly = rapiduploadonly
 
-		# TODO: properly fix this InsecurePlatformWarning
-		checkssl = False
 		self.__checkssl = checkssl
 		if self.__checkssl:
 			# sort of undocumented by requests
 			# http://stackoverflow.com/questions/10667960/python-requests-throwing-up-sslerror
 			if cacerts is not None:
 				if os.path.isfile(cacerts):
-					self.__checkssl = cacerts
+					self.__certspath = cacerts
 				else:
 					perr("Invalid CA Bundle '{}' specified")
 
@@ -2990,7 +2964,7 @@ def getparser():
 		dest="checkssl", action="store_false",
 		help="DON'T verify host SSL cerificate")
 	parser.add_argument(const.CaCertsOption,
-		dest="cacerts",
+		dest="cacerts", default=None,
 		help="Specify the path for CA Bundle [default: %(default)s]")
 	parser.add_argument("--mirror",
 		dest="mirror", default=None,
