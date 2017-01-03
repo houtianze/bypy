@@ -85,28 +85,17 @@ prcolor = printer_console.prcolor
 ask = printer_console.ask
 pprgr = printer_console.pprgr
 
-## non-standard python library, needs 'pip install ...'
-try:
-	import requests
-	# there was a WantWriteError uncaught exception for Urllib3:
-	# https://github.com/shazow/urllib3/pull/412
-	# it was fixed here:
-	# https://github.com/shazow/urllib3/pull/413
-	# commit:
-	# https://github.com/shazow/urllib3/commit/a89dda000ed144efeb6be4e0b417c0465622fe3f
-	# and this was included in this commit in the Requests library
-	# https://github.com/kennethreitz/requests/commit/7aa6c62d6d917e11f81b166d1d6c9e60340783ac
-	# which was included in version 2.5.0 or above
-	# so minimum 2.5.0 is required
-	requests_version = requests.__version__.split('.')
-	if int(requests_version[0]) < 2 or (requests_version[0] == 2 and requests_version[1] < 5):
-		pwarn("Your version of Python Requests library is too low (minimum version 2.5.0 is required).\n"
-			  "You can run '{}' to upgrade it to the latest version.".format(const.PipUpgradeCommand))
-except:
-		perr("Fail to import the 'requests' library.\n"
-			"You need to install it by running '{}".format(const.PipInstallCommand))
-		sys.exit(const.EFatal)
-
+# there was a WantWriteError uncaught exception for Urllib3:
+# https://github.com/shazow/urllib3/pull/412
+# it was fixed here:
+# https://github.com/shazow/urllib3/pull/413
+# commit:
+# https://github.com/shazow/urllib3/commit/a89dda000ed144efeb6be4e0b417c0465622fe3f
+# and this was included in this commit in the Requests library
+# https://github.com/kennethreitz/requests/commit/7aa6c62d6d917e11f81b166d1d6c9e60340783ac
+# which was included in version 2.5.0 or above
+# so minimum 2.5.0 is required
+import requests
 try:
 	from requests.packages.urllib3.exceptions import ReadTimeoutError
 except:
@@ -245,9 +234,6 @@ class ByPy(object):
 		secretkey = const.SecretKey):
 
 		super(ByPy, self).__init__()
-		reqres = check_requirements()
-		if reqres == CheckResult.Error:
-			quit(const.EFatal)
 
 		# handle backward compatibility, a.k.a. history debt
 		sr = ByPy.migratesettings()
@@ -3057,6 +3043,10 @@ def clean_prog_files(cleanlevel, verbose, tokenpath = const.TokenFilePath):
 
 def main(argv=None): # IGNORE:C0111
 	''' Main Entry '''
+
+	reqres = check_requirements()
+	if reqres == CheckResult.Error:
+		quit(const.EFatal)
 
 	try:
 		result = const.ENoError

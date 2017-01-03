@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.3.1: Fix setup.py failure
 - 1.3.0: Major change: Make bypy a real Python package
 
 ---

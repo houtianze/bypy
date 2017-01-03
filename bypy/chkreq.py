@@ -26,7 +26,7 @@ def check_requirements():
 	if sys.version_info[0] < 2 \
 	or (sys.version_info[0] == 2 and sys.version_info[1] < 7) \
 	or (sys.version_info[0] == 3 and sys.version_info[1] < 3):
-		print("Error: Incorrect Python version. You need 2.7 / 3.3 or above")
+		bannerwarn("Error: Incorrect Python version. You need 2.7 / 3.3 or above")
 		result = max(result, CheckResult.Error)
 
 	# we have warned Windows users, so the following is for *nix users only
@@ -51,7 +51,7 @@ def check_requirements():
 	if stdenc:
 		stdencu = stdenc.upper()
 		if not (stdencu == 'UTF8' or stdencu == 'UTF-8'):
-			print("Encoding for StdOut: {}".format(stdenc))
+			bannerwarn("Encoding for StdOut: {}".format(stdenc))
 			try:
 				'\u6c49\u5b57'.encode(stdenc) # '汉字'
 			except: # (LookupError, TypeError, UnicodeEncodeError):

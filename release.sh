@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -o errexit
+#set -o errexit
 #set -x
 
 py2venv="$HOME/Documents/t/venv27"
@@ -58,8 +58,7 @@ doctest() {
 installtest() {
 	. "$1"
 	pip uninstall -y bypy
-	pip install requests
-	pip install pypandoc
+	pip uninstall -y requests
 	pip install -U bypy $indexopt
 	bypy -V
 	bypy quota
@@ -67,6 +66,10 @@ installtest() {
 }
 
 main() {
+	#if [ ! -f 'HISTORY.rst' ]; then
+	#	python genrst.py
+	#fi
+	python genrst.py
 	createvenv
 	parsearg $*
 	
@@ -89,8 +92,7 @@ main() {
 	if [ "$build" -eq 1 ]
 	then
 		rm -Rf dist/*
-		python3 genrst.py
-		python3 setup.py sdist # bdist_wheel
+		python setup.py sdist # bdist_wheel
 	fi
 	
 	uploadcmd="twine upload dist/* $repoopt"

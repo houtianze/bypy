@@ -39,6 +39,8 @@ nosetests.xml
 .pydevproject
 
 ### personal
+# setuptools cache
+.eggs
 *.swp
 ## PyCharm
 #.idea/
