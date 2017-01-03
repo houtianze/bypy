@@ -111,6 +111,9 @@ class ByPy(object):
 	def migratesettings():
 		result = const.ENoError
 
+		if os.path.exists(const.OldByPyCertsPath):
+			removefile(const.OldByPyCertsPath)
+
 		filesToMove = [
 			[const.OldTokenFilePath, const.TokenFilePath],
 			[const.OldPicklePath, const.PicklePath]

@@ -154,7 +154,7 @@ PicklePath = ConfigDir + os.sep + PickleFileName
 ProgressFileName = 'bypy.parts.json'
 ProgressPath = ConfigDir + os.sep + ProgressFileName
 ByPyCertsFileName = 'bypy.cacerts.pem'
-ByPyCertsPath = ConfigDir + os.sep + ByPyCertsFileName
+OldByPyCertsPath = ConfigDir + os.sep + ByPyCertsFileName
 # Old setting locations, should be moved to ~/.bypy to be clean
 OldTokenFilePath = HomeDir + os.sep + '.bypy.json'
 OldPicklePath = HomeDir + os.sep + '.bypy.pickle'
