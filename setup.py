@@ -48,7 +48,7 @@ setup(
 	#packages=find_packages(),
 	packages = ['bypy', 'bypy.test'],
 	package_data = {
-		'bypy' : ['*.rst', '*.pem']
+		'bypy' : ['*.rst', 'bypy/*.pem']
 	},
 	entry_points = {
 		'console_scripts': [
