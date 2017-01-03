@@ -1,5 +1,7 @@
 bypy - Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网盘Python客户端
 
+**TL;DR: `pip install bypy`. Run `bypy`**
+
 ====
 [![alt text](https://img.shields.io/pypi/v/bypy.svg "PyPi Version")](https://pypi.python.org/pypi/bypy)
 [![alt text](https://img.shields.io/pypi/dm/bypy.svg "PyPi Downloads")](https://pypi.python.org/pypi/bypy)
@@ -185,8 +187,3 @@ Please go to [wiki](../../wiki)
 ===
 
 PCS API Document: http://developer.baidu.com/wiki/index.php?title=docs/pcs/rest/file_data_apis_list
-
-===
-Copyright 2015: Hou Tianze and contributors (see https://github.com/houtianze/bypy/graphs/contributors for more details)
-License: MIT
-
