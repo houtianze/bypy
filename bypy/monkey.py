@@ -3,13 +3,24 @@
 # PYTHON_ARGCOMPLETE_OK
 
 from functools import partial
+import sys
 
 from . import printer_console
-from . import printer_gui
 from . import bypy
 from . import printer
 from . import cached
 from . import util
+
+try:
+	vi = sys.version_info
+	if vi[0] == 2:
+		import Tkinter
+	elif vi[0] == 3:
+		import tkinter
+except ImportError:
+	printer_gui = None
+else:
+	from . import printer_gui
 
 def setconsole():
 	bypy.pr = cached.pr = util.pr = printer_console.pr
