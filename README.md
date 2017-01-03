@@ -24,11 +24,6 @@ bypy - Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网�
 ---
 **重要：想要支持中文，你要把系统的区域编码设置为UTF-8。（参见：http://perlgeek.de/en/article/set-up-a-clean-utf8-environment)**
 
-**重要：你需要安装[Python Requests 库](http://www.python-requests.org/). 在 Debian / Ubuntu / Raspbian** 环境下，只需执行如下命令一次：
-```
-sudo pip install requests
-```
-
 安装
 ---
 - 接通过`pip`来安装：`pip install bypy` （支持Python 2.7+, 3.3+)
@@ -113,10 +108,6 @@ Prerequisite
 ---
 **Important: You need to set you system locale encoding to UTF-8 for this to work (You can refere here: http://perlgeek.de/en/article/set-up-a-clean-utf8-environment)**
 
-**Important: You need to install the [Python Requests library](http://www.python-requests.org/).** In Debian / Ubuntu / Raspbian, you just run the following command:
-```
-sudo pip install requests
-```
 
 Installation
 ---
