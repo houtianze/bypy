@@ -26,7 +26,7 @@ bypy - Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网�
 
 安装
 ---
-- 接通过`pip`来安装：`pip install bypy` （支持Python 2.7+, 3.3+)
+- 通过`pip`来安装：`pip install bypy` （支持Python 2.7+, 3.3+)
 
 运行
 ---
@@ -111,7 +111,7 @@ Prerequisite
 
 Installation
 ---
-- `sudo pip install bypy` (Supports Python 2.7+, 3.3+)
+- `pip install bypy` (Supports Python 2.7+, 3.3+)
 
 
 Usage
