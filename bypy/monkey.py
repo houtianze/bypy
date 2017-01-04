@@ -15,8 +15,10 @@ try:
 	vi = sys.version_info
 	if vi[0] == 2:
 		import Tkinter
+		Tkinter
 	elif vi[0] == 3:
 		import tkinter
+		tkinter
 except ImportError:
 	printer_gui = None
 else:
