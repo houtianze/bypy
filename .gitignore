@@ -45,6 +45,6 @@ nosetests.xml
 ## PyCharm
 #.idea/
 #.idea/workspace.xml
-*.rst
+#*.rst
 bypy/test/downdir/
 bypy/test/sharedir/
