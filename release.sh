@@ -95,7 +95,7 @@ main() {
 	if [ "$build" -eq 1 ]
 	then
 		rm -Rf dist/*
-		python setup.py sdist # bdist_wheel
+		python setup.py bdist_wheel #sdist
 	fi
 	
 	uploadcmd="twine upload dist/* $repoopt"
