@@ -470,7 +470,7 @@ class ByPy(object):
 			self.pd("Full URL: {}".format(r.url))
 			self.pd("HTTP Status Code: {}".format(sc))
 			# BUGFIX: DON'T do this, if we are downloading a big file,
-			# the program will eat A LOT of memeory and potentialy hang / get killed
+			# the program will eat A LOT of memeory and potentially hang / get killed
 			#self.pd("Request Headers: {}".format(pprint.pformat(r.request.headers)), 2)
 			#self.pd("Response Header: {}".format(pprint.pformat(r.headers)), 2)
 			#self.pd("Response: {}".format(rb(r.text)), 3)
@@ -516,8 +516,9 @@ class ByPy(object):
 					self.pd("MD5 not found, rapidupload failed")
 					result = ec
 				# superfile create failed
-				elif ec == const.IESuperfileCreationFailed: # and sc == 404:
-					self.pd("Failed to combine files from MD5 slices (superfile create failed)")
+				elif ec == const.IESuperfileCreationFailed \
+					or ec == const.IEBlockMissInSuperFile2:
+					self.pd("Failed to combine files from MD5 slices")
 					result = ec
 				# errors that make retrying meaningless
 				elif (
@@ -647,6 +648,9 @@ class ByPy(object):
 				else:
 					result = const.EMaxRetry
 					perr("Maximum number ({}) of tries failed.".format(tries))
+					# we need to do this to avoid "failure lock" (if there is any new error_code)
+					if act == ByPy.__combine_file_act: # a bit hacky, but i feel it's OK
+						self.__delete_progress_entry(os.path.abspath(self.__current_file))
 					if self.__quit_when_fail:
 						quit(const.EMaxRetry)
 					break
@@ -1166,12 +1170,16 @@ get information of the given path (dir / file) at Baidu Yun.
 
 	def __update_progress_entry(self, fullpath):
 		progress = jsonload(const.ProgressPath)
-		progress[fullpath]=(self.__slice_size, self.__slice_md5s)
+		self.pd("Updating slice upload progress for {}".format(fullpath))
+		progress[fullpath] = (self.__slice_size, self.__slice_md5s)
 		jsondump(progress, const.ProgressPath)
 
 	def __delete_progress_entry(self, fullpath):
 		progress = jsonload(const.ProgressPath)
-		del progress[fullpath]
+		# http://stackoverflow.com/questions/11277432/how-to-remove-a-key-from-a-python-dictionary
+		#del progress[fullpath]
+		self.pd("Removing slice upload progress for {}".format(fullpath))
+		progress.pop(fullpath, None)
 		jsondump(progress, const.ProgressPath)
 
 	def __upload_file_slices(self, localpath, remotepath, ondup = 'overwrite'):
@@ -1260,10 +1268,12 @@ get information of the given path (dir / file) at Baidu Yun.
 			#self.pd("Sleep 2 seconds before combining, just to be safer.")
 			#time.sleep(2)
 			ec = self.__combine_file(remotepath, ondup = 'overwrite')
-			if ec == const.ENoError or ec == const.IESuperfileCreationFailed:
-				# we delete the upload progress entry also when we can't combine
-				# the file, as it might be caused by  the slices uploaded
-				# has expired / become invalid
+			if ec == const.ENoError \
+				or ec == const.IESuperfileCreationFailed \
+				or ec == const.IEBlockMissInSuperFile2:
+				# we delete on success or failure caused by
+				# the slices uploaded expired / became invalid
+				# (needed for a fresh re-upload later)
 				self.__delete_progress_entry(fullpath)
 			return ec
 

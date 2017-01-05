@@ -47,7 +47,9 @@ EUserRejected = 190 # user's decision
 EFatal = -1 # No way to continue
 # internal errors
 IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload the whole file.
-IESuperfileCreationFailed = 31081 # superfile create failed
+IESuperfileCreationFailed = 31081 # superfile create failed (HTTP 404)
+# Undocumented, see #308 , https://paste.ubuntu.com/23672323/
+IEBlockMissInSuperFile2 = 31363 # block miss in superfile2 (HTTP 403)
 IETaskNotFound = 36016 # Task was not found
 
 DownloaderAria2 = 'aria2'
