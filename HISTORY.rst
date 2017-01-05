@@ -1,6 +1,7 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.3.3: Fix the upload failure when slices expired
 -  1.3.2: Enable SSL check by default now
 -  1.3.1: Fix setup.py failures
 -  1.3.0: Major change: Make bypy a real Python package
