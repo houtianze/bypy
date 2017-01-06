@@ -648,9 +648,6 @@ class ByPy(object):
 				else:
 					result = const.EMaxRetry
 					perr("Maximum number ({}) of tries failed.".format(tries))
-					# we need to do this to avoid "failure lock" (if there is any new error_code)
-					if act == ByPy.__combine_file_act: # a bit hacky, but i feel it's OK
-						self.__delete_progress_entry(os.path.abspath(self.__current_file))
 					if self.__quit_when_fail:
 						quit(const.EMaxRetry)
 					break
@@ -1270,7 +1267,8 @@ get information of the given path (dir / file) at Baidu Yun.
 			ec = self.__combine_file(remotepath, ondup = 'overwrite')
 			if ec == const.ENoError \
 				or ec == const.IESuperfileCreationFailed \
-				or ec == const.IEBlockMissInSuperFile2:
+				or ec == const.IEBlockMissInSuperFile2 \
+				or ec == const.EMaxRetry: # to handle undocumented error codes if any
 				# we delete on success or failure caused by
 				# the slices uploaded expired / became invalid
 				# (needed for a fresh re-upload later)
