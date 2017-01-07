@@ -2993,8 +2993,8 @@ def getparser():
 		help="arguments for the downloader, default values: {} [default: %(default)s]".format(
 			const.DownloaderDefaultArgs))
 
-	# i think there is no need to expose this config option to the command line interface
-	#parser.add_argument("--config-dir", dest="configdir", default=ConfigDir, help="specify the config path [default: %(default)s]")
+	# expose this to provide a primitive multi-user support
+	parser.add_argument("--config-dir", dest="configdir", default=const.ConfigDir, help="specify the config path [default: %(default)s]")
 
 	# action
 	parser.add_argument(const.CleanOptionShort, const.CleanOptionLong,
@@ -3103,6 +3103,7 @@ def main(argv=None): # IGNORE:C0111
 					cacerts = args.cacerts,
 					rapiduploadonly = args.rapiduploadonly,
 					mirror = args.mirror,
+					configdir = args.configdir,
 					downloader = args.downloader,
 					downloader_args = args.downloader_args,
 					verbose = args.verbose, debug = args.debug)
