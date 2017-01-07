@@ -18,6 +18,8 @@ bypy - Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网�
 
 **由于百度PCS API权限限制，程序只能存取百度云端`/apps/bypy`目录下面的文件和目录。**
 
+**据说百度PCS API最多返回目录下1000个文件（ #306 )，如果属实，百度云盘上若有超过1000个文件的目录，将有一部分文件无法被看到 / 下载**
+
 **特征: 支持Unicode/中文；失败重试；递归上传/下载；目录比较; 哈希缓存。**
 
 界面是英文的，主要是因为这个是为了Raspberry Pi树莓派开发的。
@@ -103,6 +105,8 @@ Introduction
 This is a Python client for Baidu Yun (a.k.a PCS - Personal Cloud Storage), an online storage website offering 2 TB (fast) free personal storage. This main purpose is to be able to utilize this stoarge service under Linux environment (console), e.g. Raspberry Pi.
 
 **Due to Baidu PC permission restrictions, this program can only access your `/apps/bypy` directoy at Baidu PCS**
+
+**It's said the Baidu PCS API won't return more than 1000 items inside a directory ( #306 )，if this is true，you won't be able to see / download some files if you have a directoyr with more than 1000 files on Baidu Cloud**
 
 **Features: Unicode / Chinese support; Retry on failures; Recursive down/up-load; Directory comparison; Hash caching.**
 
