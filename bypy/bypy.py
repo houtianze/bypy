@@ -2948,10 +2948,10 @@ def getparser():
 		dest="retry", default=5, type=int,
 		help="number of retry attempts on network error [default: %(default)i times]")
 	parser.add_argument("-q", "--quit-when-fail",
-		dest="quit", default=False, type=str2bool,
+		dest="quit", action="store_true",
 		help="quit when maximum number of retry failed [default: %(default)s]")
 	parser.add_argument("-t", "--timeout",
-		dest="timeout", default=60.0, type=float,
+		dest="timeout", default=None, type=float,
 		help="network timeout in seconds [default: %(default)s]")
 	parser.add_argument("-s", "--slice",
 		dest="slice", default=const.DefaultSliceSize,
@@ -2965,8 +2965,8 @@ def getparser():
 	parser.add_argument("-f", "--force-hash",
 		dest="forcehash", action="store_true",
 		help="force file MD5 / CRC32 calculation instead of using cached value")
-	parser.add_argument("--resume-download",
-		dest="resumedl", default=True, type=str2bool,
+	parser.add_argument("--no-resume-download",
+		dest="resumedl", action="store_false",
 		help="resume instead of restarting when downloading if local file already exists [default: %(default)s]")
 	parser.add_argument("--include-regex",
 		dest="incregex", default='',
@@ -3091,8 +3091,8 @@ def main(argv=None): # IGNORE:C0111
 			(len(args.command) == 1 and args.command[0].lower() == 'help'):
 			parser.print_help()
 			return const.EArgument
-		elif args.command[0] in ByPy.__dict__: # dir(ByPy), dir(by)
-			timeout = args.timeout or None
+#		elif args.command[0] in ByPy.__dict__: # dir(ByPy), dir(by)
+#			timeout = args.timeout or None
 
 			cached.usecache = not args.forcehash
 
@@ -3101,7 +3101,7 @@ def main(argv=None): # IGNORE:C0111
 			# I didn't use PanAPI here as I have never tried out those functions inside
 			by = ByPy(slice_size = slice_size, dl_chunk_size = chunk_size,
 					verify = args.verify,
-					retry = args.retry, timeout = timeout,
+					retry = args.retry, timeout = args.timeout,
 					quit_when_fail = args.quit,
 					resumedownload = args.resumedl,
 					incregex = args.incregex,
