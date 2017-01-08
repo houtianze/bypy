@@ -166,10 +166,10 @@ SettingKey_OverwriteRemoteTempDir = 'overwriteRemoteTempDir'
 ## default config values
 PrintFlushPeriodInSec = 5.0
 # TODO: Does the following User-Agent emulation help?
-#UserAgent = None # According to xslidian, User-Agent affects download.
+UserAgent = None # According to xslidian, User-Agent affects download.
 #UserAgent = 'Mozilla/5.0'
 #UserAgent = "Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; WOW64; Trident/6.0)"
-UserAgent = 'netdisk;5.2.7.2;PC;PC-Windows;6.2.9200;WindowsBaiduYunGuanJia'
+#UserAgent = 'netdisk;5.2.7.2;PC;PC-Windows;6.2.9200;WindowsBaiduYunGuanJia'
 DefaultSliceInMB = 20
 DefaultSliceSize = 20 * OneM
 DefaultDlChunkSize = 20 * OneM

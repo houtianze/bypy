@@ -39,7 +39,7 @@ import tempfile
 import posixpath
 import json
 import hashlib
-import base64
+#import base64
 import re
 import pprint
 import socket
@@ -654,7 +654,7 @@ class ByPy(object):
 		if 'headers' not in kwnew:
 			kwnew['headers'] = { 'User-Agent': const.UserAgent }
 
-		# Now, allow to User-Agent to be set in the caller, instead of always using the default UserAgent value.
+		# Now, allow User-Agent to be set in the caller, instead of always using the default UserAgent value.
 		if 'User-Agent' not in kwnew['headers']:
 			kwnew['headers']['User-Agent'] = const.UserAgent
 
@@ -1695,12 +1695,10 @@ try to create a file at PCS by combining slices, having MD5s specified
 				headers = {}
 
 			# this _may_ solve #163: { "error_code":31326, "error_msg":"anti hotlinking"}
-			if 'Range' in headers:
-				rangemagic = base64.standard_b64encode(headers['Range'][6:].encode('utf-8'))
-				self.pd("headers['Range'][6:]: {} {}".format(headers['Range'][6:], rangemagic))
-				#pars['ru'] = rangemagic
-
-			#headers['User-Agent'] = 'netdisk;5.2.7.2;PC;PC-Windows;6.2.9200;WindowsBaiduYunGuanJia'
+#			if 'Range' in headers:
+#				rangemagic = base64.standard_b64encode(headers['Range'][6:].encode('utf-8'))
+#				self.pd("headers['Range'][6:]: {} {}".format(headers['Range'][6:], rangemagic))
+#				#pars['ru'] = rangemagic
 
 			subresult = self.__get(dpcsurl + 'file', pars,
 				self.__downchunks_act, (rfile, offset, rsize, start_time), headers = headers, cookies = self.__cookies)
