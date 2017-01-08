@@ -32,7 +32,7 @@ elif sys.version_info[0] == 3:
 	pickleload = partial(pickle.load, encoding="bytes")
 
 from . import const
-from .printer import (perr)
+from .printer import (pdbg, perr)
 from .util import (formatex)
 
 # the object returned from your Requester should have the following members
@@ -108,12 +108,14 @@ class RequestsRequester(object):
 	def disable_warnings(cls):
 		try:
 			import requests.packages.urllib3 as ul3
+			pdbg("Using requests.packages.urllib3 to disable warnings")
 			#ul3.disable_warnings(ul3.exceptions.InsecureRequestWarning)
 			#ul3.disable_warnings(ul3.exceptions.InsecurePlatformWarning)
 			ul3.disable_warnings()
 		except:
 			try:
 				import urllib3 as ul3
+				pdbg("Using urllib3 to disable warnings")
 				ul3.disable_warnings()
 			except Exception as ex:
 				perr("Failed to disable warnings for Urllib3.\n"

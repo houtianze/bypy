@@ -104,6 +104,9 @@ except:
 		perr("Something seems wrong with the urllib3 installation.\nQuitting")
 		sys.exit(const.EFatal)
 
+# global instance for non-member function to access
+gbypyinst = None
+
 class ByPy(object):
 	'''The main class of the bypy program'''
 	# TODO: Apply to configdir instead of ~/.bypy
@@ -168,8 +171,29 @@ class ByPy(object):
 
 		return result
 
-	# TODO: save settings here?
-	def quit(retcode = const.ENoError):
+	def setpcsurl(self, mirror):
+		global pcsurl
+		global cpcsurl
+		global dpcsurl
+		mirror = 'https://' + mirror + const.RestApiPath
+		pcsurl = mirror
+		cpcsurl = mirror
+		dpcsurl = mirror
+		# TODO: the SSL error may have gone, and the following is not needed
+#		if mirror != const.PcsDomain:
+#			# using a mirror, which has name mismatch SSL error, so need to disable SSL check
+#			pwarn("Mirror '{}' used instead of the default PCS server url '{}', ".format(pcsurl, const.PcsUrl) +  \
+#				  "we have to disable the SSL cert check in this case.")
+#			self.__checkssl = False
+
+	def savesetting(self):
+		try:
+			jsondump(self.__setting, self.__settingpath)
+		except Exception as ex:
+			perr("Failed to save settings.\n{}".format(formatex(ex)))
+			# complaining is enough, no need more actions as this is non-critical
+
+	def quit(self, retcode = const.ENoError):
 		# saving is the most important
 		# we save, but don't clean, why?
 		# think about unmount path, moved files,
@@ -178,17 +202,11 @@ class ByPy(object):
 		# we don't act too smart.
 		#cached.cleancache()
 		cached.savecache()
+		self.savesetting()
 		# if we flush() on Ctrl-C, we get
 		# IOError: [Errno 32] Broken pipe
 		sys.stdout.flush()
 		sys.exit(retcode)
-
-	def savesetting(self):
-		try:
-			jsondump(self.__setting, self.__settingpath)
-		except Exception as ex:
-			perr("Failed to save settings.\n{}".format(formatex(ex)))
-			# complaining is enough, no need more actions as this is non-critical
 
 	# TODO: this constructor is getting fat ...
 	def __init__(self,
@@ -205,7 +223,8 @@ class ByPy(object):
 		checkssl = True,
 		cacerts = None,
 		rapiduploadonly = False,
-		mirror = None,
+		mirror = '',
+		selectmirror = False,
 		resumedl_revertcount = const.DefaultResumeDlRevertCount,
 		verbose = 0, debug = False,
 		configdir = const.ConfigDir,
@@ -217,12 +236,16 @@ class ByPy(object):
 
 		super(ByPy, self).__init__()
 
+		# declaration of myself
+		global gbypyinst
+		gbypyinst = self
+
 		# handle backward compatibility, a.k.a. history debt
 		sr = ByPy.migratesettings()
 		if sr != const.ENoError:
 			# bail out
 			perr("Failed to migrate old settings.")
-			quit(const.EMigrationFailed)
+			self.quit(const.EMigrationFailed)
 
 		self.__configdir = configdir.rstrip("/\\ ")
 		# os.path.join() may not handle unicode well on Python 2.7
@@ -253,24 +276,6 @@ class ByPy(object):
 		self.__secretkey = secretkey
 		self.__use_server_auth = not secretkey
 
-		global pcsurl
-		global cpcsurl
-		global dpcsurl
-		if mirror and mirror.lower() != const.PcsDomain:
-			pcsurl = 'https://' + mirror + const.RestApiPath
-			cpcsurl = pcsurl
-			dpcsurl = pcsurl
-			# using a mirror, which has name mismatch SSL error,
-			# so need to disable SSL check
-			pwarn("Mirror '{}' used instead of the default PCS server url '{}', ".format(pcsurl, const.PcsUrl) +  \
-				  "we have to disable the SSL cert check in this case.")
-			checkssl = False
-		else:
-			# use the default domain
-			pcsurl = const.PcsUrl
-			cpcsurl = const.CPcsUrl
-			dpcsurl = const.DPcsUrl
-
 		self.__slice_size = slice_size
 		self.__dl_chunk_size = dl_chunk_size
 		self.__verify = verify
@@ -289,7 +294,29 @@ class ByPy(object):
 		self.__rapiduploadonly = rapiduploadonly
 		self.__resumedl_revertcount = resumedl_revertcount
 
+		# these two variables are without leadning double underscaore "__" as to export the as public,
+		# so if any code using this class can check the current verbose / debug level
+		cached.verbose = self.verbose = verbose
+		cached.debug = self.debug = debug
+
+		# set SSL Check flag before mirror configuration, which may change it
 		self.__checkssl = checkssl
+		# --mirror takes precedence over --select-fastest-mirror
+		mirror = mirror.lower()
+		if len(mirror) > 0 and mirror != const.PcsDomain:
+			self.setpcsurl(mirror)
+		else:
+			if selectmirror:
+				self.__select_fastest_mirror()
+			else:
+				# use the default domain
+				global pcsurl
+				global cpcsurl
+				global dpcsurl
+				pcsurl = const.PcsUrl
+				cpcsurl = const.CPcsUrl
+				dpcsurl = const.DPcsUrl
+
 		if self.__checkssl:
 			# sort of undocumented by requests
 			# http://stackoverflow.com/questions/10667960/python-requests-throwing-up-sslerror
@@ -317,10 +344,6 @@ class ByPy(object):
 		if not checkssl:
 			requester.disable_warnings()
 
-		# these two variables are without leadning double underscaore "__" as to export the as public,
-		# so if any code using this class can check the current verbose / debug level
-		cached.verbose = self.verbose = verbose
-		cached.debug = self.debug = debug
 		cached.loadcache()
 		requester.set_logging_level(debug)
 		# useful info for debugging
@@ -361,7 +384,7 @@ class ByPy(object):
 				perr("Program authorization FAILED.\n"
 					"You need to authorize this program before using any PCS functions.\n"
 					"Quitting...\n")
-				quit(result)
+				self.quit(result)
 
 		for proxy in ['HTTP_PROXY', 'HTTPS_PROXY']:
 			if proxy in os.environ:
@@ -447,7 +470,7 @@ class ByPy(object):
 		self.__dump_exception(ex, url, pars, r, act)
 		perr("Fatal Exception, no way to continue.\nQuitting...\n")
 		perr("If the error is reproducible, run the program with `-dv` arguments again to get more info.\n")
-		quit(result)
+		self.quit(result)
 		# we eat the exception, and use return code as the only
 		# error notification method, we don't want to mix them two
 		#raise # must notify the caller about the failure
@@ -512,7 +535,7 @@ class ByPy(object):
 					else:
 						result = const.EFatal
 						perr("FATAL: Token refreshing failed, can't continue.\nQuitting...\n")
-						quit(result)
+						self.quit(result)
 				# File md5 not found, you should use upload API to upload the whole file.
 				elif ec == const.IEMD5NotFound: # and sc == 404:
 					self.pd("MD5 not found, rapidupload failed")
@@ -651,7 +674,7 @@ class ByPy(object):
 					result = const.EMaxRetry
 					perr("Maximum number ({}) of tries failed.".format(tries))
 					if self.__quit_when_fail:
-						quit(const.EMaxRetry)
+						self.quit(const.EMaxRetry)
 					break
 			else:
 				break
@@ -2591,7 +2614,7 @@ if not specified, it defaults to the root directory
 		pr("Cancelling offline (cloud) download task: {}".format(self.__cdl_task_id))
 		result = self.__cdl_cancel(self.__cdl_task_id)
 		pr("Result: {}".format(result))
-		quit(const.EAbort)
+		self.quit(const.EAbort)
 
 	def __cdl_addmon(self, source_url, rpath, timeout = 3600):
 		pars = self.__prepare_cdl_add(source_url, rpath, timeout)
@@ -2869,9 +2892,71 @@ y/N/a (yes/NO/always)?
 		rpath = get_pcs_path(remotepath)
 		return self.__accept(rpath, size, md5str, slicemd5str, crcstr)
 
+	def __locate_fastest_upload_server_act(self, r, args):
+		global cpcsurl
+		j = r.json()
+		cpcsurl = j['host']
+		return const.ENoError
+
+	# public Baidu API, no token needed, and not much useful. #127
+	def __locate_fastest_upload_server(self):
+		url = const.PcsUrl + 'file'
+		pars = { 'method': 'locateupload'}
+		return self.__get(url, pars, self.__locate_fastest_upload_server_act, addtoken = False)
+
+	def __list_pcs_hosts_act(self, r, args):
+		j = r.json()
+		pr(pprint.pformat(j))
+		return const.ENoError
+
+	def __list_pcs_hosts(self):
+		url = const.PcsUrl + 'manage'
+		pars = { 'method': 'listhost'}
+		return self.__get(url, pars, self.__list_pcs_hosts_act, addtoken = False)
+
+	def __test_speed(self, url, repeats = 1):
+		self.pd("Speed testing (GET) ({}x): {}".format(repeats, url))
+		start = time.time()
+		for i in range(repeats):
+			requests.get(url)
+		stop = time.time()
+		duration = stop - start
+		self.pd("Time taken: {:.3f}s".format(duration))
+		return duration
+
+	def __select_fastest_mirror_act(self, r, args):
+		pr("Selecting fastest mirror")
+		j = r.json()
+		self.pv("List of PCS mirrors:\n" + pprint.pformat(j))
+		if 'path' not in j:
+			return const.EInvalidJson
+		pcspath = j['path']
+		if 'list' not in j:
+			return const.EInvalidJson
+		hosts = j['list']
+		if len(hosts) < 1:
+			return const.EInvalidJson
+		selected_host = hosts[0]['host']
+		shortest_time = float('inf')
+		for h in hosts:
+			host = h['host']
+			time_taken = self.__test_speed('https://' + host + pcspath, 3)
+			if time_taken < shortest_time:
+				selected_host = host
+				shortest_time = time_taken
+		pr("Selected mirror: " + selected_host)
+		self.setpcsurl(selected_host)
+		return const.ENoError
+
+	def __select_fastest_mirror(self):
+		url = const.PcsUrl + 'manage'
+		pars = { 'method': 'listhost'}
+		return self.__get(url, pars, self.__select_fastest_mirror_act, addtoken = False)
+
 def sighandler(signum, frame):
 	pr("Signal {} received, Abort".format(signum))
-	quit(const.EAbort)
+	if gbypyinst:
+		gbypyinst.quit(const.EAbort)
 
 # http://www.gnu.org/software/libc/manual/html_node/Basic-Signal-Handling.html
 def setsighandler(signum, handler):
@@ -2984,8 +3069,11 @@ def getparser():
 		dest="cacerts", default=None,
 		help="Specify the path for CA Bundle [default: %(default)s]")
 	parser.add_argument("--mirror",
-		dest="mirror", default=None,
+		dest="mirror", default='',
 		help="Specify the PCS mirror (e.g. bj.baidupcs.com. Open 'https://pcs.baidu.com/rest/2.0/pcs/manage?method=listhost' to get the list) to use. [default: " + const.PcsDomain + "]")
+	parser.add_argument("--select-fastest-mirror",
+		dest="selectmirror", action="store_true",
+		help="Let the program run some tests and select the fastest PCS mirror it detectes. [default: %(default)s]")
 	parser.add_argument("--rapid-upload-only",
 		dest="rapiduploadonly", action="store_true",
 		help="only upload large files that can be rapidly uploaded")
@@ -3041,7 +3129,8 @@ def main(argv=None): # IGNORE:C0111
 
 	reqres = check_requirements()
 	if reqres == CheckResult.Error:
-		quit(const.EFatal)
+		perr("Requirement checking failed")
+		sys.exit(const.EFatal)
 
 	try:
 		result = const.ENoError
@@ -3073,7 +3162,6 @@ def main(argv=None): # IGNORE:C0111
 		if args.clean >= 1:
 			return clean_prog_files(args.clean, args.verbose)
 
-
 		# some arguments need some processing
 		try:
 			slice_size = interpret_size(args.slice)
@@ -3091,8 +3179,8 @@ def main(argv=None): # IGNORE:C0111
 			(len(args.command) == 1 and args.command[0].lower() == 'help'):
 			parser.print_help()
 			return const.EArgument
-#		elif args.command[0] in ByPy.__dict__: # dir(ByPy), dir(by)
-#			timeout = args.timeout or None
+		elif args.command[0] in ByPy.__dict__: # dir(ByPy), dir(by)
+			#timeout = args.timeout or None
 
 			cached.usecache = not args.forcehash
 
@@ -3111,6 +3199,7 @@ def main(argv=None): # IGNORE:C0111
 					cacerts = args.cacerts,
 					rapiduploadonly = args.rapiduploadonly,
 					mirror = args.mirror,
+					selectmirror = args.selectmirror,
 					configdir = args.configdir,
 					resumedl_revertcount = args.resumedl_revertcount,
 					downloader = args.downloader,
