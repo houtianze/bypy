@@ -177,6 +177,7 @@ RetryDelayInSec = 10
 CacheSavePeriodInSec = 10 * 60.0
 # share retries
 ShareRapidUploadRetries = 3
+DefaultResumeDlRevertCount = 1
 
 ## program switches
 CleanOptionShort= '-c'

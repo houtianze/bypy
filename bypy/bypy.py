@@ -206,6 +206,7 @@ class ByPy(object):
 		cacerts = None,
 		rapiduploadonly = False,
 		mirror = None,
+		resumedl_revertcount = const.DefaultResumeDlRevertCount,
 		verbose = 0, debug = False,
 		configdir = const.ConfigDir,
 		requester = RequestsRequester,
@@ -286,6 +287,7 @@ class ByPy(object):
 			self.__ondup = 'O' # O - Overwrite* S - Skip P - Prompt
 		self.__followlink = followlink;
 		self.__rapiduploadonly = rapiduploadonly
+		self.__resumedl_revertcount = resumedl_revertcount
 
 		self.__checkssl = checkssl
 		if self.__checkssl:
@@ -1735,10 +1737,14 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 			if self.__resumedownload and \
 				self.__compare_size(self.__current_file_size, self.__remote_json) == 2:
-				# revert back at least one download chunk
-				pieces = self.__current_file_size // self.__dl_chunk_size
-				if pieces > 1:
-					offset = (pieces - 1) * self.__dl_chunk_size
+				if self.__resumedl_revertcount < 0:
+					if self.__current_file_size:
+						offset = self.__current_file_size
+				else:
+					# revert back at least self.__resumedl_revertcount download chunk(s), default: one
+					pieces = self.__current_file_size // self.__dl_chunk_size
+					if pieces > self.__resumedl_revertcount:
+						offset = (pieces - self.__resumedl_revertcount) * self.__dl_chunk_size
 		elif os.path.isdir(localfile):
 			if not self.shalloverwrite("Same-name directory '{}' exists, "
 				"do you want to remove it? [y/N]".format(localfile)):
@@ -2939,13 +2945,13 @@ def getparser():
 
 	# program tunning, configration (those will be passed to class ByPy)
 	parser.add_argument("-r", "--retry",
-		dest="retry", default=5,
+		dest="retry", default=5, type=int,
 		help="number of retry attempts on network error [default: %(default)i times]")
 	parser.add_argument("-q", "--quit-when-fail",
-		dest="quit", default=False,
+		dest="quit", default=False, type=str2bool,
 		help="quit when maximum number of retry failed [default: %(default)s]")
 	parser.add_argument("-t", "--timeout",
-		dest="timeout", default=60,
+		dest="timeout", default=60.0, type=float,
 		help="network timeout in seconds [default: %(default)s]")
 	parser.add_argument("-s", "--slice",
 		dest="slice", default=const.DefaultSliceSize,
@@ -2954,13 +2960,13 @@ def getparser():
 		dest="chunk", default=const.DefaultDlChunkSize,
 		help="size of file download chunk (can use '1024', '2k', '3MB', etc) [default: {} MB]".format(const.DefaultDlChunkSize // const.OneM))
 	parser.add_argument("-e", "--verify",
-		dest="verify", action="store_true", default=False,
+		dest="verify", action="store_true",
 		help="verify upload / download [default : %(default)s]")
 	parser.add_argument("-f", "--force-hash",
 		dest="forcehash", action="store_true",
 		help="force file MD5 / CRC32 calculation instead of using cached value")
 	parser.add_argument("--resume-download",
-		dest="resumedl", default=True,
+		dest="resumedl", default=True, type=str2bool,
 		help="resume instead of restarting when downloading if local file already exists [default: %(default)s]")
 	parser.add_argument("--include-regex",
 		dest="incregex", default='',
@@ -2983,6 +2989,10 @@ def getparser():
 	parser.add_argument("--rapid-upload-only",
 		dest="rapiduploadonly", action="store_true",
 		help="only upload large files that can be rapidly uploaded")
+	parser.add_argument("--resume-download-revert-back",
+		dest="resumedl_revertcount", default=const.DefaultResumeDlRevertCount,
+		type=int, metavar='RCOUNT',
+		help="Revert back at least %(metavar)s download chunk(s) and align to chunk boundary when resuming the download. A negative value means NO reverts. [default: %(default)s]")
 
 	# support aria2c
 	parser.add_argument("--downloader",
@@ -2999,7 +3009,7 @@ def getparser():
 	# action
 	parser.add_argument(const.CleanOptionShort, const.CleanOptionLong,
 		dest="clean", action="count", default=0,
-		help="1: clean settings (remove the token file) 2: clean settings and hash cache [default: %(default)s]")
+		help="clean settings (remove the token file), -cc: clean settings and hash cache")
 
 	# the MAIN parameter - what command to perform
 	parser.add_argument("command", nargs='*', help = "operations (quota, list, etc)")
@@ -3082,9 +3092,7 @@ def main(argv=None): # IGNORE:C0111
 			parser.print_help()
 			return const.EArgument
 		elif args.command[0] in ByPy.__dict__: # dir(ByPy), dir(by)
-			timeout = None
-			if args.timeout:
-				timeout = float(args.timeout)
+			timeout = args.timeout or None
 
 			cached.usecache = not args.forcehash
 
@@ -3093,7 +3101,7 @@ def main(argv=None): # IGNORE:C0111
 			# I didn't use PanAPI here as I have never tried out those functions inside
 			by = ByPy(slice_size = slice_size, dl_chunk_size = chunk_size,
 					verify = args.verify,
-					retry = int(args.retry), timeout = timeout,
+					retry = args.retry, timeout = timeout,
 					quit_when_fail = args.quit,
 					resumedownload = args.resumedl,
 					incregex = args.incregex,
@@ -3104,6 +3112,7 @@ def main(argv=None): # IGNORE:C0111
 					rapiduploadonly = args.rapiduploadonly,
 					mirror = args.mirror,
 					configdir = args.configdir,
+					resumedl_revertcount = args.resumedl_revertcount,
 					downloader = args.downloader,
 					downloader_args = args.downloader_args,
 					verbose = args.verbose, debug = args.debug)
