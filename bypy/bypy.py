@@ -1747,7 +1747,8 @@ try to create a file at PCS by combining slices, having MD5s specified
 		if os.path.isfile(localfile):
 			self.pd("Same-name local file '{}' exists, checking if contents match".format(localfile))
 			self.__current_file_size = getfilesize(self.__current_file)
-			if const.ENoError == self.__verify_current_file(self.__remote_json, False):
+			if const.ENoError == self.__verify_current_file(self.__remote_json, False) \
+				and not (self.__downloader[:5] == const.DownloaderAria2 and os.path.exists(localfile + '.aria2')):
 				self.pd("Same local file '{}' already exists, skip downloading".format(localfile))
 				return const.ENoError
 			else:
@@ -3095,14 +3096,16 @@ def getparser():
 	# action
 	parser.add_argument(const.CleanOptionShort, const.CleanOptionLong,
 		dest="clean", action="count", default=0,
-		help="clean settings (remove the token file), -cc: clean settings and hash cache")
+		help="remove the token file (need re-auth) and upload progress file, "
+			"-cc: clean hash cache file as well")
 
 	# the MAIN parameter - what command to perform
 	parser.add_argument("command", nargs='*', help = "operations (quota, list, etc)")
 
 	return parser;
 
-def clean_prog_files(cleanlevel, verbose, tokenpath = const.TokenFilePath):
+def clean_prog_files(cleanlevel, verbose, configdir = const.ConfigDir):
+	tokenpath = os.path.join(configdir, const.TokenFileName)
 	result = removefile(tokenpath, verbose)
 	if result == const.ENoError:
 		pr("Token file '{}' removed. You need to re-authorize "
@@ -3111,12 +3114,22 @@ def clean_prog_files(cleanlevel, verbose, tokenpath = const.TokenFilePath):
 		perr("Failed to remove the token file '{}'".format(tokenpath))
 		perr("You need to remove it manually")
 
+	prgrpath = os.path.join(configdir, const.ProgressFileName)
+	subresult = removefile(prgrpath, verbose)
+	if result == const.ENoError:
+		pr("Progress file '{}' removed, "
+			"any upload will be started from the begenning.".format(prgrpath))
+	else:
+		perr("Failed to remove the progress file '{}'".format(prgrpath))
+		result = subresult
+
 	if cleanlevel >= 2:
-		subresult = os.remove(cached.hashcachepath)
+		cachepath = os.path.join(configdir, const.HashCacheFileName)
+		subresult = os.remove(cachepath)
 		if subresult == const.ENoError:
-			pr("Hash Cache File '{}' removed.".format(cached.hashcachepath))
+			pr("Hash Cache File '{}' removed.".format(cachepath))
 		else:
-			perr("Failed to remove the Hash Cache File '{}'".format(cached.hashcachepath))
+			perr("Failed to remove the Hash Cache File '{}'".format(cachepath))
 			perr("You need to remove it manually")
 			result = subresult
 
@@ -3158,7 +3171,7 @@ def main(argv=None): # IGNORE:C0111
 
 		# check for situations that require no ByPy object creation first
 		if args.clean >= 1:
-			return clean_prog_files(args.clean, args.verbose)
+			return clean_prog_files(args.clean, args.verbose, args.configdir)
 
 		# some arguments need some processing
 		try:
