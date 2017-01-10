@@ -299,6 +299,9 @@ class ByPy(object):
 		cached.verbose = self.verbose = verbose
 		cached.debug = self.debug = debug
 
+		#TODO: SSL verification causes some much trouble for different Python version
+		# I give up and disable it for good, or for bad
+		checkssl = False
 		# set SSL Check flag before mirror configuration, which may change it
 		self.__checkssl = checkssl
 		# --mirror takes precedence over --select-fastest-mirror
