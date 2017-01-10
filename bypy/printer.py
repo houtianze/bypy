@@ -24,12 +24,12 @@ def plog(tag, msg, showtime = True, showdate = False,
 			tag += time.strftime("[%Y-%m-%d] ", now)
 
 	if prefix:
-		prcolor("{}{}".format(tag, prefix), fg, bg)
+		prcolor("{0}{1}".format(tag, prefix), fg, bg)
 
-	prcolor("{}{}".format(tag, msg), fg, bg)
+	prcolor("{0}{1}".format(tag, msg), fg, bg)
 
 	if suffix:
-		prcolor("{}{}".format(tag, suffix), fg, bg)
+		prcolor("{0}{1}".format(tag, suffix), fg, bg)
 
 def perr(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
 	return plog('<E> ', msg, showtime, showdate, prefix, suffix, TermColor.Red)

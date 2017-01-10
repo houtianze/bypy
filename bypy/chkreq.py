@@ -36,7 +36,7 @@ def check_requirements():
 			msg = "WARNING: System locale is not 'UTF-8'.\n" \
 				  "Files with non-ASCII names may not be handled correctly.\n" \
 				  "You should set your System Locale to 'UTF-8'.\n" \
-				  "Current locale is '{}'".format(gvar.SystemEncoding)
+				  "Current locale is '{0}'".format(gvar.SystemEncoding)
 			bannerwarn(msg)
 			result = max(result, CheckResult.Warning)
 	else:
@@ -51,7 +51,7 @@ def check_requirements():
 	if stdenc:
 		stdencu = stdenc.upper()
 		if not (stdencu == 'UTF8' or stdencu == 'UTF-8'):
-			bannerwarn("Encoding for StdOut: {}".format(stdenc))
+			bannerwarn("Encoding for StdOut: {0}".format(stdenc))
 			try:
 				'\u6c49\u5b57'.encode(stdenc) # '汉字'
 			except: # (LookupError, TypeError, UnicodeEncodeError):
