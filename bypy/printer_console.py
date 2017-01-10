@@ -68,7 +68,7 @@ def pprgr(finish, total, start_time = None, existing = 0,
 		segth = seg
 		percent = 100
 		current_batch_percent = 0
-	else:
+
 	eta = ''
 	now = time.time()
 	if start_time is not None and current_batch_percent > 5 and finish > 0:

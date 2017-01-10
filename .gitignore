@@ -46,6 +46,6 @@ nosetests.xml
 #.idea/
 #.idea/workspace.xml
 #*.rst
-bypy/test/testdir/
+bypy/test/**/*.bin
 bypy/test/downdir/
 bypy/test/sharedir/

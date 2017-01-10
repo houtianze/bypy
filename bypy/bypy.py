@@ -1927,8 +1927,8 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 	def __proceed_downdir(self, remotepath, dirjs, filejs, args):
 		result = const.ENoError
 		rootrpath, localpath = args
-		rlen = len(remotepath) + 1 # '+ 1' for the trailing '/', it bites.
-		rootlen = len(rootrpath) + 1 # ditto
+		#rlen = len(remotepath) + 1
+		rootlen = len(rootrpath) + 1 # '+ 1' for the trailing '/', it bites.
 
 		result = self.__prepare_local_dir(localpath)
 		if result != const.ENoError:
@@ -1936,7 +1936,8 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 			return result
 
 		for dirj in dirjs:
-			reldir = dirj['path'][rlen:]
+			rdir = dirj['path']
+			reldir = rdir[rootlen:]
 			#ldir = os.path.join(localpath, reldir)
 			ldir = joinpath(localpath, reldir)
 			result = self.__prepare_local_dir(ldir)
