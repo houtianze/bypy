@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.3.7: Allow passing leading dash arguments to downloader
 - 1.3.6: Fix downdir downloads to a wrong directory structure
 - 1.3.5: Fix aria2 unable to resume download
 - 1.3.4: Add --select-fastest-mirror, --config-dir command line arguments; Swith to wheel dist format

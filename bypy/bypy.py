@@ -18,11 +18,13 @@
 # TODO: Dry run?
 # TODO: Use batch functions for better performance
 # == NOTE ==
-#Proxy is supported by the underlying Requests library, you can activate HTTP proxies by setting the HTTP_PROXY and HTTPS_PROXY environment variables respectively as follows:
-#HTTP_PROXY=http://user:password@domain
-#HTTPS_PROXY=http://user:password@domain
-#(More information: http://docs.python-requests.org/en/master/user/advanced/#proxies)
-#Though from my experience, it seems that some proxy servers may not be supported properly.
+# Proxy is supported by the underlying Requests library,
+# you can activate HTTP proxies by setting the HTTP_PROXY and / or
+# HTTPS_PROXY environment variables respectively as follows:
+#   HTTP_PROXY=http://user:password@domain
+#   HTTPS_PROXY=http://user:password@domain
+# (More information: http://docs.python-requests.org/en/master/user/advanced/#proxies)
+# Though from my experience, it seems that some proxy servers may not be supported properly.
 
 # from __future__ imports must occur at the beginning of the file
 from __future__ import unicode_literals
@@ -3091,8 +3093,19 @@ def getparser():
 		help="downloader to use (use python if not specified). valid values: {} [default: %(default)s]".format(const.Downloaders))
 	parser.add_argument("--downloader-arguments",
 		dest="downloader_args", default="",
-		help="arguments for the downloader, default values: {} [default: %(default)s]".format(
-			const.DownloaderDefaultArgs))
+		help=("arguments for the downloader:\n"
+			"normally, the string is the arguments to be passed to the downloader. "
+			"however, when it begins with '{0}', it will be treated as the name of file, "
+			"whose contents will be used as the downloader arguments "
+			"(example: when specifying '{0}args.txt', file contents of 'args.txt' will be "
+			"used as the downloader arguments, not the string '@args.txt' itself).\n"
+			"you can also use environment variable '{1}' to specify the downloader arguments "
+			"(the environment variable has lower priority compared to this argument).\n"
+			"default values: {2}"
+			).format(
+				const.DownloaderArgsIsFilePrefix,
+				const.DownloaderArgsEnvKey,
+				const.DownloaderDefaultArgs))
 
 	# expose this to provide a primitive multi-user support
 	parser.add_argument("--config-dir", dest="configdir", default=const.ConfigDir, help="specify the config path [default: %(default)s]")
@@ -3158,6 +3171,17 @@ def main(argv=None): # IGNORE:C0111
 
 		parser = getparser()
 		args = parser.parse_args()
+		dl_args = ''
+		if not args.downloader_args:
+			if const.DownloaderArgsEnvKey in os.environ:
+				dl_args = os.environ[const.DownloaderArgsEnvKey]
+		else:
+			prefixlen = len(const.DownloaderArgsIsFilePrefix)
+			if args.downloader_args[:prefixlen] == const.DownloaderArgsIsFilePrefix: # file
+				with io.open(args.downloader_args[prefixlen:], 'r', encoding = 'utf-8') as f:
+					dl_args = f.read().strip()
+			else:
+				dl_args = args.downloader_args
 
 		# house-keeping reminder
 		# TODO: may need to move into ByPy for customized config dir
@@ -3218,7 +3242,7 @@ def main(argv=None): # IGNORE:C0111
 					configdir = args.configdir,
 					resumedl_revertcount = args.resumedl_revertcount,
 					downloader = args.downloader,
-					downloader_args = args.downloader_args,
+					downloader_args = dl_args,
 					verbose = args.verbose, debug = args.debug)
 			uargs = []
 			for arg in args.command[1:]:
