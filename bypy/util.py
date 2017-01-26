@@ -300,4 +300,7 @@ class NewThread(threading.Thread):
 def startthread(func):
 	NewThread(func).start()
 
+def nop(*args):
+	pass
+
 # vim: tabstop=4 noexpandtab shiftwidth=4 softtabstop=4 ff=unix fileencoding=utf-8

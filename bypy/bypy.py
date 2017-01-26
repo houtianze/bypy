@@ -71,6 +71,7 @@ from .cached import (cached, stringifypickle, md5, crc32, slice_md5)
 from .struct import PathDictTree
 from .util import (
 	iswindows,
+	nop,
 	perr, pwarn, pinfo, pdbg,
 	jsondump, jsonload, formatex, rb,
 	joinpath, get_pcs_path, print_pcs_list, str2bool, str2int,
@@ -347,7 +348,7 @@ class ByPy(object):
 "you are not going to send sensitive data to the cloud plainly right?")
 					self.__checkssl = False
 		if not checkssl:
-			requester.disable_warnings()
+			requester.disable_warnings(self.debug)
 
 		cached.loadcache()
 		requester.set_logging_level(debug)
@@ -813,12 +814,19 @@ Possible fixes:
 			'redirect_uri' : 'oob' }
 
 		result = None
+		# TODO: hacky
+		global perr
+		savedperr = perr
+		if not self.debug:
+			perr = nop
 		for auth in const.AuthServerList:
 			(url, retry, msg) = auth
 			pr(msg)
 			result = self.__get(url, pars, self.__server_auth_act, retry = retry, addtoken = False)
 			if result == const.ENoError:
 				break
+		if not self.debug:
+			perr = savedperr
 
 		if result == const.ENoError:
 			pr("Successfully authorized")
@@ -883,12 +891,19 @@ Possible fixes:
 				'refresh_token' : self.__json['refresh_token'] }
 
 			result = None
+			# TODO: hacky
+			global perr
+			savedperr = perr
+			if not self.debug:
+				perr = nop
 			for refresh in const.RefreshServerList:
 				(url, retry, msg) = refresh
 				pr(msg)
 				result = self.__get(url, pars, self.__refresh_token_act, retry = retry, addtoken = False)
 				if result == const.ENoError:
 					break
+			if not self.debug:
+				perr = savedperr
 
 			if result == const.ENoError:
 				pr("Token successfully refreshed")

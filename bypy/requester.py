@@ -84,7 +84,7 @@ class UrllibRequester(object):
 		pass
 
 	@classmethod
-	def disable_warnings(cls):
+	def disable_warnings(cls, debug):
 		pass
 
 # extracting this class out would make it easier to test / mock
@@ -105,17 +105,19 @@ class RequestsRequester(object):
 		return requests.request(method, url, **kwargs)
 
 	@classmethod
-	def disable_warnings(cls):
+	def disable_warnings(cls, debug):
 		try:
 			import requests.packages.urllib3 as ul3
-			pdbg("Using requests.packages.urllib3 to disable warnings")
+			if debug:
+				pdbg("Using requests.packages.urllib3 to disable warnings")
 			#ul3.disable_warnings(ul3.exceptions.InsecureRequestWarning)
 			#ul3.disable_warnings(ul3.exceptions.InsecurePlatformWarning)
 			ul3.disable_warnings()
 		except:
 			try:
 				import urllib3 as ul3
-				pdbg("Using urllib3 to disable warnings")
+				if debug:
+					pdbg("Using urllib3 to disable warnings")
 				ul3.disable_warnings()
 			except Exception as ex:
 				perr("Failed to disable warnings for Urllib3.\n"
