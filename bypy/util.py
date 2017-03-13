@@ -19,11 +19,14 @@ import threading
 import traceback
 import shutil
 # unify Python 2 and 3
-if sys.version_info[0] == 3:
+if sys.version_info[0] == 2:
+	from Queue import Queue
+elif sys.version_info[0] == 3:
 	unicode = str
 	basestring = str
 	long = int
 	raw_input = input
+	from queue import Queue
 
 from . import const
 from . import printer_console
@@ -299,6 +302,19 @@ class NewThread(threading.Thread):
 
 def startthread(func):
 	NewThread(func).start()
+
+class FixedSizeQueue(object):
+	def __init__(self, size = 1024):
+		self.size = size
+		self.q = Queue()
+
+	def put(self, item):
+		if self.q.qsize() >= self.size:
+			self.q.get()
+		self.q.put(item)
+
+	def get(self):
+		return self.q.get()
 
 def nop(*args):
 	pass

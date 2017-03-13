@@ -77,6 +77,7 @@ from .util import (
 	joinpath, get_pcs_path, print_pcs_list, str2bool, str2int,
 	human_size, interpret_size, ls_time, ls_type,
 	makedir, removedir, movefile, removefile, getfilesize,
+	FixedSizeQueue,
 	MyPrettyPrinter)
 from .chkreq import (check_requirements, CheckResult)
 from .requester import RequestsRequester
@@ -238,6 +239,7 @@ class ByPy(object):
 		secretkey = const.SecretKey):
 
 		super(ByPy, self).__init__()
+		self.jsonq = FixedSizeQueue(64)
 
 		# declaration of myself
 		global gbypyinst
@@ -931,6 +933,7 @@ Possible fixes:
 
 	def __quota_act(self, r, args):
 		j = r.json()
+		self.jsonq.put(j)
 		pr('Quota: ' + human_size(j['quota']))
 		pr('Used: ' + human_size(j['used']))
 		return const.ENoError
@@ -1031,6 +1034,7 @@ Possible fixes:
 		try:
 			remotefile = args
 			j = r.json()
+			self.jsonq.put(j)
 			self.pd("List json: {}".format(j))
 			l = j['list']
 			for f in l:
@@ -1084,6 +1088,7 @@ Possible fixes:
 	def __list_act(self, r, args):
 		(remotedir, fmt) = args
 		j = r.json()
+		self.jsonq.put(j)
 		pr("{} ({}):".format(remotedir, fmt))
 		for f in j['list']:
 			pr(self.__replace_list_format(fmt, f))
@@ -1156,7 +1161,9 @@ get information of the given path (dir / file) at Baidu Yun.
 		#	pars['is_revision'] = 1
 
 	def __combine_file_act(self, r, args):
-		result = self.__verify_current_file(r.json(), False)
+		j = r.json()
+		self.jsonq.put(j)
+		result = self.__verify_current_file(j, False)
 		if result == const.ENoError:
 			self.pv("'{}' =C=> '{}' OK.".format(self.__current_file, args))
 		else:
@@ -1585,6 +1592,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 	def __get_meta_act(self, r, args):
 		parse_ok = False
 		j = r.json()
+		self.jsonq.put(j)
 		if 'list' in j:
 			lj = j['list']
 			if len(lj) > 0:
@@ -2013,6 +2021,7 @@ download a remote directory (recursively) / file
 	def __mkdir_act(self, r, args):
 		if self.verbose:
 			j = r.json()
+			self.jsonq.put(j)
 			pr("path, ctime, mtime, fs_id")
 			pr("{path}, {ctime}, {mtime}, {fs_id}".format(**j))
 
@@ -2043,6 +2052,7 @@ create a directory at Baidu Yun
 
 	def __move_act(self, r, args):
 		j = r.json()
+		self.jsonq.put(j)
 		list = j['extra']['list']
 		fromp = list[0]['from']
 		to = list[0]['to']
@@ -2076,6 +2086,7 @@ move a file / dir remotely at Baidu Yun
 
 	def __copy_act(self, r, args):
 		j = r.json()
+		self.jsonq.put(j)
 		for list in j['extra']['list']:
 			fromp = list['from']
 			to = list['to']
@@ -2104,7 +2115,9 @@ copy a file / dir remotely at Baidu Yun
 		return self.__post(pcsurl + 'file', pars, self.__copy_act)
 
 	def __delete_act(self, r, args):
-		rid = r.json()['request_id']
+		j = r.json()
+		self.jsonq.put(j)
+		rid = j['request_id']
 		if rid:
 			pr("Deletion request '{}' OK".format(rid))
 			pr("Usage 'list' command to confirm")
@@ -2159,7 +2172,9 @@ delete a file / dir remotely at Baidu Yun
 		return self.__delete(rpath)
 
 	def __search_act(self, r, args):
-		print_pcs_list(r.json())
+		j = r.json()
+		self.jsonq.put(j)
+		print_pcs_list(j)
 		return const.ENoError
 
 	def search(self, keyword, remotepath = None, recursive = True):
@@ -3150,7 +3165,7 @@ def clean_prog_files(cleanlevel, verbose, configdir = const.ConfigDir):
 	subresult = removefile(prgrpath, verbose)
 	if result == const.ENoError:
 		pr("Progress file '{}' removed, "
-			"any upload will be started from the begenning.".format(prgrpath))
+			"any upload will be started from the beginning.".format(prgrpath))
 	else:
 		perr("Failed to remove the progress file '{}'".format(prgrpath))
 		result = subresult

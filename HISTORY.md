@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.3.9: Add in queue for capturing JSONs returned from PCS
 - 1.3.8: Don't output Auth Server failures if no `-d` specified
 - 1.3.7: Allow passing leading dash arguments to downloader
 - 1.3.6: Fix downdir downloads to a wrong directory structure
