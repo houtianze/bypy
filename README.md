@@ -26,7 +26,7 @@ bypy - Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网�
 
 程序依赖
 ---
-**重要：想要支持中文，你要把系统的区域编码设置为UTF-8。（参见：http://perlgeek.de/en/article/set-up-a-clean-utf8-environment)**
+**重要：需要把系统的区域编码设置为UTF-8。（参见：http://perlgeek.de/en/article/set-up-a-clean-utf8-environment)**
 
 安装
 ---
@@ -98,6 +98,10 @@ bypy compare
 经验分享
 ---
 请移步至[wiki](../../wiki)，方便分享/交流。
+
+授权许可
+---
+请阅: [LICENSE](LICENSE)
 
 ===
 Introduction
@@ -187,6 +191,10 @@ Debug
 Tips / Sharing
 ---
 Please go to [wiki](../../wiki)
+
+License
+---
+Please refer to [LICENSE](LICENSE)
 
 ===
 
