@@ -303,6 +303,7 @@ class NewThread(threading.Thread):
 def startthread(func):
 	NewThread(func).start()
 
+# NOT in use, see deque
 class FixedSizeQueue(object):
 	def __init__(self, size = 1024):
 		self.size = size
