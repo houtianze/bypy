@@ -1,6 +1,8 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.4.0: Correct Refresh server list; Add in update check
+
 -  1.3.9: Add in queue for capturing JSONs returned from PCS
 -  1.3.8: Don't output Auth Server failures if no ``-d`` specified
 -  1.3.7: Allow passing leading dash arguments to downloader
@@ -12,8 +14,6 @@ Version History:
 -  1.3.2: Enable SSL check by default now
 -  1.3.1: Fix setup.py failures
 -  1.3.0: Major change: Make bypy a real Python package
-
---------------
 
 -  1.2.22: Fix "TypeError: b'xxxxxx' is not JSON serializable" for cache
 -  1.2.21: Support aria2 downloading resuming (disable preallocation)

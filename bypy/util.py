@@ -303,6 +303,26 @@ class NewThread(threading.Thread):
 def startthread(func):
 	NewThread(func).start()
 
+def inc_list_size(li, size = 3, filler = 0):
+	i = len(li)
+	while (i < size):
+		li.append(filler)
+		i += 1
+
+def comp_semver(v1, v2):
+	v1a = v1.split('.')
+	v2a = v2.split('.')
+	v1ia = [int(i) for i in v1a]
+	v2ia = [int(i) for i in v2a]
+	inc_list_size(v1ia, 3)
+	inc_list_size(v2ia, 3)
+	i = 0
+	while (i < 3):
+		if v1ia[i] != v2ia[i]:
+			return v1ia[i] - v2ia[i]
+		i += 1
+	return 0
+
 # NOT in use, see deque
 class FixedSizeQueue(object):
 	def __init__(self, size = 1024):

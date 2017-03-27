@@ -78,6 +78,7 @@ from .util import (
 	joinpath, get_pcs_path, print_pcs_list, str2bool, str2int,
 	human_size, interpret_size, ls_time, ls_type,
 	makedir, removedir, movefile, removefile, getfilesize,
+	comp_semver,
 	MyPrettyPrinter)
 from .chkreq import (check_requirements, CheckResult)
 from .requester import RequestsRequester
@@ -107,7 +108,6 @@ except:
 	except:
 		perr("Something seems wrong with the urllib3 installation.\nQuitting")
 		sys.exit(const.EFatal)
-import semver
 
 # global instance for non-member function to access
 gbypyinst = None
@@ -417,7 +417,7 @@ class ByPy(object):
 					min_ver_key = 'minimumRequiredVersion'
 					if min_ver_key in j:
 						minver = j[min_ver_key]
-						if semver.compare(const.__version__, minver) < 0:
+						if comp_semver(const.__version__, minver) < 0:
 							perr("Your current version ({}) is too low, "
 								"Minimum required version is {}.\n"
 								"Please run 'pip install -U bypy' to update and try again.".format(
@@ -430,9 +430,9 @@ class ByPy(object):
 					recommended_ver_key = 'recommendedVersion'
 					if recommended_ver_key in j:
 						recver = j[recommended_ver_key]
-						if semver.compare(const.__version__, recver) < 0:
+						if comp_semver(const__version__, recver) < 0:
 							pr("Your current version ({}) is low, "
-								"It's recommended to update to version  {}.\n"
+								"It's recommended to update to version {}.\n"
 								"Please run 'pip install -U bypy' to update.".format(
 									const.__version__, recver))
 				except ValueError:
