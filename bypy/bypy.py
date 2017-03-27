@@ -107,6 +107,7 @@ except:
 	except:
 		perr("Something seems wrong with the urllib3 installation.\nQuitting")
 		sys.exit(const.EFatal)
+import semver
 
 # global instance for non-member function to access
 gbypyinst = None
@@ -397,6 +398,45 @@ class ByPy(object):
 		for proxy in ['HTTP_PROXY', 'HTTPS_PROXY']:
 			if proxy in os.environ:
 				pr("{} used: {}".format(proxy, os.environ[proxy]))
+
+		# update check
+		check_update = False
+		nowsec = int(time.time())
+		if const.SettingKey_LastUpdateCheckTime not in self.__setting:
+			check_update = True
+		else:
+			lastcheck = self.__setting[const.SettingKey_LastUpdateCheckTime]
+			if nowsec - lastcheck > 7 * 24 * 60 * 60: # check every 7 days
+				check_update = True
+
+		if check_update:
+			r = requests.get('https://raw.githubusercontent.com/houtianze/bypy/master/update/update.json')
+			if r.status_code == 200:
+				try:
+					j = r.json()
+					min_ver_key = 'minimumRequiredVersion'
+					if min_ver_key in j:
+						minver = j[min_ver_key]
+						if semver.compare(const.__version__, minver) < 0:
+							perr("Your current version ({}) is too low, "
+								"Minimum required version is {}.\n"
+								"Please run 'pip install -U bypy' to update and try again.".format(
+									const.__version__, minver))
+							sys.exit(const.EUpdateNeeded)
+						else:
+							self.__setting[const.SetingKey_LastUpdateCheckTime] = nowsec
+
+					recommended_ver_key = 'recommendedVersion'
+					if recommended_ver_key in j:
+						recver = j[recommended_ver_key]
+						if semver.compare(const.__version__, recver) < 0:
+							pr("Your current version ({}) is low, "
+								"It's recommended to update to version  {}.\n"
+								"Please run 'pip install -U bypy' to update.".format(
+									const.__version__, recver))
+				except ValueError:
+					self.pd("Invalid response for update check, skipping.");
+
 
 	def pv(self, msg, **kwargs):
 		if self.verbose:

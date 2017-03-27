@@ -5,7 +5,7 @@
 - 1.3.7: Allow passing leading dash arguments to downloader
 - 1.3.6: Fix downdir downloads to a wrong directory structure
 - 1.3.5: Fix aria2 unable to resume download
-- 1.3.4: Add --select-fastest-mirror, --config-dir command line arguments; Swith to wheel dist format
+- 1.3.4: Add --select-fastest-mirror, --config-dir command line arguments; Switch to wheel dist format
 - 1.3.3: Fix the upload failure when slices expired
 - 1.3.2: Enable SSL check by default now
 - 1.3.1: Fix setup.py failures

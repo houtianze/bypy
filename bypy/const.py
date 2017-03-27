@@ -44,6 +44,7 @@ ECacheNotLoaded = 160
 EMigrationFailed = 170
 EDownloadCerts = 180
 EUserRejected = 190 # user's decision
+EUpdateNeeded = 200
 EFatal = -1 # No way to continue
 # internal errors
 IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload the whole file.
@@ -169,6 +170,7 @@ OldTokenFilePath = HomeDir + os.sep + '.bypy.json'
 OldPicklePath = HomeDir + os.sep + '.bypy.pickle'
 RemoteTempDir = AppPcsPath + '/.bypytemp'
 SettingKey_OverwriteRemoteTempDir = 'overwriteRemoteTempDir'
+SettingKey_LastUpdateCheckTime = 'lastUpdateCheck'
 
 ## default config values
 PrintFlushPeriodInSec = 5.0

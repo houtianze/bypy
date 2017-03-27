@@ -77,7 +77,7 @@ setup(
 		'Programming Language :: Python',
 		'Topic :: Utilities',
 		'Topic :: Internet :: WWW/HTTP'],
-	install_requires = ['requests>=2.10.0'],
+	install_requires = ['requests>=2.10.0', 'semver>=2.7.1'],
 	include_package_data = True,
 	**meta
 )
