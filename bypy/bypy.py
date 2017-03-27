@@ -430,7 +430,7 @@ class ByPy(object):
 					recommended_ver_key = 'recommendedVersion'
 					if recommended_ver_key in j:
 						recver = j[recommended_ver_key]
-						if comp_semver(const__version__, recver) < 0:
+						if comp_semver(const.__version__, recver) < 0:
 							pr("Your current version ({}) is low, "
 								"It's recommended to update to version {}.\n"
 								"Please run 'pip install -U bypy' to update.".format(
