@@ -131,7 +131,12 @@ AuthServerList = [
 	(HerokuRedirectUrl, True, "OpenShift server failed, authorizing/refreshing with the Heroku server ..."),
 	(GaeRedirectUrl, False, "Heroku server failed. Last resort: authorizing/refreshing with the GAE server ..."),
 ]
-RefreshServerList = AuthServerList
+RefreshServerList = [
+	# url, rety?, message
+	(OpenShiftRefreshUrl, False, "Authorizing/refreshing with the OpenShift server ..."),
+	(HerokuRefreshUrl, True, "OpenShift server failed, authorizing/refreshing with the Heroku server ..."),
+	(GaeRefreshUrl, False, "Heroku server failed. Last resort: authorizing/refreshing with the GAE server ..."),
+]
 
 ### public static properties
 HelpMarker = "Usage:"
