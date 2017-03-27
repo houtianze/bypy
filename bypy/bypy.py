@@ -422,9 +422,10 @@ class ByPy(object):
 								"Minimum required version is {}.\n"
 								"Please run 'pip install -U bypy' to update and try again.".format(
 									const.__version__, minver))
-							sys.exit(const.EUpdateNeeded)
+							quit(const.EUpdateNeeded)
 						else:
-							self.__setting[const.SetingKey_LastUpdateCheckTime] = nowsec
+							self.__setting[const.SettingKey_LastUpdateCheckTime] = nowsec
+							self.savesetting()
 
 					recommended_ver_key = 'recommendedVersion'
 					if recommended_ver_key in j:
