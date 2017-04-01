@@ -419,7 +419,7 @@ class ByPy(object):
 						minver = j[min_ver_key]
 						if comp_semver(const.__version__, minver) < 0:
 							perr("Your current version ({}) is too low, "
-								"Minimum required version is {}.\n"
+								"minimum required version is {}.\n"
 								"Please run 'pip install -U bypy' to update and try again.".format(
 									const.__version__, minver))
 							quit(const.EUpdateNeeded)
@@ -499,7 +499,7 @@ class ByPy(object):
 		return const.ERequestFailed
 
 	# TODO: the 'act' param is hacky
-	def __get_json(self, r, act, defaultec = const.ERequestFailed):
+	def __get_json_errorcode(self, r, act, defaultec = const.ERequestFailed):
 		try:
 			j = r.json()
 			self.pd("Website returned JSON: {}".format(j))
@@ -570,7 +570,7 @@ class ByPy(object):
 				if result == const.ENoError:
 					self.pd("Request all goes fine")
 			else:
-				ec = self.__get_json(r, act)
+				ec = self.__get_json_errorcode(r, act)
 				#   6 (sc: 403): No permission to access user data
 				# 110 (sc: 401): Access token invalid or no longer valid
 				# 111 (sc: 401): Access token expired
@@ -644,7 +644,7 @@ class ByPy(object):
 				"Or) Run this prog with the '" + const.DisableSslCheckOption + \
 				"' argument. This supresses the CA cert check "
 				"and always works.\n")
-				quit(result)
+				self.quit(result)
 
 			# why so kludge? because requests' SSLError doesn't set
 			# the errno and strerror due to using **kwargs,
@@ -842,6 +842,7 @@ Possible fixes:
 	def __server_auth(self):
 		params = {
 			'client_id' : self.__apikey,
+			'bypy_version' : const.__version__,
 			'response_type' : 'code',
 			'redirect_uri' : 'oob',
 			'scope' : 'basic netdisk' }
@@ -931,7 +932,7 @@ Possible fixes:
 			pr('Refreshing, please be patient, it may take upto {} seconds...'.format(self.__timeout))
 
 			pars = {
-				'grant_type' : 'refresh_token',
+				'bypy_version' : const.__version__,
 				'refresh_token' : self.__json['refresh_token'] }
 
 			result = None

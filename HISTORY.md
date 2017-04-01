@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.4.2: Add bypy version in getting and refresshing token requests for finer control
 - 1.4.1: Fix a severe bug in token refreshing
 - 1.4.0: Correct Refresh server list; Add in update check
 
