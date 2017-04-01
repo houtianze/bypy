@@ -876,6 +876,7 @@ Possible fixes:
 		else:
 			perr("Fatal: All server authorizations failed.")
 			self.__prompt_clean()
+			self.quit(result)
 
 		return result
 
@@ -953,6 +954,7 @@ Possible fixes:
 			else:
 				perr("Token-refreshing on all the servers failed")
 				self.__prompt_clean()
+				self.quit(result)
 
 			return result
 		else:

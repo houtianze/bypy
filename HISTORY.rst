@@ -1,6 +1,7 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.4.1: Fix a severe bug in token refreshing
 -  1.4.0: Correct Refresh server list; Add in update check
 
 -  1.3.9: Add in queue for capturing JSONs returned from PCS
