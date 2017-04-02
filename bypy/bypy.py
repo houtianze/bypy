@@ -842,7 +842,6 @@ Possible fixes:
 	def __server_auth(self):
 		params = {
 			'client_id' : self.__apikey,
-			'bypy_version' : const.__version__,
 			'response_type' : 'code',
 			'redirect_uri' : 'oob',
 			'scope' : 'basic netdisk' }
@@ -855,6 +854,7 @@ Possible fixes:
 
 		pars = {
 			'code' : auth_code,
+			'bypy_version' : const.__version__,
 			'redirect_uri' : 'oob' }
 
 		result = None

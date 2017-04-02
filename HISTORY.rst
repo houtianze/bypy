@@ -1,6 +1,7 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.4.3: Fix \_\_server\_auth()
 -  1.4.2: Add bypy version in getting and refresshing token requests for
    finer control
 -  1.4.1: Fix a severe bug in token refreshing
