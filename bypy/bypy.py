@@ -46,6 +46,7 @@ import re
 import pprint
 import socket
 import subprocess
+import shlex
 from collections import deque
 #from collections import OrderedDict
 from functools import partial
@@ -1726,7 +1727,9 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 		full_url = "{}?{}".format(url, ulp.urlencode(pars))
 
-		cmd = "aria2c --user-agent='{}' {} -o '{}' '{}'".format(const.UserAgent, self.__downloader_args, localfile, full_url)
+		cmd = ['aria2c', '--user-agent="{}"'.format(const.UserAgent)] \
+			+ shlex.split(self.__downloader_args) \
+			+ ['-o', localfile, full_url]
 		self.pd("call: {}".format(cmd))
 		ret = subprocess.call(cmd, shell = True)
 		self.pd("aria2c exited with status: {}".format(ret))
