@@ -91,11 +91,11 @@ main() {
 
 	if [ "$tagit" -eq 1 ]
 	then
-		bypyverion=`grep __version__ bypy/const.py | sed -E "s/^.*'(.*)'$/\1/"`
-		git tag
+		bypyversion=`grep __version__ bypy/const.py | sed -E "s/^.*'(.*)'$/\1/"`
+		git tags
 		git tag "$bypyversion"
 		git push --tags
-		git tag
+		git tags
 	fi
 	
 	if [ "$testit" -eq 1 ]
