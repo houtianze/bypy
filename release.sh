@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#set -o errexit
+set -o errexit
 #set -x
 
 py2venv="$HOME/Documents/t/venv27"
@@ -11,6 +11,7 @@ build=0
 install=0
 upload=0
 testit=0
+tagit=0
 
 createvenv() {
 	if [ ! -d "$py2venv" ]
@@ -41,6 +42,9 @@ parsearg() {
 			;;
 		t)
 			testit=1
+			;;
+		g)
+			tagit=1
 			;;
 		esac
 	done
@@ -84,13 +88,21 @@ main() {
 		repoopt=""
 		indexopt=""
 	fi
+
+	if [ "$tagit" -eq 1 ]
+	then
+		bypyverion=`grep __version__ bypy/const.py | sed -E "s/^.*'(.*)'$/\1/"`
+		git tags
+		git tag "$bypyversion"
+		git push --tags
+		git tags
+	fi
 	
 	if [ "$testit" -eq 1 ]
 	then
 		doctest python2
 		doctest python3
 	fi
-	
 	
 	if [ "$build" -eq 1 ]
 	then
