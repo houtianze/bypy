@@ -1731,7 +1731,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 			+ shlex.split(self.__downloader_args) \
 			+ ['-o', localfile, full_url]
 		self.pd("call: {}".format(cmd))
-		ret = subprocess.call(cmd, shell = True)
+		ret = subprocess.call(cmd)
 		self.pd("aria2c exited with status: {}".format(ret))
 		# TODO: a finer map return codes to our internal errors
 		if ret != const.ENoError:
