@@ -26,7 +26,7 @@ createvenv() {
 }
 
 parsearg() {
-	while getopts "abuit" opt; do
+	while getopts "abigtu" opt; do
 		case "$opt" in
 		a)
 			actual=1
