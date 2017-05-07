@@ -4,6 +4,8 @@
 
 # primitive sanity tests
 # TODO: refactor and improve
+# To Add:
+# - Special file names (single quote)
 
 # from __future__ imports must occur at the beginning of the file
 from __future__ import unicode_literals
@@ -27,19 +29,16 @@ from .. import const
 
 TestGarbledPathNames = False
 
-mydir = os.path.dirname(__file__)
-configdir = os.path.join(mydir, 'configdir')
-downloaddir = os.path.join(mydir, 'downdir')
-testdir = os.path.join(mydir, 'testdir')
-sharedir = os.path.join(mydir, 'sharedir')
+MyDir = os.path.dirname(__file__)
+ConfigDir = os.path.join(MyDir, 'configdir')
+DownloadDir = os.path.join(MyDir, 'downdir')
+TestDir = os.path.join(MyDir, 'testdir')
+ShareDir = os.path.join(MyDir, 'sharedir')
 # monkey patch all the way
 # create some dummy files
-zerofilename = os.path.join(testdir, 'allzero.1m.bin')
+zerofilename = os.path.join(TestDir, 'allzero.1m.bin')
 
-def makesuredir(dirname):
-	if not os.path.exists(dirname):
-		os.mkdir(dirname)
-
+# == Util fuctions ==
 # store the output, for further analysis
 class StorePrinter(object):
 	def __init__(self, opr):
@@ -56,13 +55,16 @@ class StorePrinter(object):
 	def getq(self):
 		return self.q
 
-mpr = StorePrinter(bypy.pr)
-#bypy.pr = mpr.pr
-monkey.patchpr(mpr.pr)
-makesuredir(configdir)
-#shutil.copy('bypy.json', configdir)
-#shutil.copy('bypy.setting.json', configdir)
-by = bypy.ByPy(configdir=configdir, debug=1, verbose=1)
+def assertif(cond, assertion):
+	if cond:
+		assert assertion
+
+def byright(by, assertion):
+	assertif(by.processes == 1, assertion)
+
+def makesuredir(dirname):
+	if not os.path.exists(dirname):
+		os.mkdir(dirname)
 
 def banner(msg):
 	title = "{0} {1} {0}".format('=' * 8, msg)
@@ -81,6 +83,17 @@ def ifany(list, require):
 def filterregex(list, regex):
 	rec = re.compile(regex)
 	return filter(lambda x: rec and isinstance(x, basestring) and rec.search(x), list)
+
+def createdummyfile(filename, size, value = 0):
+	with open(filename, 'wb') as f:
+		ba = bytearray([value] * size)
+		f.write(ba)
+
+mpr = StorePrinter(bypy.pr)
+#bypy.pr = mpr.pr
+monkey.patchpr(mpr.pr)
+#shutil.copy('bypy.json', ConfigDir)
+#shutil.copy('bypy.setting.json', ConfigDir)
 
 def testmergeinto():
 	fromc = {
@@ -124,18 +137,12 @@ def testmergeinto():
 	print(repr(to))
 	assert to == {u'a': {u'a1': 1, u'a3': 3, u'a2': 2}, u'c': {u'c1': 100}, u'b': {u'b1': 10, u'b2': 20, u'b3': 30}}
 
-def createdummyfile(filename, size, value = 0):
-	with open(filename, 'wb') as f:
-		ba = bytearray([value] * size)
-		f.write(ba)
-
-def prepare():
+def prepare(by):
 	# preparation
-	if 'refresh' in sys.argv:
-		by.refreshtoken()
+	makesuredir(ConfigDir)
 	# we must upload something first, otherwise, listing / deleting the root directory will fail
 	banner("Uploading a file")
-	assert by.upload(testdir + '/a.txt') == const.ENoError
+	assert by.upload(TestDir + '/a.txt') == const.ENoError
 	print("Response: {}".format(by.response.json()))
 	banner("Listing the root directory")
 	assert by.list('/') == const.ENoError
@@ -143,157 +150,176 @@ def prepare():
 	mpr.empty()
 	createdummyfile(zerofilename, 1024 * 1024)
 
-	makesuredir(sharedir)
-	sharesubdir = sharedir + '/subdir'
+	makesuredir(ShareDir)
+	sharesubdir = ShareDir + '/subdir'
 	makesuredir(sharesubdir)
-	createdummyfile(sharedir + '/1M0.bin', 1024 * 1024)
-	createdummyfile(sharedir + '/1M1.bin', 1024 * 1024, 1)
+	createdummyfile(ShareDir + '/1M0.bin', 1024 * 1024)
+	createdummyfile(ShareDir + '/1M1.bin', 1024 * 1024, 1)
 	createdummyfile(sharesubdir + '/1M2.bin', 1024 * 1024, 2)
 
 	if TestGarbledPathNames:
-		jd = testdir.encode() + os.sep.encode() + b'garble\xec\xeddir'
-		jf = testdir.encode() + os.sep.encode() + b'garble\xea\xebfile'
+		jd = TestDir.encode() + os.sep.encode() + b'garble\xec\xeddir'
+		jf = TestDir.encode() + os.sep.encode() + b'garble\xea\xebfile'
 		makesuredir(jd)
 		with open(jf, 'w') as f:
 			f.write("garbled")
 
-def emptyremote():
+def emptyremote(by):
 	banner("Deleting all the files at PCS")
 	assert by.delete('/') == const.ENoError
 	assert 'request_id' in by.response.json()
 	mpr.empty()
 
-def uploaddir():
-	# upload
-	banner("Uploading the local directory")
-	assert by.upload(testdir, testdir) == const.ENoError
-	assert filterregex(mpr.getq(),
-					   r"RapidUpload:.*testdir[\\/]allzero.1m.bin' =R=\> '.*/testdir/allzero.1m.bin' OK")
-	assert filterregex(mpr.getq(), r".*testdir[\\/]a.txt' ==> '.*/testdir/a.txt' OK.")
-	assert filterregex(mpr.getq(), r".*testdir[\\/]b.txt' ==> '.*/testdir/b.txt' OK.")
-	print("Response: {}".format(by.response.json()))
-	mpr.empty()
-
-def getquota():
+def getquota(by):
 	# quota
 	banner("Getting quota")
 	assert by.info() == const.ENoError
 	resp = by.response.json()
 	print("Response: {}".format(resp))
 	#assert resp['used'] == 1048626
-	assert resp['quota'] == 2206539448320
+	assert resp['quota'] >= 2206539448320
 	mpr.empty()
 
-def assertsame():
+def assertsame(by):
 	bypy.pr(by.result)
 	assert len(by.result['diff']) == 0
 	assert len(by.result['local']) == 0
 	assert len(by.result['remote']) == 0
 	assert len(by.result['same']) >= 5
 
-def compare():
+def compare(by):
 	# comparison
 	banner("Comparing")
-	assert by.compare(testdir, testdir) == const.ENoError
-	assertsame()
+	assert by.compare(TestDir, TestDir) == const.ENoError
+	assertsame(by)
 	mpr.empty()
 
-def downdir():
+def uploaddir(by):
+	# upload
+	banner("Uploading the local directory")
+	assert by.upload(TestDir, TestDir) == const.ENoError
+	byright(by, filterregex(mpr.getq(),
+					   r"RapidUpload:.*testdir[\\/]allzero.1m.bin' =R=\> '.*/testdir/allzero.1m.bin' OK"))
+	byright(by, filterregex(mpr.getq(), r".*testdir[\\/]a.txt' ==> '.*/testdir/a.txt' OK."))
+	byright(by, filterregex(mpr.getq(), r".*testdir[\\/]b.txt' ==> '.*/testdir/b.txt' OK."))
+	print("Response: {}".format(by.response.json()))
+	mpr.empty()
+
+def downdir(by):
 	# download
 	banner("Downloading dir")
-	shutil.rmtree(downloaddir, ignore_errors=True)
-	assert by.downdir(testdir, downloaddir) == const.ENoError
-	assert by.download(testdir, downloaddir) == const.ENoError
-	assert by.compare(testdir, downloaddir) == const.ENoError
-	assertsame()
+	shutil.rmtree(DownloadDir, ignore_errors=True)
+	assert by.downdir(TestDir, DownloadDir) == const.ENoError
+	assert by.download(TestDir, DownloadDir) == const.ENoError
+	assert by.compare(TestDir, DownloadDir) == const.ENoError
+	assertsame(by)
 	mpr.empty()
 
-def syncup():
+def syncup(by):
 	banner("Syncing up")
-	emptyremote()
-	assert by.syncup(testdir, testdir) == const.ENoError
-	assert by.compare(testdir, testdir) == const.ENoError
-	assertsame()
+	emptyremote(by)
+	sue = by.syncup(TestDir, TestDir)
+	assert sue == const.ENoError or sue == const.IEFileAlreadyExists
+	assert by.compare(TestDir, TestDir) == const.ENoError
+	assertsame(by)
 	mpr.empty()
 
-def syncdown():
+def syncdown(by):
 	banner("Syncing down")
-	shutil.rmtree(downloaddir, ignore_errors=True)
-	assert by.syncdown(testdir, downloaddir) == const.ENoError
-	assert by.compare(testdir, downloaddir) == const.ENoError
-	shutil.rmtree(downloaddir, ignore_errors=True)
-	assertsame()
+	shutil.rmtree(DownloadDir, ignore_errors=True)
+	assert by.syncdown(TestDir, DownloadDir) == const.ENoError
+	assert by.compare(TestDir, DownloadDir) == const.ENoError
+	shutil.rmtree(DownloadDir, ignore_errors=True)
+	assertsame(by)
 	mpr.empty()
 
-def cdl():
+def cdl(by):
 	banner("Offline (cloud) download")
 	result = by.cdl_cancel(123)
 	assert int(result) == const.IETaskNotFound
 	mpr.empty()
 	assert by.cdl_list() == const.ENoError
 	# {u'request_id': 353951550, u'task_info': [], u'total': 0}
-	assert filterregex(mpr.getq(), r"'total'\s*:\s*0")
+	byright(by, filterregex(mpr.getq(), r"'total'\s*:\s*0"))
 	mpr.empty()
 	assert by.cdl_query(123) == const.ENoError
-	assert filterregex(mpr.getq(), r"'result'\s*:\s*1")
+	byright(by, filterregex(mpr.getq(), r"'result'\s*:\s*1"))
 	mpr.empty()
-	assert by.cdl_add("http://dl.client.baidu.com/BaiduKuaijie/BaiduKuaijie_Setup.exe", testdir) == const.ENoError
-	assert filterregex(mpr.getq(), r"'task_id'\s*:\s*\d+")
-	assert by.cdl_addmon("http://dl.client.baidu.com/BaiduKuaijie/BaiduKuaijie_Setup.exe", testdir) == const.ENoError
+	assert by.cdl_add("http://dl.client.baidu.com/BaiduKuaijie/BaiduKuaijie_Setup.exe", TestDir) == const.ENoError
+	byright(by, filterregex(mpr.getq(), r"'task_id'\s*:\s*\d+"))
+	assert by.cdl_addmon("http://dl.client.baidu.com/BaiduKuaijie/BaiduKuaijie_Setup.exe", TestDir) == const.ENoError
 	mpr.empty()
 
-def testshare():
+def testshare(by):
 	banner("Share")
-	#assert const.ENoError == by.share(sharedir, '/', True, True)
-	assert const.ENoError == by.share(sharedir, sharedir)
-	assert filterregex(mpr.getq(), r"bypy accept /{}/1M0.bin".format(sharedir))
-	assert filterregex(mpr.getq(), r"bypy accept /{}/1M1.bin".format(sharedir))
-	assert filterregex(mpr.getq(), r"bypy accept /{}/subdir/1M2.bin".format(sharedir))
+	#assert const.ENoError == by.share(ShareDir, '/', True, True)
+	assert const.ENoError == by.share(ShareDir, ShareDir)
+	byright(by, filterregex(mpr.getq(), r"bypy accept /{}/1M0.bin".format(ShareDir)))
+	byright(by, filterregex(mpr.getq(), r"bypy accept /{}/1M1.bin".format(ShareDir)))
+	byright(by, filterregex(mpr.getq(), r"bypy accept /{}/subdir/1M2.bin".format(ShareDir)))
 	mpr.empty()
-	assert const.ENoError == by.upload(sharedir, sharedir)
-	assert const.ENoError == by.share(sharedir, sharedir, False)
-	assert filterregex(mpr.getq(), r"bypy accept /{}/1M0.bin".format(sharedir))
-	assert filterregex(mpr.getq(), r"bypy accept /{}/1M1.bin".format(sharedir))
-	assert filterregex(mpr.getq(), r"bypy accept /{}/subdir/1M2.bin".format(sharedir))
+	assert const.ENoError == by.upload(ShareDir, ShareDir)
+	assert const.ENoError == by.share(ShareDir, ShareDir, False)
+	byright(by, filterregex(mpr.getq(), r"bypy accept /{}/1M0.bin".format(ShareDir)))
+	byright(by, filterregex(mpr.getq(), r"bypy accept /{}/1M1.bin".format(ShareDir)))
+	byright(by, filterregex(mpr.getq(), r"bypy accept /{}/subdir/1M2.bin".format(ShareDir)))
 	mpr.empty()
 
 def cleanup():
 	os.remove(zerofilename)
-	#shutil.rmtree(configdir, ignore_errors=True)
-	shutil.rmtree(sharedir, ignore_errors=True)
-	shutil.rmtree(downloaddir, ignore_errors=True)
+	#shutil.rmtree(ConfigDir, ignore_errors=True)
+	shutil.rmtree(ShareDir, ignore_errors=True)
+	shutil.rmtree(DownloadDir, ignore_errors=True)
+
+def runTests(by):
+	prepare(by)
+
+	getquota(by)
+	# sleep sometime helps preventing hanging requests <scorn>
+	#cdl() # seems this is broken
+	time.sleep(2)
+	emptyremote(by)
+	time.sleep(2)
+	uploaddir(by)
+	time.sleep(2)
+	compare(by)
+	time.sleep(2)
+	downdir(by)
+	time.sleep(2)
+	syncup(by)
+	time.sleep(2)
+	syncdown(by)
+	time.sleep(2)
+	testshare(by)
+	time.sleep(2)
 
 def main():
 	testmergeinto()
 
-	prepare()
 
-	time.sleep(2)
-	#testshare()
-	time.sleep(2)
-	# sleep sometime helps preventing hanging requests <scorn>
-	#cdl() # seems this is broken
-	time.sleep(2)
-	emptyremote()
-	time.sleep(2)
-	uploaddir()
-	time.sleep(2)
-	getquota()
-	time.sleep(2)
-	compare()
-	time.sleep(2)
-	downdir()
-	time.sleep(2)
-	syncup()
-	time.sleep(2)
-	syncdown()
+	try:
+		by = bypy.ByPy(configdir=ConfigDir, debug=1, verbose=1)
+		if 'refresh' in sys.argv:
+			by.refreshtoken()
+		#runTests(by)
+		if '1' in sys.argv:
+			return
 
-	# test aria2 downloading
-	global by
-	by = bypy.ByPy(configdir=configdir, downloader='aria2', debug=1, verbose=1)
-	downdir()
+		by = bypy.ByPy(configdir=ConfigDir, processes = 4, debug=1, verbose=1)
+		runTests(by)
+		if '2' in sys.argv:
+			return
 
-	cleanup()
+		# test aria2 downloading
+		by = bypy.ByPy(configdir=ConfigDir, downloader='aria2', debug=1, verbose=1)
+		downdir(by)
+		by = bypy.ByPy(configdir=ConfigDir, downloader='aria2', processes = 2, debug=1, verbose=1)
+		downdir(by)
+	except KeyboardInterrupt:
+		print("User cancelled, cleaning up ...")
+	finally:
+		cleanup()
+		print("Clean up done.")
 
 # this is barely a sanity test, more to be added
 if __name__ == "__main__":

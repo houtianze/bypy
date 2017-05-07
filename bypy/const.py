@@ -12,10 +12,10 @@ import os
 
 # https://packaging.python.org/single_source_version/
 __title__ = 'bypy'
-__version__ = '1.4.4'
+__version__ = '1.5.0'
 __author__ = 'Hou Tianze'
 __license__ = 'MIT'
-__desc__ ='Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网盘 Python 客户端'
+__desc__ = 'Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网盘 Python 客户端'
 __url__ = 'https://github.com/houtianze/bypy'
 
 ### return (error) codes
@@ -52,6 +52,7 @@ IESuperfileCreationFailed = 31081 # superfile create failed (HTTP 404)
 # Undocumented, see #308 , https://paste.ubuntu.com/23672323/
 IEBlockMissInSuperFile2 = 31363 # block miss in superfile2 (HTTP 403)
 IETaskNotFound = 36016 # Task was not found
+IEFileAlreadyExists = 31061 # {"error_code":31061,"error_msg":"file already exists","request_id":2939656146461714799}
 
 DownloaderAria2 = 'aria2'
 Downloaders = [DownloaderAria2]
@@ -84,6 +85,9 @@ SIPrefixTimes = {
 	'E' : OneE,
 	'Z' : OneZ,
 	'Y' : OneY }
+
+# before this, you don't know me, i don't know you - Eason
+TenYearInSeconds = 60 * 60 * 24 * 366 * 10
 
 #### Baidu PCS constants
 # ==== NOTE ====
@@ -187,6 +191,7 @@ CacheSavePeriodInSec = 10 * 60.0
 # share retries
 ShareRapidUploadRetries = 3
 DefaultResumeDlRevertCount = 1
+DefaultProcessCount = 1
 
 ## program switches
 CleanOptionShort= '-c'

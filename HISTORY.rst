@@ -1,6 +1,8 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.5.0: Multi-Process for directory download / upload / sync up/down
+
 -  1.4.4: Aria2 download works even file names contain single quote (')
 -  1.4.3: Fix \_\_server\_auth()
 -  1.4.2: Add bypy version in getting and refresshing token requests for

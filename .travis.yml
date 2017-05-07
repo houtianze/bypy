@@ -1,15 +1,16 @@
 language: python
 #sudo: false
-sudo: required
+sudo: false
 python:
   - "2.7"
   - "3.3"
 #  - "3.5"
 # command to install dependencies,
 # e.g. pip install -r requirements.txt --use-mirrors
-before_install:
- - sudo apt-get update -qq
- - sudo apt-get install -y aria2
+addons:
+  apt:
+    packages:
+    - aria2
 install:
  - pip install -r requirements.txt
  - pip install pyflakes

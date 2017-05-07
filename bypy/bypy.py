@@ -110,6 +110,24 @@ except:
 		perr("Something seems wrong with the urllib3 installation.\nQuitting")
 		sys.exit(const.EFatal)
 
+# http://stackoverflow.com/a/27320254/404271
+try:
+	from multiprocess import Pool
+except ImportError:
+	Pool = None
+	perr("'multiprocess' library is not available, no parallel dl/ul.")
+
+UPool = None
+if Pool != None:
+	if sys.version_info[0] == 2:
+		# enable with statement
+		from contextlib import contextmanager
+		@contextmanager
+		def UPool(*args, **kwargs):
+			yield Pool(*args, **kwargs)
+	elif sys.version_info[0] == 3:
+		UPool = Pool
+
 # global instance for non-member function to access
 gbypyinst = None
 
@@ -238,6 +256,7 @@ class ByPy(object):
 		apikey = const.ApiKey,
 		downloader = "",
 		downloader_args = "",
+		processes = const.DefaultProcessCount,
 		secretkey = const.SecretKey):
 
 		super(ByPy, self).__init__()
@@ -297,9 +316,10 @@ class ByPy(object):
 			self.__ondup = ondup[0].upper()
 		else:
 			self.__ondup = 'O' # O - Overwrite* S - Skip P - Prompt
-		self.__followlink = followlink;
+		self.__followlink = followlink
 		self.__rapiduploadonly = rapiduploadonly
 		self.__resumedl_revertcount = resumedl_revertcount
+		self.processes = processes
 
 		# these two variables are without leadning double underscaore "__" as to export the as public,
 		# so if any code using this class can check the current verbose / debug level
@@ -437,8 +457,7 @@ class ByPy(object):
 								"Please run 'pip install -U bypy' to update.".format(
 									const.__version__, recver))
 				except ValueError:
-					self.pd("Invalid response for update check, skipping.");
-
+					self.pd("Invalid response for update check, skipping.")
 
 	def pv(self, msg, **kwargs):
 		if self.verbose:
@@ -457,6 +476,33 @@ class ByPy(object):
 				return False
 
 		return True
+
+	def __warn_multi_processes(self, process = "dl / ul"):
+		if process:
+			pwarn("Running multiple ({}) processes for {}, I don't know if things will go awry...".format(
+				self.processes, process))
+
+	def __check_prompt_multiprocess(self):
+		if self.__ondup == 'P' and Pool and self.processes != 1:
+			errmsg = "Can't do parallel processing if you want to prompt the user for overwrite confirmation"
+			perr(errmsg)
+			return False
+		return True
+
+	def __filter_multi_results(self, results):
+		errors = filter(lambda x: x != const.ENoError, results)
+		return const.ENoError if len(errors) == 0 else errors[-1]
+
+	def __multi_process(self, worker, iter, process = "dl / ul"):
+		if not self.__check_prompt_multiprocess():
+			return const.EArgument
+		self.__warn_multi_processes(process)
+		with UPool(self.processes) as pool:
+			# http://stackoverflow.com/a/35134329/404271
+			# On Python 2.x, Ctrl-C won't work if we use pool.map(), wait() or get()
+			ar = pool.map_async(worker, iter)
+			results = ar.get(const.TenYearInSeconds)
+			return self.__filter_multi_results(results)
 
 	def __print_error_json(self, r):
 		try:
@@ -745,23 +791,23 @@ class ByPy(object):
 		if direction: # upload
 			if not os.path.exists(lpath):
 				perr("'{}' {} '{}' skipped since local path no longer exists".format(
-					lpath, arrow, rpath));
+					lpath, arrow, rpath))
 				return False
 		else: # download
 			if os.path.exists(lpath) and (not os.access(lpath, os.R_OK)):
 				perr("'{}' {} '{}' skipped due to permission".format(
-					lpath, arrow, rpath));
+					lpath, arrow, rpath))
 				return False
 
 		if '\\' in os.path.basename(checkpath):
 			perr("'{}' {} '{}' skipped due to problemic '\\' in the path".format(
-				lpath, arrow, rpath));
+				lpath, arrow, rpath))
 			return False
 
 		include = (not self.__incregex) or self.__incregmo.match(checkpath)
 		if not include:
 			self.pv("'{}' {} '{}' skipped as it's not included in the regex pattern".format(
-				lpath, arrow, rpath));
+				lpath, arrow, rpath))
 
 		return include
 
@@ -832,7 +878,7 @@ Possible fixes:
 			j = r.json()
 		except Exception as ex:
 			perr("Failed to decode JSON:\n{}".format(formatex(ex)))
-			perr("Error response:\n{}".format(r.text));
+			perr("Error response:\n{}".format(r.text))
 			return self.__prompt_clean()
 
 		return self.__store_json_only(j)
@@ -1014,9 +1060,9 @@ Possible fixes:
 		if 'size' in rjson:
 			rsize = rjson['size']
 			if lsize == rsize:
-				return 0;
+				return 0
 			elif lsize > rsize:
-				return 1;
+				return 1
 			else:
 				return 2
 		else:
@@ -1086,7 +1132,7 @@ Possible fixes:
 				if f['path'] == remotefile: # case-sensitive
 					self.__remote_json = f
 					self.pd("File info json: {}".format(self.__remote_json))
-					return const.ENoError;
+					return const.ENoError
 
 			return const.EFileNotFound
 		except KeyError as ex:
@@ -1491,9 +1537,8 @@ get information of the given path (dir / file) at Baidu Yun.
 
 		return result
 
-	def __upload_dir(self, localpath, remotepath, ondup = 'overwrite'):
+	def __upload_dir_single(self, localpath, remotepath, ondup = 'overwrite'):
 		result = const.ENoError
-		self.pd("Uploading directory '{}' to '{}'".format(localpath, remotepath))
 		# it's so minor that we don't care about the return value
 		#self.__mkdir(remotepath, retry = False, dumpex = False)
 		#for walk in os.walk(localpath, followlinks=self.__followlink):
@@ -1504,6 +1549,18 @@ get information of the given path (dir / file) at Baidu Yun.
 				result = thisresult
 
 		return result
+
+	def __upload_dir_multi(self, localpath, remotepath, ondup = 'overwrite'):
+		worker = partial(self.__walk_upload, localpath, remotepath, ondup)
+		return self.__multi_process(worker, self.__walk_normal_file(localpath),
+			"Direcory Upload")
+
+	def __upload_dir(self, localpath, remotepath, ondup = 'overwrite'):
+		self.pd("Uploading directory '{}' to '{}'".format(localpath, remotepath))
+		if Pool and self.processes > 1:
+			return self.__upload_dir_multi(localpath, remotepath, ondup)
+		else:
+			return self.__upload_dir_single(localpath, remotepath, ondup)
 
 	def __upload_file(self, localpath, remotepath, ondup = 'overwrite'):
 		# TODO: this is a quick patch
@@ -1932,7 +1989,7 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 		return self.__get(pcsurl + 'file', pars,
 			self.__streaming_act, (localpipe, chunk), stream = True)
 
-	def __walk_remote_dir_act(self, r, args):
+	def __walk_proceed_remote_dir_act(self, r, args):
 		dirjs, filejs = args
 		j = r.json()
 		if 'list' not in j:
@@ -1948,7 +2005,7 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 
 		return const.ENoError
 
-	def __walk_remote_dir_recur(self, remotepath, proceed, remoterootpath, args = None, skip_remote_only_dirs = False):
+	def __walk_remote_dir(self, remotepath, remoterootpath, args = None, skip_remote_only_dirs = False):
 		pars = {
 			'method' : 'list',
 			'path' : remotepath,
@@ -1958,15 +2015,11 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 		# Python parameters are by-reference and mutable, so they are 'out' by default
 		dirjs = []
 		filejs = []
-		result = self.__get(pcsurl + 'file', pars, self.__walk_remote_dir_act, (dirjs, filejs))
-		self.pd("Remote dirs: {}".format(dirjs))
-		self.pd("Remote files: {}".format(filejs))
+		result = self.__get(pcsurl + 'file', pars, self.__walk_proceed_remote_dir_act, (dirjs, filejs))
+		yield [result, remotepath, dirjs, filejs, args]
 		if result == const.ENoError:
-			subresult = proceed(remotepath, dirjs, filejs, args)
-			if subresult != const.ENoError:
-				self.pd("Error: {} while proceeding remote path'{}'".format(
-					subresult, remotepath))
-				result = subresult # we continue
+			self.pd("Remote dirs: {}".format(dirjs))
+			self.pd("Remote files: {}".format(filejs))
 			for dirj in dirjs:
 				crpath = dirj['path'] # crpath - current remote path
 				if skip_remote_only_dirs and remoterootpath != None and \
@@ -1974,16 +2027,18 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 					self.pd("Skipping remote-only sub-directory '{}'.".format(crpath))
 					continue
 
-				subresult = self.__walk_remote_dir_recur(crpath, proceed, remoterootpath, args, skip_remote_only_dirs)
-				if subresult != const.ENoError:
-					self.pd("Error: {} while sub-walking remote dirs'{}'".format(
-						subresult, dirjs))
-					result = subresult
+				# http://stackoverflow.com/a/8991864/404271
+				# for Python 3.3+, "yield from" reads better
+				for y in self.__walk_remote_dir(crpath, remoterootpath, args, skip_remote_only_dirs):
+					yield y
 
+	def __walk_proceed_remote_dir(self, remotepath, proceed, args = None, skip_remote_only_dirs = False):
+		result = const.ENoError
+		for walk in self.__walk_remote_dir(remotepath, remotepath, args, skip_remote_only_dirs):
+			subresult = proceed(*walk)
+			if subresult != const.ENoError:
+				result = subresult
 		return result
-
-	def __walk_remote_dir(self, remotepath, proceed, args = None, skip_remote_only_dirs = False):
-		return self.__walk_remote_dir_recur(remotepath, proceed, remotepath, args, skip_remote_only_dirs)
 
 	def __prepare_local_dir(self, localdir):
 		result = const.ENoError
@@ -1996,38 +2051,54 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 
 		return result
 
-	def __proceed_downdir(self, remotepath, dirjs, filejs, args):
-		result = const.ENoError
+	def __proceed_downdir(self, walkresult, remotepath, dirjs, filejs, args):
+		result = walkresult
 		rootrpath, localpath = args
 		#rlen = len(remotepath) + 1
 		rootlen = len(rootrpath) + 1 # '+ 1' for the trailing '/', it bites.
 
-		result = self.__prepare_local_dir(localpath)
-		if result != const.ENoError:
-			perr("Fail to create prepare local directory '{}' for downloading, ABORT".format(localpath))
-			return result
+		subresult = self.__prepare_local_dir(localpath)
+		if subresult != const.ENoError:
+			perr("Fail to prepare local directory '{}' for downloading, ABORT!".format(localpath))
+			return subresult
 
 		for dirj in dirjs:
 			rdir = dirj['path']
 			reldir = rdir[rootlen:]
 			#ldir = os.path.join(localpath, reldir)
 			ldir = joinpath(localpath, reldir)
-			result = self.__prepare_local_dir(ldir)
-			if result != const.ENoError:
-				perr("Fail to create prepare local directory '{}' for downloading, ABORT".format(ldir))
-				return result
+			subresult = self.__prepare_local_dir(ldir)
+			if subresult != const.ENoError:
+				perr("Fail to prepare local directory '{}' for downloading, ABORT!".format(ldir))
+				return subresult
 
 		for filej in filejs:
 			rfile = filej['path']
 			relfile = rfile[rootlen:]
 			#lfile = os.path.join(localpath, relfile)
 			lfile = joinpath(localpath, relfile)
-			self.__downfile(rfile, lfile)
+			subresult = self.__downfile(rfile, lfile)
+			if subresult != const.ENoError:
+				result = subresult
 
 		return result
 
+	def __downdir_single(self, rpath, lpath):
+		return self.__walk_proceed_remote_dir(rpath, self.__proceed_downdir, (rpath, lpath))
+
+	def __proceed_downdir_worker(self, arglist):
+		return self.__proceed_downdir(*arglist)
+
+	def __downdir_multi(self, rpath, lpath):
+		return self.__multi_process(self.__proceed_downdir_worker,
+			self.__walk_remote_dir(rpath, rpath, (rpath, lpath)),
+			"Directory Download")
+
 	def __downdir(self, rpath, lpath):
-		return self.__walk_remote_dir(rpath, self.__proceed_downdir, (rpath, lpath))
+		if Pool and self.processes > 1:
+			return self.__downdir_multi(rpath, lpath)
+		else:
+			return self.__downdir_single(rpath, lpath)
 
 	def downdir(self, remotepath = None, localpath = None):
 		''' Usage: downdir [remotedir] [localdir] - \
@@ -2325,7 +2396,7 @@ restore a file from the recycle bin
 			self.__proceed_local_gather(len(dir), walk)
 		self.pd(self.__local_dir_contents)
 
-	def __proceed_remote_gather(self, remotepath, dirjs, filejs, args = None):
+	def __proceed_remote_gather(self, walkresult, remotepath, dirjs, filejs, args = None):
 		# NOTE: the '+ 1' is due to the trailing slash '/'
 		# be careful about the trailing '/', it bit me once, bitterly
 		rootrdir = args
@@ -2339,11 +2410,11 @@ restore a file from the recycle bin
 			self.__remote_dir_contents.get(remotepath[rootlen:]).add(
 				f['path'][dlen:], PathDictTree('F', size = f['size'], md5 = f['md5']))
 
-		return const.ENoError
+		return walkresult
 
 	def __gather_remote_dir(self, rdir, skip_remote_only_dirs = False):
 		self.__remote_dir_contents = PathDictTree()
-		self.__walk_remote_dir(rdir, self.__proceed_remote_gather, rdir, skip_remote_only_dirs)
+		self.__walk_proceed_remote_dir(rdir, self.__proceed_remote_gather, rdir, skip_remote_only_dirs)
 		self.pd("---- Remote Dir Contents ---")
 		self.pd(self.__remote_dir_contents)
 
@@ -2428,10 +2499,10 @@ directory is much larger than the local one). it defaults to False.
 
 		pr("\nStatistics:")
 		pr("--------------------------------")
-		pr("Same: {}".format(len(same)));
-		pr("Different: {}".format(len(diff)));
-		pr("Local only: {}".format(len(local)));
-		pr("Remote only: {}".format(len(remote)));
+		pr("Same: {}".format(len(same)))
+		pr("Different: {}".format(len(diff)))
+		pr("Local only: {}".format(len(local)))
+		pr("Remote only: {}".format(len(remote)))
 
 		self.result['same'] = same
 		self.result['diff'] = diff
@@ -2439,6 +2510,92 @@ directory is much larger than the local one). it defaults to False.
 		self.result['remote'] = remote
 
 		return const.ENoError
+
+	def __syncdown_diff_one(self, rpath, localdir, d):
+		result = const.ENoError
+		t = d[0]
+		p = d[1]
+		#lcpath = os.path.join(localdir, p) # local complete path
+		lcpath = joinpath(localdir, p) # local complete path
+		rcpath = rpath + '/' + p # remote complete path
+		if t == 'DF':
+			result = removedir(lcpath, self.verbose)
+			subresult = self.__downfile(rcpath, lcpath)
+			if subresult != const.ENoError:
+				result = subresult
+		elif t == 'FD':
+			result = removefile(lcpath, self.verbose)
+			subresult = makedir(lcpath, verbose = self.verbose)
+			if subresult != const.ENoError:
+				result = subresult
+		else: # " t == 'F' " must be true
+			result = self.__downfile(rcpath, lcpath)
+
+		return result
+
+	def __syncdown_remote_one(self, rpath, localdir, r):
+		result = const.ENoError
+		t = r[0]
+		p = r[1]
+		#lcpath = os.path.join(localdir, p) # local complete path
+		lcpath = joinpath(localdir, p) # local complete path
+		rcpath = rpath + '/' + p # remote complete path
+		if t == 'F':
+			subresult = self.__downfile(rcpath, lcpath)
+			if subresult != const.ENoError:
+				result = subresult
+		else: # " t == 'D' " must be true
+			subresult = makedir(lcpath, verbose = self.verbose)
+			if subresult != const.ENoError:
+				result = subresult
+
+		return result
+
+	def __syncdown_delete_local(self, localdir, local):
+		result = const.ENoError
+		for l in local:
+			# use os.path.isfile()/isdir() instead of l[0], because we need to check file/dir existence.
+			# as we may have removed the parent dir previously during the iteration
+			#p = os.path.join(localdir, l[1])
+			p = joinpath(localdir, l[1])
+			if os.path.isfile(p):
+				subresult = removefile(p, self.verbose)
+				if subresult != const.ENoError:
+					result = subresult
+			elif os.path.isdir(p):
+				subresult = removedir(p, self.verbose)
+				if subresult != const.ENoError:
+					result = subresult
+
+		return result
+
+	def __syncdown_single(self, rpath, localdir, compare_result):
+		result = const.ENoError
+		same, diff, local, remote = compare_result
+		# clear the way
+		for d in diff:
+			subresult = self.__syncdown_diff_one(rpath, localdir, d)
+			if subresult != const.ENoError:
+				result = subresult
+		for r in remote:
+			subresult = self.__syncdown_remote_one(rpath, localdir, r)
+			if subresult != const.ENoError:
+				result = subresult
+		return result
+
+	def __syncdown_multi(self, rpath, localdir, compare_result):
+		result = const.ENoError
+		same, diff, local, remote = compare_result
+		# clear the way
+		worker = partial(self.__syncdown_diff_one, rpath, localdir)
+		subresult = self.__multi_process(worker, diff, "Sync down")
+		if subresult != const.ENoError:
+			result = subresult
+		worker = partial(self.__syncdown_remote_one, rpath, localdir)
+		subresult = self.__multi_process(worker, remote, "")
+		if subresult != const.ENoError:
+			result = subresult
+		return result
 
 	def syncdown(self, remotedir = '', localdir = '', deletelocal = False):
 		''' Usage: syncdown [remotedir] [localdir] [deletelocal] - \
@@ -2450,57 +2607,115 @@ if not specified, it defaults to the root directory
 		'''
 		result = const.ENoError
 		rpath = get_pcs_path(remotedir)
-		same, diff, local, remote = self.__compare(rpath, localdir)
+		compare_result = self.__compare(rpath, localdir, False)
+		same, diff, local, remote = compare_result
+		if Pool and self.processes > 1:
+			subresult = self.__syncdown_multi(rpath, localdir, compare_result)
+			if subresult != const.ENoError:
+				result = subresult
+		else:
+			subresult = self.__syncdown_single(rpath, localdir, compare_result)
+			if subresult != const.ENoError:
+				result = subresult
+		if str2bool(deletelocal):
+			subresult = self.__syncdown_delete_local(localdir, local)
+			if subresult != const.ENoError:
+				result = subresult
+
+		return result
+
+	def __syncup_diff_one(self, rpath, localdir, d):
+		result = const.ENoError
+		t = d[0] # type
+		p = d[1] # path
+		#lcpath = os.path.join(localdir, p) # local complete path
+		lcpath = joinpath(localdir, p) # local complete path
+		rcpath = rpath + '/' + p # remote complete path
+		if self.shalloverwrite("Do you want to overwrite '{}' at Baidu Yun? [y/N]".format(p)):
+			# this path is before get_pcs_path() since delete() expects so.
+			#result = self.delete(rpartialdir + '/' + p)
+			result = self.__delete(rcpath)
+#				self.pd("diff type: {}".format(t))
+#				self.__isrev = True
+#				if t != 'F':
+#					result = self.move(remotedir + '/' + p, remotedir + '/' + p + '.moved_by_bypy.' + time.strftime("%Y%m%d%H%M%S"))
+#					self.__isrev = False
+			if t == 'F' or t == 'FD':
+				subresult = self.__upload_file(lcpath, rcpath)
+				if subresult != const.ENoError:
+					result = subresult
+			else: # " t == 'DF' " must be true
+				subresult = self.__mkdir(rcpath)
+				if subresult != const.ENoError:
+					result = subresult
+		else:
+			pinfo("Uploading '{}' skipped".format(lcpath))
+
+		return result
+
+	def __syncup_local_one(self, rpath, localdir, l):
+		result = const.ENoError
+		t = l[0]
+		p = l[1]
+		#lcpath = os.path.join(localdir, p) # local complete path
+		lcpath = joinpath(localdir, p) # local complete path
+		rcpath = rpath + '/' + p # remote complete path
+		self.pd("local type: {}".format(t))
+		self.__isrev = False
+		if t == 'F':
+			subresult = self.__upload_file(lcpath, rcpath)
+			if subresult != const.ENoError:
+				result = subresult
+		else: # " t == 'D' " must be true
+			subresult = self.__mkdir(rcpath)
+			if subresult != const.ENoError:
+				result = subresult
+
+		return result
+
+	def __syncup_delete_remote(self, rpath, remote):
+		result = const.ENoError
+		# i think the list is built top-down, so directories appearing later are either
+		# children or another set of directories
+		pp = '\\' # previous path, setting to '\\' make sure it won't be found in the first step
+		for r in remote:
+			#p = rpartialdir + '/' + r[1]
+			p = rpath + '/' + r[1]
+			if 0 != p.find(pp): # another path
+				#subresult = self.delete(p)
+				subresult = self.__delete(p)
+				if subresult != const.ENoError:
+					result = subresult
+			pp = p
+
+		return result
+
+	def __syncup_single(self, localdir, rpath, compare_result):
+		result = const.ENoError
+		same, diff, local, remote = compare_result
 		# clear the way
 		for d in diff:
-			t = d[0]
-			p = d[1]
-			#lcpath = os.path.join(localdir, p) # local complete path
-			lcpath = joinpath(localdir, p) # local complete path
-			rcpath = rpath + '/' + p # remote complete path
-			if t == 'DF':
-				result = removedir(lcpath, self.verbose)
-				subresult = self.__downfile(rcpath, lcpath)
-				if subresult != const.ENoError:
-					result = subresult
-			elif t == 'FD':
-				result = removefile(lcpath, self.verbose)
-				subresult = makedir(lcpath, verbose = self.verbose)
-				if subresult != const.ENoError:
-					result = subresult
-			else: # " t == 'F' " must be true
-				result = self.__downfile(rcpath, lcpath)
+			subresult = self.__syncup_diff_one(rpath, localdir, d)
+			if subresult != const.ENoError:
+				result = subresult
+		for l in local:
+			subresult = self.__syncup_local_one(rpath, localdir, l)
+			if subresult != const.ENoError:
+				result = subresult
+		return result
 
-		for r in remote:
-			t = r[0]
-			p = r[1]
-			#lcpath = os.path.join(localdir, p) # local complete path
-			lcpath = joinpath(localdir, p) # local complete path
-			rcpath = rpath + '/' + p # remote complete path
-			if t == 'F':
-				subresult = self.__downfile(rcpath, lcpath)
-				if subresult != const.ENoError:
-					result = subresult
-			else: # " t == 'D' " must be true
-				subresult = makedir(lcpath, verbose = self.verbose)
-				if subresult != const.ENoError:
-					result = subresult
-
-		if str2bool(deletelocal):
-			for l in local:
-				# use os.path.isfile()/isdir() instead of l[0], because we need to check file/dir existence.
-				# as we may have removed the parent dir previously during the iteration
-				#p = os.path.join(localdir, l[1])
-				p = joinpath(localdir, l[1])
-				if os.path.isfile(p):
-					subresult = removefile(p, self.verbose)
-					if subresult != const.ENoError:
-						result = subresult
-				elif os.path.isdir(p):
-					subresult = removedir(p, self.verbose)
-					if subresult != const.ENoError:
-						result = subresult
-
+	def __syncup_multi(self, localdir, rpath, compare_result):
+		result = const.ENoError
+		same, diff, local, remote = compare_result
+		# clear the way
+		worker = partial(self.__syncup_diff_one, rpath, localdir)
+		subresult = self.__multi_process(worker, diff, "Sync up")
+		if subresult != const.ENoError:
+			result = subresult
+		worker = partial(self.__syncup_local_one, rpath, localdir)
+		subresult = self.__multi_process(worker, local, "")
+		if subresult != const.ENoError:
+			result = subresult
 		return result
 
 	def syncup(self, localdir = '', remotedir = '', deleteremote = False):
@@ -2514,65 +2729,20 @@ if not specified, it defaults to the root directory
 		result = const.ENoError
 		rpath = get_pcs_path(remotedir)
 		#rpartialdir = remotedir.rstrip('/ ')
-		same, diff, local, remote = self.__compare(rpath, localdir, True)
-		# clear the way
-		for d in diff:
-			t = d[0] # type
-			p = d[1] # path
-			#lcpath = os.path.join(localdir, p) # local complete path
-			lcpath = joinpath(localdir, p) # local complete path
-			rcpath = rpath + '/' + p # remote complete path
-			if self.shalloverwrite("Do you want to overwrite '{}' at Baidu Yun? [y/N]".format(p)):
-				# this path is before get_pcs_path() since delete() expects so.
-				#result = self.delete(rpartialdir + '/' + p)
-				result = self.__delete(rcpath)
-#				self.pd("diff type: {}".format(t))
-#				self.__isrev = True
-#				if t != 'F':
-#					result = self.move(remotedir + '/' + p, remotedir + '/' + p + '.moved_by_bypy.' + time.strftime("%Y%m%d%H%M%S"))
-#					self.__isrev = False
-				if t == 'F' or t == 'FD':
-					subresult = self.__upload_file(lcpath, rcpath)
-					if subresult != const.ENoError:
-						result = subresult
-				else: # " t == 'DF' " must be true
-					subresult = self.__mkdir(rcpath)
-					if subresult != const.ENoError:
-						result = subresult
-			else:
-				pinfo("Uploading '{}' skipped".format(lcpath))
-
-		for l in local:
-			t = l[0]
-			p = l[1]
-			#lcpath = os.path.join(localdir, p) # local complete path
-			lcpath = joinpath(localdir, p) # local complete path
-			rcpath = rpath + '/' + p # remote complete path
-			self.pd("local type: {}".format(t))
-			self.__isrev = False
-			if t == 'F':
-				subresult = self.__upload_file(lcpath, rcpath)
-				if subresult != const.ENoError:
-					result = subresult
-			else: # " t == 'D' " must be true
-				subresult = self.__mkdir(rcpath)
-				if subresult != const.ENoError:
-					result = subresult
-
+		compare_result = self.__compare(rpath, localdir, True)
+		same, diff, local, remote = compare_result
+		if Pool and self.processes > 1:
+			subresult = self.__syncup_multi(localdir, rpath, compare_result)
+			if subresult != const.ENoError:
+				result = subresult
+		else:
+			subresult = self.__syncup_single(localdir, rpath, compare_result)
+			if subresult != const.ENoError:
+				result = subresult
 		if str2bool(deleteremote):
-			# i think the list is built top-down, so directories appearing later are either
-			# children or another set of directories
-			pp = '\\' # previous path, setting to '\\' make sure it won't be found in the first step
-			for r in remote:
-				#p = rpartialdir + '/' + r[1]
-				p = rpath + '/' + r[1]
-				if 0 != p.find(pp): # another path
-					#subresult = self.delete(p)
-					subresult = self.__delete(p)
-					if subresult != const.ENoError:
-						result = subresult
-				pp = p
-
+			subresult = self.__syncup_delete_remote(rpath, remote)
+			if subresult != const.ENoError:
+				result = subresult
 		return result
 
 	def dumpcache(self):
@@ -2799,7 +2969,7 @@ if not specified, it defaults to the root directory
 				i += 1
 				result = self.__rapidupload_file(lpath, ulrpath, setlocalfile = True)
 				if result == const.ENoError: # or result == IEMD5NotFound: # retrying if MD5 not found _may_ make the file available?
-					break;
+					break
 				else:
 					self.pd("Retrying #{} for sharing '{}'".format(i, lpath))
 					time.sleep(1)
@@ -2901,9 +3071,9 @@ y/N/a (yes/NO/always)?
 
 		return self.__share_local_file(lpath, srpath, fast)
 
-	def __proceed_share_remote(self, rpath, dirjs, filejs, args):
+	def __proceed_share_remote(self, walkresult, rpath, dirjs, filejs, args):
 		remoterootlen, tmpdir, srpath, fast = args
-		result = const.ENoError
+		result = walkresult
 		for filej in filejs:
 			rfile = filej['path']
 			subr = self.__share_remote_file(tmpdir, rfile, joinpath(srpath, rfile[remoterootlen:], sep = '/'), fast)
@@ -2912,7 +3082,7 @@ y/N/a (yes/NO/always)?
 		return result
 
 	def __share_remote_dir(self, tmpdir, rpath, srpath, fast):
-		return self.__walk_remote_dir(rpath, self.__proceed_share_remote, (len(rpath), tmpdir, srpath, fast))
+		return self.__walk_proceed_remote_dir(rpath, self.__proceed_share_remote, (len(rpath), tmpdir, srpath, fast))
 
 	def __share_remote(self, tmpdir, rpath, srpath, fast): # srpath - share remote path (full path)
 		subr = self.__get_file_info(rpath)
@@ -3163,6 +3333,10 @@ def getparser():
 		dest="resumedl_revertcount", default=const.DefaultResumeDlRevertCount,
 		type=int, metavar='RCOUNT',
 		help="Revert back at least %(metavar)s download chunk(s) and align to chunk boundary when resuming the download. A negative value means NO reverts. [default: %(default)s]")
+	if Pool:
+		parser.add_argument("--processes",
+			dest="processes", default=const.DefaultProcessCount, type=int,
+			help="Number of parallel processes. (Only applies to dir sync/dl/ul). [default: %(default)s]")
 
 	# support aria2c
 	parser.add_argument("--downloader",
@@ -3196,7 +3370,7 @@ def getparser():
 	# the MAIN parameter - what command to perform
 	parser.add_argument("command", nargs='*', help = "operations (quota, list, etc)")
 
-	return parser;
+	return parser
 
 def clean_prog_files(cleanlevel, verbose, configdir = const.ConfigDir):
 	tokenpath = os.path.join(configdir, const.TokenFileName)
@@ -3299,28 +3473,35 @@ def main(argv=None): # IGNORE:C0111
 			#timeout = args.timeout or None
 
 			cached.usecache = not args.forcehash
+			bypyopt = {
+				'slice_size': slice_size,
+				'dl_chunk_size': chunk_size,
+				'verify': args.verify,
+				'retry': args.retry,
+				'timeout': args.timeout,
+				'quit_when_fail': args.quit,
+				'resumedownload': args.resumedl,
+				'incregex': args.incregex,
+				'ondup': args.ondup,
+				'followlink': args.followlink,
+				'checkssl': args.checkssl,
+				'cacerts': args.cacerts,
+				'rapiduploadonly': args.rapiduploadonly,
+				'mirror': args.mirror,
+				'selectmirror': args.selectmirror,
+				'configdir': args.configdir,
+				'resumedl_revertcount': args.resumedl_revertcount,
+				'downloader': args.downloader,
+				'downloader_args': dl_args,
+				'verbose': args.verbose,
+				'debug': args.debug}
+			if Pool:
+				bypyopt['processes'] = args.processes
 
 			# we construct a ByPy object here.
 			# if you want to try PanAPI, simply replace ByPy with PanAPI, and all the bduss related function _should_ work
 			# I didn't use PanAPI here as I have never tried out those functions inside
-			by = ByPy(slice_size = slice_size, dl_chunk_size = chunk_size,
-					verify = args.verify,
-					retry = args.retry, timeout = args.timeout,
-					quit_when_fail = args.quit,
-					resumedownload = args.resumedl,
-					incregex = args.incregex,
-					ondup = args.ondup,
-					followlink = args.followlink,
-					checkssl = args.checkssl,
-					cacerts = args.cacerts,
-					rapiduploadonly = args.rapiduploadonly,
-					mirror = args.mirror,
-					selectmirror = args.selectmirror,
-					configdir = args.configdir,
-					resumedl_revertcount = args.resumedl_revertcount,
-					downloader = args.downloader,
-					downloader_args = dl_args,
-					verbose = args.verbose, debug = args.debug)
+			by = ByPy(**bypyopt)
 			uargs = []
 			for arg in args.command[1:]:
 				if sys.version_info[0] < 3:
