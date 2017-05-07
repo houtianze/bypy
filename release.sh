@@ -94,6 +94,7 @@ main() {
 		bypyversion=`grep __version__ bypy/const.py | sed -E "s/^.*'(.*)'$/\1/"`
 		git tag
 		git tag "$bypyversion"
+		git push
 		git push --tags
 		git tag
 	fi
