@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -o errexit
+#set -o errexit
 #set -x
 
 py2venv="$HOME/Documents/t/venv27"
@@ -18,7 +18,7 @@ createvenv() {
 	then
 	  python2 -m virtualenv "$py2venv"
 	fi
-	
+
 	if [ ! -d "$py3venv" ]
 	then
 	  python3 -m virtualenv "$py3venv"
@@ -79,7 +79,7 @@ main() {
 	python genrst.py
 	createvenv
 	parsearg $*
-	
+
 	if [ "$actual" -eq 0 ]
 	then
 		repoopt="-r testpypi"
@@ -98,19 +98,19 @@ main() {
 		git push --tags
 		git tag
 	fi
-	
+
 	if [ "$testit" -eq 1 ]
 	then
 		doctest python2
 		doctest python3
 	fi
-	
+
 	if [ "$build" -eq 1 ]
 	then
 		rm -Rf dist/*
 		python setup.py bdist_wheel #sdist
 	fi
-	
+
 	uploadcmd="twine upload dist/* $repoopt"
 	if [ "$upload" -eq 0 ]
 	then
@@ -118,7 +118,7 @@ main() {
 	else
 		eval "$uploadcmd"
 	fi
-	
+
 	if [ "$install" -eq 1 ]
 	then
 		installtest "$py2venv/bin/activate"
