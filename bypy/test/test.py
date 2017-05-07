@@ -301,7 +301,7 @@ def main():
 		by = bypy.ByPy(configdir=ConfigDir, debug=1, verbose=1)
 		if 'refresh' in sys.argv:
 			by.refreshtoken()
-		#runTests(by)
+		runTests(by)
 		if '1' in sys.argv:
 			return
 
