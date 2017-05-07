@@ -14,6 +14,9 @@ bypy - Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网�
 
 中文说明 (English readme is at the bottom)
 ---
+
+:smile: 目录上传/下载/同步加入了多进程支持（`--processes`）
+---
 这是一个百度云/百度网盘的Python客户端。主要的目的就是在Linux环境下（Windows下应该也可用，但没有仔细测试过）通过命令行来使用百度云盘的2TB的巨大空间。比如，你可以用在Raspberry Pi树莓派上。它提供文件列表、下载、上传、比较、向上同步、向下同步，等操作。
 
 **由于百度PCS API权限限制，程序只能存取百度云端`/apps/bypy`目录下面的文件和目录。**
@@ -105,6 +108,9 @@ bypy compare
 
 ===
 Introduction
+---
+
+:smile: Multiprocessing added to directory upload / download / sync（`--processes`）
 ---
 This is a Python client for Baidu Yun (a.k.a PCS - Personal Cloud Storage), an online storage website offering 2 TB (fast) free personal storage. This main purpose is to be able to utilize this stoarge service under Linux environment (console), e.g. Raspberry Pi.
 
