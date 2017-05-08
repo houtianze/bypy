@@ -105,7 +105,8 @@ bypy compare
 ---
 请阅: [LICENSE](LICENSE)
 
-===
+---
+
 Introduction
 ---
 
@@ -199,8 +200,9 @@ Please go to [wiki](../../wiki)
 
 License
 ---
+
 Please refer to [LICENSE](LICENSE)
 
-===
+---
 
 PCS API Document: http://developer.baidu.com/wiki/index.php?title=docs/pcs/rest/file_data_apis_list
