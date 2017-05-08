@@ -19,7 +19,7 @@ install:
 # command to run tests, e.g. python setup.py test
 script:
  - pyflakes bypy
- - python -m coverage run -m bypy.test
+ - python -m coverage run --include "bypy*" -m bypy.test
 # - python -m coverage run -m bypy
 notifications:
   email:
