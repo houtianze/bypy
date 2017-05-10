@@ -1,6 +1,7 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.5.1: Improve multiprocess (and fix filter() for Python3)
 -  1.5.0: Multi-Process for directory download / upload / sync up/down
 
 -  1.4.4: Aria2 download works even file names contain single quote (')

@@ -69,6 +69,7 @@ elif sys.version_info[0] == 3:
 from . import const
 from . import gvar
 from . import printer_console
+from . import monkey # TODO: circular import
 from .cached import (cached, stringifypickle, md5, crc32, slice_md5)
 from .struct import PathDictTree
 from .util import (
@@ -112,8 +113,10 @@ except:
 
 # http://stackoverflow.com/a/27320254/404271
 try:
+	import multiprocess as mp
 	from multiprocess import Pool
 except ImportError:
+	mp = None
 	Pool = None
 	perr("'multiprocess' library is not available, no parallel dl/ul.")
 
@@ -490,18 +493,22 @@ class ByPy(object):
 		return True
 
 	def __filter_multi_results(self, results):
-		errors = filter(lambda x: x != const.ENoError, results)
+		# http://www.diveintopython3.net/porting-code-to-python-3-with-2to3.html#filter
+		errors = list(filter(lambda x: x != const.ENoError, results))
 		return const.ENoError if len(errors) == 0 else errors[-1]
 
 	def __multi_process(self, worker, iter, process = "dl / ul"):
 		if not self.__check_prompt_multiprocess():
 			return const.EArgument
 		self.__warn_multi_processes(process)
+		# patch the printer
+		restoremp = monkey.setmultiprocess()
 		with UPool(self.processes) as pool:
 			# http://stackoverflow.com/a/35134329/404271
 			# On Python 2.x, Ctrl-C won't work if we use pool.map(), wait() or get()
 			ar = pool.map_async(worker, iter)
 			results = ar.get(const.TenYearInSeconds)
+			restoremp()
 			return self.__filter_multi_results(results)
 
 	def __print_error_json(self, r):
@@ -643,7 +650,7 @@ class ByPy(object):
 					result = ec
 				# errors that make retrying meaningless
 				elif (
-					ec == 31061 or # sc == 400 file already exists
+					#ec == 31061 or # sc == 400 file already exists
 					ec == 31062 or # sc == 400 file name is invalid
 					ec == 31063 or # sc == 400 file parent path does not exist
 					ec == 31064 or # sc == 403 file is not authorized

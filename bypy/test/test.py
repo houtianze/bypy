@@ -29,7 +29,7 @@ from .. import const
 
 TestGarbledPathNames = False
 
-MyDir = os.path.dirname(__file__)
+MyDir = os.path.relpath(os.path.dirname(__file__))
 ConfigDir = os.path.join(MyDir, 'configdir')
 DownloadDir = os.path.join(MyDir, 'downdir')
 TestDir = os.path.join(MyDir, 'testdir')
@@ -59,8 +59,18 @@ def assertif(cond, assertion):
 	if cond:
 		assert assertion
 
-def byright(by, assertion):
+def assertsingle(by, assertion):
 	assertif(by.processes == 1, assertion)
+
+def chkok(by, result):
+	if by.processes == 1:
+		if result != const.ENoError:
+			print("Failed, result: {}".format(result))
+			assert False
+	else:
+		if result != const.ENoError and result != const.IEFileAlreadyExists:
+			print("Failed, result: {}".format(result))
+			assert False
 
 def makesuredir(dirname):
 	if not os.path.exists(dirname):
@@ -142,7 +152,7 @@ def prepare(by):
 	makesuredir(ConfigDir)
 	# we must upload something first, otherwise, listing / deleting the root directory will fail
 	banner("Uploading a file")
-	assert by.upload(TestDir + '/a.txt') == const.ENoError
+	chkok(by, by.upload(TestDir + '/a.txt'))
 	print("Response: {}".format(by.response.json()))
 	banner("Listing the root directory")
 	assert by.list('/') == const.ENoError
@@ -197,11 +207,11 @@ def compare(by):
 def uploaddir(by):
 	# upload
 	banner("Uploading the local directory")
-	assert by.upload(TestDir, TestDir) == const.ENoError
-	byright(by, filterregex(mpr.getq(),
+	chkok(by, by.upload(TestDir, TestDir))
+	assertsingle(by, filterregex(mpr.getq(),
 					   r"RapidUpload:.*testdir[\\/]allzero.1m.bin' =R=\> '.*/testdir/allzero.1m.bin' OK"))
-	byright(by, filterregex(mpr.getq(), r".*testdir[\\/]a.txt' ==> '.*/testdir/a.txt' OK."))
-	byright(by, filterregex(mpr.getq(), r".*testdir[\\/]b.txt' ==> '.*/testdir/b.txt' OK."))
+	assertsingle(by, filterregex(mpr.getq(), r".*testdir[\\/]a.txt' ==> '.*/testdir/a.txt' OK."))
+	assertsingle(by, filterregex(mpr.getq(), r".*testdir[\\/]b.txt' ==> '.*/testdir/b.txt' OK."))
 	print("Response: {}".format(by.response.json()))
 	mpr.empty()
 
@@ -209,8 +219,8 @@ def downdir(by):
 	# download
 	banner("Downloading dir")
 	shutil.rmtree(DownloadDir, ignore_errors=True)
-	assert by.downdir(TestDir, DownloadDir) == const.ENoError
-	assert by.download(TestDir, DownloadDir) == const.ENoError
+	chkok(by, by.downdir(TestDir, DownloadDir))
+	chkok(by, by.download(TestDir, DownloadDir))
 	assert by.compare(TestDir, DownloadDir) == const.ENoError
 	assertsame(by)
 	mpr.empty()
@@ -218,8 +228,7 @@ def downdir(by):
 def syncup(by):
 	banner("Syncing up")
 	emptyremote(by)
-	sue = by.syncup(TestDir, TestDir)
-	assert sue == const.ENoError or sue == const.IEFileAlreadyExists
+	chkok(by, by.syncup(TestDir, TestDir))
 	assert by.compare(TestDir, TestDir) == const.ENoError
 	assertsame(by)
 	mpr.empty()
@@ -227,8 +236,8 @@ def syncup(by):
 def syncdown(by):
 	banner("Syncing down")
 	shutil.rmtree(DownloadDir, ignore_errors=True)
-	assert by.syncdown(TestDir, DownloadDir) == const.ENoError
-	assert by.compare(TestDir, DownloadDir) == const.ENoError
+	chkok(by, by.syncdown(TestDir, DownloadDir))
+	chkok(by, by.compare(TestDir, DownloadDir))
 	shutil.rmtree(DownloadDir, ignore_errors=True)
 	assertsame(by)
 	mpr.empty()
@@ -240,29 +249,29 @@ def cdl(by):
 	mpr.empty()
 	assert by.cdl_list() == const.ENoError
 	# {u'request_id': 353951550, u'task_info': [], u'total': 0}
-	byright(by, filterregex(mpr.getq(), r"'total'\s*:\s*0"))
+	assertsingle(by, filterregex(mpr.getq(), r"'total'\s*:\s*0"))
 	mpr.empty()
 	assert by.cdl_query(123) == const.ENoError
-	byright(by, filterregex(mpr.getq(), r"'result'\s*:\s*1"))
+	assertsingle(by, filterregex(mpr.getq(), r"'result'\s*:\s*1"))
 	mpr.empty()
 	assert by.cdl_add("http://dl.client.baidu.com/BaiduKuaijie/BaiduKuaijie_Setup.exe", TestDir) == const.ENoError
-	byright(by, filterregex(mpr.getq(), r"'task_id'\s*:\s*\d+"))
+	assertsingle(by, filterregex(mpr.getq(), r"'task_id'\s*:\s*\d+"))
 	assert by.cdl_addmon("http://dl.client.baidu.com/BaiduKuaijie/BaiduKuaijie_Setup.exe", TestDir) == const.ENoError
 	mpr.empty()
 
 def testshare(by):
 	banner("Share")
 	#assert const.ENoError == by.share(ShareDir, '/', True, True)
-	assert const.ENoError == by.share(ShareDir, ShareDir)
-	byright(by, filterregex(mpr.getq(), r"bypy accept /{}/1M0.bin".format(ShareDir)))
-	byright(by, filterregex(mpr.getq(), r"bypy accept /{}/1M1.bin".format(ShareDir)))
-	byright(by, filterregex(mpr.getq(), r"bypy accept /{}/subdir/1M2.bin".format(ShareDir)))
+	chkok(by, by.share(ShareDir, ShareDir))
+	assertsingle(by, filterregex(mpr.getq(), r"bypy accept /{}/1M0.bin".format(ShareDir)))
+	assertsingle(by, filterregex(mpr.getq(), r"bypy accept /{}/1M1.bin".format(ShareDir)))
+	assertsingle(by, filterregex(mpr.getq(), r"bypy accept /{}/subdir/1M2.bin".format(ShareDir)))
 	mpr.empty()
-	assert const.ENoError == by.upload(ShareDir, ShareDir)
-	assert const.ENoError == by.share(ShareDir, ShareDir, False)
-	byright(by, filterregex(mpr.getq(), r"bypy accept /{}/1M0.bin".format(ShareDir)))
-	byright(by, filterregex(mpr.getq(), r"bypy accept /{}/1M1.bin".format(ShareDir)))
-	byright(by, filterregex(mpr.getq(), r"bypy accept /{}/subdir/1M2.bin".format(ShareDir)))
+	chkok(by, by.upload(ShareDir, ShareDir))
+	chkok(by, by.share(ShareDir, ShareDir, False))
+	assertsingle(by, filterregex(mpr.getq(), r"bypy accept /{}/1M0.bin".format(ShareDir)))
+	assertsingle(by, filterregex(mpr.getq(), r"bypy accept /{}/1M1.bin".format(ShareDir)))
+	assertsingle(by, filterregex(mpr.getq(), r"bypy accept /{}/subdir/1M2.bin".format(ShareDir)))
 	mpr.empty()
 
 def cleanup():
@@ -296,7 +305,6 @@ def runTests(by):
 def main():
 	testmergeinto()
 
-
 	try:
 		by = bypy.ByPy(configdir=ConfigDir, debug=1, verbose=1)
 		if 'refresh' in sys.argv:
@@ -305,7 +313,7 @@ def main():
 		if '1' in sys.argv:
 			return
 
-		by = bypy.ByPy(configdir=ConfigDir, processes = 4, debug=1, verbose=1)
+		by = bypy.ByPy(configdir=ConfigDir, processes=4, debug=1, verbose=1)
 		runTests(by)
 		if '2' in sys.argv:
 			return
@@ -313,7 +321,7 @@ def main():
 		# test aria2 downloading
 		by = bypy.ByPy(configdir=ConfigDir, downloader='aria2', debug=1, verbose=1)
 		downdir(by)
-		by = bypy.ByPy(configdir=ConfigDir, downloader='aria2', processes = 2, debug=1, verbose=1)
+		by = bypy.ByPy(configdir=ConfigDir, downloader='aria2', processes=2, debug=1, verbose=1)
 		downdir(by)
 	except KeyboardInterrupt:
 		print("User cancelled, cleaning up ...")
