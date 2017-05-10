@@ -313,7 +313,8 @@ def main():
 		if '1' in sys.argv:
 			return
 
-		by = bypy.ByPy(configdir=ConfigDir, processes=4, debug=1, verbose=1)
+		time.sleep(10)
+		by = bypy.ByPy(configdir=ConfigDir, processes=2, debug=1, verbose=1)
 		runTests(by)
 		if '2' in sys.argv:
 			return

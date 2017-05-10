@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.5.2: Defuse the circular import bomb brought in the previous version...
 - 1.5.1: Improve multiprocess (and fix filter() for Python3)
 - 1.5.0: Multi-Process for directory download / upload / sync up/down
 

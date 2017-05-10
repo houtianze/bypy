@@ -69,7 +69,9 @@ elif sys.version_info[0] == 3:
 from . import const
 from . import gvar
 from . import printer_console
-from . import monkey # TODO: circular import
+from . import cached as cachedm
+from . import util
+from . import printer
 from .cached import (cached, stringifypickle, md5, crc32, slice_md5)
 from .struct import PathDictTree
 from .util import (
@@ -133,6 +135,46 @@ if Pool != None:
 
 # global instance for non-member function to access
 gbypyinst = None
+
+# This crap is here to avoid circular imports
+# What a fantastic packing architecture Python has!
+def makemppr(pr):
+	def mppr(msg, *args, **kwargs):
+		return pr(mp.current_process().name + ': ' + msg, *args, **kwargs)
+	return mppr
+
+def makemppprgr(pprgr):
+	def mppprgr(finish, total, start_time = None, existing = 0,
+		prefix = '', suffix = '', seg = 20):
+		prefix = mp.current_process().name + ': ' + str(prefix)
+		pprgr(finish, total, start_time, existing, prefix, suffix, seg)
+	return mppprgr
+
+def set_mp_print():
+	global pr
+	global prcolor
+	global ask
+	global pprgr
+	opr = pr
+	oprcolor = prcolor
+	oask = ask
+	opprgr = pprgr
+	def restoremp():
+		global pr
+		global prcolor
+		global ask
+		global pprgr
+		pr = cachedm.pr = util.pr = opr
+		prcolor = util.prcolor = printer.prcolor = oprcolor
+		ask = util.ask = oask
+		pprgr = util.pprgr = opprgr
+
+	pr = cachedm.pr = util.pr = makemppr(opr)
+	prcolor = util.prcolor = printer.prcolor = makemppr(oprcolor)
+	ask = util.ask = makemppr(oask)
+	pprgr = util.pprgr = makemppprgr(opprgr)
+
+	return restoremp
 
 class ByPy(object):
 	'''The main class of the bypy program'''
@@ -502,7 +544,7 @@ class ByPy(object):
 			return const.EArgument
 		self.__warn_multi_processes(process)
 		# patch the printer
-		restoremp = monkey.setmultiprocess()
+		restoremp = set_mp_print()
 		with UPool(self.processes) as pool:
 			# http://stackoverflow.com/a/35134329/404271
 			# On Python 2.x, Ctrl-C won't work if we use pool.map(), wait() or get()
@@ -650,7 +692,7 @@ class ByPy(object):
 					result = ec
 				# errors that make retrying meaningless
 				elif (
-					#ec == 31061 or # sc == 400 file already exists
+					ec == 31061 or # sc == 400 file already exists
 					ec == 31062 or # sc == 400 file name is invalid
 					ec == 31063 or # sc == 400 file parent path does not exist
 					ec == 31064 or # sc == 403 file is not authorized
@@ -1109,7 +1151,7 @@ Possible fixes:
 		self.pd("Remote file size: {}".format(rsize))
 
 		if self.__current_file_size == rsize:
-			self.pd("Local file and remote file sizes match")
+			self.pd("Local and remote file size matches")
 			if self.__verify:
 				if not gotlmd5:
 					self.__current_file_md5 = md5(self.__current_file)
@@ -1117,15 +1159,15 @@ Possible fixes:
 				self.pd("Remote file MD5: {}".format(rmd5))
 
 				if self.__current_file_md5 == rmd5:
-					self.pd("Local file and remote file hashes match")
+					self.pd("Local and remote file hash matches")
 					return const.ENoError
 				else:
-					pinfo("Local file and remote file hashes DON'T match")
+					pinfo("Local and remote file hash DOESN'T match")
 					return const.EHashMismatch
 			else:
 				return const.ENoError
 		else:
-			pinfo("Local file and remote file sizes DON'T match")
+			pinfo("Local and remote file size DOESN'T match")
 			return const.EHashMismatch
 
 	def __get_file_info_act(self, r, args):
@@ -2166,7 +2208,6 @@ download a remote directory (recursively) / file
 			'path' : rpath }
 		return self.__post(pcsurl + 'file', pars, self.__mkdir_act, **kwargs)
 
-
 	def mkdir(self, remotepath):
 		''' Usage: mkdir <remotedir> - \
 create a directory at Baidu Yun
@@ -2653,7 +2694,7 @@ if not specified, it defaults to the root directory
 					result = subresult
 			else: # " t == 'DF' " must be true
 				subresult = self.__mkdir(rcpath)
-				if subresult != const.ENoError:
+				if subresult != const.ENoError and subresult != const.IEFileAlreadyExists:
 					result = subresult
 		else:
 			pinfo("Uploading '{}' skipped".format(lcpath))
@@ -2675,7 +2716,7 @@ if not specified, it defaults to the root directory
 				result = subresult
 		else: # " t == 'D' " must be true
 			subresult = self.__mkdir(rcpath)
-			if subresult != const.ENoError:
+			if subresult != const.ENoError and subresult != const.IEFileAlreadyExists:
 				result = subresult
 
 		return result
