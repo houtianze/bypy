@@ -1355,7 +1355,8 @@ get information of the given path (dir / file) at Baidu Yun.
 				pars, self.__upload_slice_act, remotepath,
 				# want to be proper? properness doesn't work (search this sentence for more occurence)
 				#files = { 'file' : (os.path.basename(self.__current_file), self.__current_slice) } )
-				files = { 'file' : ('file', self.__current_slice) } )
+				#files = { 'file' : ('file', self.__current_slice) } )
+				data = self.__current_slice )
 
 	def __update_progress_entry(self, fullpath):
 		progress = jsonload(const.ProgressPath)
@@ -1538,7 +1539,8 @@ get information of the given path (dir / file) at Baidu Yun.
 				# apperantly, Baidu PCS doesn't use this file name for
 				# checking / verification, so we are probably safe here.
 				#files = { 'file' : (os.path.basename(localpath), f) })
-				files = { 'file' : ('file', f) })
+				#files = { 'file' : ('file', f) })
+				data = f)
 
 	#TODO: upload empty directories as well?
 	def __walk_upload(self, localpath, remotepath, ondup, walk):
