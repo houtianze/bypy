@@ -77,7 +77,10 @@ setup(
 		'Programming Language :: Python',
 		'Topic :: Utilities',
 		'Topic :: Internet :: WWW/HTTP'],
-	install_requires = ['requests>=2.10.0', 'multiprocess>=0.70.0'],
+	install_requires = [
+		'requests>=2.10.0',
+		'requests-toolbelt>=0.8.0',
+		'multiprocess>=0.70.0'],
 	include_package_data = True,
 	**meta
 )

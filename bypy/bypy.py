@@ -113,6 +113,8 @@ except:
 		perr("Something seems wrong with the urllib3 installation.\nQuitting")
 		sys.exit(const.EFatal)
 
+from requests_toolbelt import multipart
+
 # http://stackoverflow.com/a/27320254/404271
 try:
 	import multiprocess as mp
@@ -1355,8 +1357,7 @@ get information of the given path (dir / file) at Baidu Yun.
 				pars, self.__upload_slice_act, remotepath,
 				# want to be proper? properness doesn't work (search this sentence for more occurence)
 				#files = { 'file' : (os.path.basename(self.__current_file), self.__current_slice) } )
-				#files = { 'file' : ('file', self.__current_slice) } )
-				data = self.__current_slice )
+				files = { 'file' : ('file', self.__current_slice) } )
 
 	def __update_progress_entry(self, fullpath):
 		progress = jsonload(const.ProgressPath)
@@ -1525,6 +1526,10 @@ get information of the given path (dir / file) at Baidu Yun.
 		self.__add_isrev_param(ondup, pars)
 
 		with io.open(localpath, 'rb') as f:
+			# https://stackoverflow.com/a/35784072/404271
+			form = multipart.encoder.MultipartEncoder({
+				'file': ('file', f, 'application/octet-stream')})
+			headers = {"Content-Type": form.content_type}
 			return self.__post(cpcsurl + 'file',
 				pars, self.__upload_one_file_act, remotepath,
 				# wants to be proper? properness doesn't work
@@ -1540,7 +1545,7 @@ get information of the given path (dir / file) at Baidu Yun.
 				# checking / verification, so we are probably safe here.
 				#files = { 'file' : (os.path.basename(localpath), f) })
 				#files = { 'file' : ('file', f) })
-				data = f)
+				headers=headers, data=form)
 
 	#TODO: upload empty directories as well?
 	def __walk_upload(self, localpath, remotepath, ondup, walk):
