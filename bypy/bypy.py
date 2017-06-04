@@ -138,6 +138,10 @@ if Pool != None:
 # global instance for non-member function to access
 gbypyinst = None
 
+pcsurl = const.PcsUrl
+cpcsurl = const.CPcsUrl
+dpcsurl = const.DPcsUrl
+
 # This crap is here to avoid circular imports
 # What a fantastic packing architecture Python has!
 def makemppr(pr):
@@ -382,17 +386,9 @@ class ByPy(object):
 		mirror = mirror.lower()
 		if len(mirror) > 0 and mirror != const.PcsDomain:
 			self.setpcsurl(mirror)
-		else:
-			if selectmirror:
-				self.__select_fastest_mirror()
-			else:
-				# use the default domain
-				global pcsurl
-				global cpcsurl
-				global dpcsurl
-				pcsurl = const.PcsUrl
-				cpcsurl = const.CPcsUrl
-				dpcsurl = const.DPcsUrl
+		elif selectmirror:
+			self.__select_fastest_mirror()
+		# else: already set in global
 
 		if self.__checkssl:
 			# sort of undocumented by requests
@@ -1348,16 +1344,38 @@ get information of the given path (dir / file) at Baidu Yun.
 			perr("'{}' >>==> '{}' FAILED.".format(self.__current_file, args))
 			return const.EHashMismatch
 
+	# want to be proper? properness doesn't work
+	# there seems to be a bug at Baidu's handling of http text:
+	# Content-Disposition: ...  filename=utf-8''yourfile.ext
+	# (pass '-ddd' to this program to verify this)
+	# when you specify a unicode file name, which will be encoded
+	# using the utf-8'' syntax
+	# so, we put a work-around here: we always call our file 'file'
+	# NOTE: an empty file name '' doesn't seem to work, so we
+	# need to give it a name at will, but empty one.
+	# apperantly, Baidu PCS doesn't use this file name for
+	# checking / verification, so we are probably safe here.
+	#files = { 'file' : (os.path.basename(self.__current_file), self.__current_slice) } )
+	#files = { 'file' : (os.path.basename(localpath), f) })
+	#files = { 'file' : ('file', f) })
+	def __stream_upload(self, fo, pars, act, remotepath,
+			url = cpcsurl + 'file',
+			uploadfilename = 'file'):
+		# https://stackoverflow.com/a/35784072/404271
+		form = multipart.encoder.MultipartEncoder({
+			'file': (uploadfilename, fo, 'application/octet-stream')})
+		headers = {"Content-Type": form.content_type}
+		return self.__post(url,
+			pars, act, remotepath,
+			headers=headers, data=form)
+
 	def __upload_slice(self, remotepath):
 		pars = {
 			'method' : 'upload',
 			'type' : 'tmpfile'}
 
-		return self.__post(cpcsurl + 'file',
-				pars, self.__upload_slice_act, remotepath,
-				# want to be proper? properness doesn't work (search this sentence for more occurence)
-				#files = { 'file' : (os.path.basename(self.__current_file), self.__current_slice) } )
-				files = { 'file' : ('file', self.__current_slice) } )
+		return self.__stream_upload(self.__current_slice,
+				pars, self.__upload_slice_act, remotepath)
 
 	def __update_progress_entry(self, fullpath):
 		progress = jsonload(const.ProgressPath)
@@ -1526,26 +1544,8 @@ get information of the given path (dir / file) at Baidu Yun.
 		self.__add_isrev_param(ondup, pars)
 
 		with io.open(localpath, 'rb') as f:
-			# https://stackoverflow.com/a/35784072/404271
-			form = multipart.encoder.MultipartEncoder({
-				'file': ('file', f, 'application/octet-stream')})
-			headers = {"Content-Type": form.content_type}
-			return self.__post(cpcsurl + 'file',
-				pars, self.__upload_one_file_act, remotepath,
-				# wants to be proper? properness doesn't work
-				# there seems to be a bug at Baidu's handling of http text:
-				# Content-Disposition: ...  filename=utf-8''yourfile.ext
-				# (pass '-ddd' to this program to verify this)
-				# when you specify a unicode file name, which will be encoded
-				# using the utf-8'' syntax
-				# so, we put a work-around here: we always call our file 'file'
-				# NOTE: an empty file name '' doesn't seem to work, so we
-				# need to give it a name at will, but empty one.
-				# apperantly, Baidu PCS doesn't use this file name for
-				# checking / verification, so we are probably safe here.
-				#files = { 'file' : (os.path.basename(localpath), f) })
-				#files = { 'file' : ('file', f) })
-				headers=headers, data=form)
+			return self.__stream_upload(f, pars,
+					self.__upload_one_file_act, remotepath)
 
 	#TODO: upload empty directories as well?
 	def __walk_upload(self, localpath, remotepath, ondup, walk):
