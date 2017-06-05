@@ -537,19 +537,39 @@ class ByPy(object):
 		errors = list(filter(lambda x: x != const.ENoError, results))
 		return const.ENoError if len(errors) == 0 else errors[-1]
 
-	def __multi_process(self, worker, iter, process = "dl / ul"):
+	def __multi_process(self, worker, iterator, process = "dl / ul"):
 		if not self.__check_prompt_multiprocess():
 			return const.EArgument
 		self.__warn_multi_processes(process)
 		# patch the printer
 		restoremp = set_mp_print()
 		with UPool(self.processes) as pool:
-			# http://stackoverflow.com/a/35134329/404271
-			# On Python 2.x, Ctrl-C won't work if we use pool.map(), wait() or get()
-			ar = pool.map_async(worker, iter)
-			results = ar.get(const.TenYearInSeconds)
-			restoremp()
-			return self.__filter_multi_results(results)
+			try:
+				# http://stackoverflow.com/a/35134329/404271
+				# On Python 2.x, Ctrl-C won't work if we use pool.map(), wait() or get()
+				ar = pool.map_async(worker, iterator)
+				results = ar.get(const.TenYearInSeconds)
+				restoremp()
+				return self.__filter_multi_results(results)
+			except pickle.PicklingError as pe:
+				errmsg = ("Exception:\n{}\n"
+						"--------------------------------\n"
+						"Error: Your Python 'multiprocess' library is probably "
+						"not properly installed (missing C extensions). "
+						"You need to install a C compiler first before "
+						"installing the Python 'multiprocess' library. "
+						"(All these hassles can be saved if Python's builtin "
+						"'multiprocessing' works properly, sigh)\n"
+						"Fix for debian derivatives:\n"
+						"- Install gcc: # apt-get install gcc\n"
+						"- Reinstall Python 'multiprocess' library:\n"
+						"  # pip uninstall -y multiprocess\n"
+						"  # pip install -v multiprocess\n"
+						"- If there's no errors/warnings in the above actions, "
+						"then this error should be gone when you run 'bypy' with '{}' again.\n"
+						).format(formatex(pe), const.MultiprocessOption)
+				perr(errmsg)
+				self.quit(const.EFatal)
 
 	def __print_error_json(self, r):
 		try:
@@ -3389,7 +3409,7 @@ def getparser():
 		type=int, metavar='RCOUNT',
 		help="Revert back at least %(metavar)s download chunk(s) and align to chunk boundary when resuming the download. A negative value means NO reverts. [default: %(default)s]")
 	if Pool:
-		parser.add_argument("--processes",
+		parser.add_argument(const.MultiprocessOption,
 			dest="processes", default=const.DefaultProcessCount, type=int,
 			help="Number of parallel processes. (Only applies to dir sync/dl/ul). [default: %(default)s]")
 

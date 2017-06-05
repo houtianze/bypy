@@ -106,6 +106,8 @@ class RequestsRequester(object):
 
 	@classmethod
 	def disable_warnings(cls, debug):
+		failures = 0
+		exmsg = ''
 		try:
 			import requests.packages.urllib3 as ul3
 			if debug:
@@ -113,19 +115,26 @@ class RequestsRequester(object):
 			#ul3.disable_warnings(ul3.exceptions.InsecureRequestWarning)
 			#ul3.disable_warnings(ul3.exceptions.InsecurePlatformWarning)
 			ul3.disable_warnings()
-		except:
-			try:
-				import urllib3 as ul3
-				if debug:
-					pdbg("Using urllib3 to disable warnings")
-				ul3.disable_warnings()
-			except Exception as ex:
-				perr("Failed to disable warnings for Urllib3.\n"
-					"Possibly the requests library is out of date?\n"
-					"You can upgrade it by running '{}'.\n{}".format(
-						const.PipUpgradeCommand, formatex(ex)))
-			# i don't know why under Ubuntu, 'pip install requests' doesn't install the requests.packages.* packages
-				pass
+		except Exception as ex:
+			failures += 1
+			exmsg += formatex(ex) + '-' * 64 + '\n'
+
+		# i don't know why under Ubuntu, 'pip install requests'
+		# doesn't install the requests.packages.* packages
+		try:
+			import urllib3 as ul3
+			if debug:
+				pdbg("Using urllib3 to disable warnings")
+			ul3.disable_warnings()
+		except Exception as ex:
+			failures += 1
+			exmsg += formatex(ex)
+
+		if failures >= 2:
+			perr("Failed to disable warnings for Urllib3.\n"
+				"Possibly the requests library is out of date?\n"
+				"You can upgrade it by running '{}'.\nExceptions:\n{}".format(
+					const.PipUpgradeCommand, exmsg))
 
 	# only if user specifies '-ddd' or more 'd's, the following
 	# debugging information will be shown, as it's very talkative.

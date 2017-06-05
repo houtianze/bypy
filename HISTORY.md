@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.5.4: Print instructions on how to fix 'multiprocess' errors
 - 1.5.3: Change to streaming upload
 - 1.5.2: Defuse the circular import bomb brought in the previous version...
 - 1.5.1: Improve multiprocess (and fix filter() for Python3)
