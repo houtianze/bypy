@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python -tt
 # encoding: utf-8
 # PYTHON_ARGCOMPLETE_OK
 # ===  IMPORTANT  ====
@@ -556,12 +556,13 @@ class ByPy(object):
 						"--------------------------------\n"
 						"Error: Your Python 'multiprocess' library is probably "
 						"not properly installed (missing C extensions). "
-						"You need to install a C compiler first before "
+						"You need to install a C compiler and Python headers before "
 						"installing the Python 'multiprocess' library. "
-						"(All these hassles can be saved if Python's builtin "
-						"'multiprocessing' works properly, sigh)\n"
+						"(All these hassles could have been saved if Python's builtin "
+						"'multiprocessing' works properly, sigh.)\n"
 						"Fix for debian derivatives:\n"
 						"- Install gcc: # apt-get install gcc\n"
+						"- Install python-dev: # apt-get install python-dev\n"
 						"- Reinstall Python 'multiprocess' library:\n"
 						"  # pip uninstall -y multiprocess\n"
 						"  # pip install -v multiprocess\n"
