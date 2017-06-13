@@ -1850,7 +1850,6 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 	def __down_aria2c(self, remotefile, localfile):
 		url = "{}{}".format(dpcsurl, "file")
-
 		# i think encoding in UTF-8 before escaping is presumably the best practice
 		# http://stackoverflow.com/a/913653/404271
 		pars = {
@@ -1858,19 +1857,32 @@ try to create a file at PCS by combining slices, having MD5s specified
 			"path": remotefile.encode('utf-8'),
 			"access_token": self.__access_token,
 			}
-
 		full_url = "{}?{}".format(url, ulp.urlencode(pars))
-
 		cmd = ['aria2c', '--user-agent="{}"'.format(const.UserAgent)] \
 			+ shlex.split(self.__downloader_args) \
 			+ ['-o', localfile, full_url]
-		self.pd("call: {}".format(cmd))
-		ret = subprocess.call(cmd)
-		self.pd("aria2c exited with status: {}".format(ret))
-		# TODO: a finer map return codes to our internal errors
-		if ret != const.ENoError:
-			ret == const.ERequestFailed
-		return ret
+
+		tries = self.__retry
+		subret = 0
+		i = 0
+		while True:
+			self.pd("call: {}".format(cmd))
+			subret = subprocess.call(cmd)
+			self.pd("aria2c exited with status: {}".format(subret))
+			if subret == 0:
+				return const.ENoError
+			i += 1
+			if i < tries:
+				# algo changed: delay more after each failure
+				delay = const.RetryDelayInSec * i
+				perr("Waiting {} seconds before retrying...".format(delay))
+				time.sleep(delay)
+				perr("Request Try #{} / {}".format(i + 1, tries))
+			else:
+				perr("Maximum number ({}) of tries failed.".format(tries))
+				if self.__quit_when_fail:
+					self.quit(const.EMaxRetry)
+				return const.EMaxRetry
 
 	# requirment: self.__remote_json is already gotten
 	def __downchunks(self, rfile, start):

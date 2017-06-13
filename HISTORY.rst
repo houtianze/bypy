@@ -1,6 +1,7 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.5.6: Downloading using downloader also retries
 -  1.5.5: Minor: Improve 'multiprocess' installation prompts
 -  1.5.4: Print instructions on how to fix 'multiprocess' errors
 -  1.5.3: Change to streaming upload
