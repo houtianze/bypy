@@ -12,7 +12,7 @@ import os
 
 # https://packaging.python.org/single_source_version/
 __title__ = 'bypy'
-__version__ = '1.5.6'
+__version__ = '1.5.7'
 __author__ = 'Hou Tianze'
 __license__ = 'MIT'
 __desc__ = 'Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网盘 Python 客户端'
@@ -88,6 +88,10 @@ SIPrefixTimes = {
 
 # before this, you don't know me, i don't know you - Eason
 TenYearInSeconds = 60 * 60 * 24 * 366 * 10
+# For Python 3 only, threading.TIMEOUT_MAX is 9223372036854.0 on all *nix systems,
+# but it's a little over 49 days for Windows, if we give a value larger than that,
+# Python 3 on Windows will throw towel, so we cringe.
+FortyNineDaysInSeconds = 60 * 60 * 24 * 49
 
 #### Baidu PCS constants
 # ==== NOTE ====

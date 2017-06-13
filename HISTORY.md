@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.5.7: Reduce multiprocess timeout to 49 days, to accommodate Python 3 on Windows
 - 1.5.6: Downloading using downloader also retries
 - 1.5.5: Minor: Improve 'multiprocess' installation prompts
 - 1.5.4: Print instructions on how to fix 'multiprocess' errors

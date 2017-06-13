@@ -548,7 +548,8 @@ class ByPy(object):
 				# http://stackoverflow.com/a/35134329/404271
 				# On Python 2.x, Ctrl-C won't work if we use pool.map(), wait() or get()
 				ar = pool.map_async(worker, iterator)
-				results = ar.get(const.TenYearInSeconds)
+				#results = ar.get(const.TenYearInSeconds)
+				results = ar.get(const.FortyNineDaysInSeconds)
 				restoremp()
 				return self.__filter_multi_results(results)
 			except pickle.PicklingError as pe:
