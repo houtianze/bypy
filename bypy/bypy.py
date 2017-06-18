@@ -2327,7 +2327,7 @@ copy a file / dir remotely at Baidu Yun
 		rid = j['request_id']
 		if rid:
 			pr("Deletion request '{}' OK".format(rid))
-			pr("Usage 'list' command to confirm")
+			pr("Use 'list' command to confirm")
 
 			return const.ENoError
 		else:
