@@ -154,6 +154,15 @@ def removedir(path, verbose = False):
 
 	return result
 
+def removepath(path):
+	if os.path.isdir(path):
+		return removedir(path)
+	elif os.path.isfile(path):
+		return removefile(path)
+	else:
+		perr("Can't remove '{}', it's non-file and none-dir.".format(path))
+		return const.EArgument
+
 def makedir(path, mode = 0o777, verbose = False):
 	result = const.ENoError
 

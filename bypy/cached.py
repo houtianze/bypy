@@ -20,7 +20,8 @@ from .util import (
 	pdbg, pinfo, perr,
 	getfilesize, getfilemtime_int,
 	joinpath, formatex,
-	jsonload, jsondump)
+	jsonload, jsondump,
+	removepath)
 
 pr = util.pr
 
@@ -257,6 +258,32 @@ class cached(object):
 						cached.cache[absdir] = files
 		cached.savecache()
 
+	@staticmethod
+	def remove(path):
+		def notfound():
+			pdbg("Failed to delete cache: Path '{}' not found in cache.".format(path))
+
+		dir, file = os.path.split(path)
+		absdir = os.path.abspath(dir)
+		if absdir in cached.cache:
+			entry = cached.cache[absdir]
+			if file in entry:
+				del entry[file]
+				pdbg("Cache for '{}' removed.".format(path))
+				if not entry:
+					del cached.cache[absdir]
+					pdbg("Empty directory '{}' in cache also removed.".format(absdir))
+			else:
+				notfound()
+		else:
+			notfound()
+
+	@staticmethod
+	def remove_path_and_cache(path):
+		result = removepath(path)
+		if result == const.ENoError and os.path.isfile(path):
+			cached.remove(path)
+		return result
 
 @cached
 def md5(filename, slice = const.OneM):

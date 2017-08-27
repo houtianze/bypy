@@ -46,6 +46,10 @@ nosetests.xml
 #.idea/
 #.idea/workspace.xml
 #*.rst
+#
+**/.DS_Store
 bypy/test/**/*.bin
 bypy/test/downdir/
 bypy/test/sharedir/
+.vscode/tags
+

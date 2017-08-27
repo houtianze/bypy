@@ -12,7 +12,7 @@ import os
 
 # https://packaging.python.org/single_source_version/
 __title__ = 'bypy'
-__version__ = '1.5.7'
+__version__ = '1.5.8'
 __author__ = 'Hou Tianze'
 __license__ = 'MIT'
 __desc__ = 'Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网盘 Python 客户端'
@@ -45,6 +45,7 @@ EMigrationFailed = 170
 EDownloadCerts = 180
 EUserRejected = 190 # user's decision
 EUpdateNeeded = 200
+ESkipped = 210
 EFatal = -1 # No way to continue
 # internal errors
 IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload the whole file.
@@ -157,8 +158,8 @@ HomeDir = os.path.expanduser('~')
 ConfigDir = HomeDir + os.sep + '.bypy'
 TokenFileName = 'bypy.json'
 TokenFilePath = ConfigDir + os.sep + TokenFileName
-SettingFileName= 'bypy.setting.json'
-SettingFilePath= ConfigDir + os.sep + SettingFileName
+SettingFileName = 'bypy.setting.json'
+SettingFilePath = ConfigDir + os.sep + SettingFileName
 HashCacheFileName = 'bypy.hashcache.json'
 HashCachePath = ConfigDir + os.sep + HashCacheFileName
 PickleFileName = 'bypy.pickle'
@@ -198,10 +199,10 @@ DefaultResumeDlRevertCount = 1
 DefaultProcessCount = 1
 
 ## program switches
-CleanOptionShort= '-c'
-CleanOptionLong= '--clean'
+CleanOptionShort = '-c'
+CleanOptionLong = '--clean'
 DisableSslCheckOption = '--disable-ssl-check'
 CaCertsOption = '--cacerts'
-MultiprocessOption= '--processes'
+MultiprocessOption = '--processes'
 
 # vim: tabstop=4 noexpandtab shiftwidth=4 softtabstop=4 ff=unix fileencoding=utf-8

@@ -301,6 +301,7 @@ class ByPy(object):
 		mirror = '',
 		selectmirror = False,
 		resumedl_revertcount = const.DefaultResumeDlRevertCount,
+		deletesource = False,
 		verbose = 0, debug = False,
 		configdir = const.ConfigDir,
 		requester = RequestsRequester,
@@ -370,6 +371,10 @@ class ByPy(object):
 		self.__followlink = followlink
 		self.__rapiduploadonly = rapiduploadonly
 		self.__resumedl_revertcount = resumedl_revertcount
+		self.__deletesource = deletesource
+		if deletesource:
+			self.pd("Forcing verification since we will delete source for successful transfers.")
+			self.__verify = True
 		self.processes = processes
 
 		# these two variables are without leadning double underscaore "__" as to export the as public,
@@ -1111,6 +1116,26 @@ Possible fixes:
 		''' Usage: refreshtoken - refresh the access token '''
 		return self.__refresh_token()
 
+	def __remove_remote_on_success(self, remotepath):
+		if self.__deletesource:
+			self.pd("Removing remote path '{}' after successful download.".format(remotepath))
+			result = self.__delete(remotepath)
+			if result == const.ENoError:
+				self.pd("Remote path '{}' removed.".format(remotepath))
+			else:
+				perr("Failed to remove remote path '{}'.".format(remotepath))
+			return result
+
+	def __remove_local_on_success(self, localpath):
+		if self.__deletesource:
+			self.pd("Removing local path '{}' after successful upload.".format(localpath))
+			result = cachedm.remove_path_and_cache(localpath)
+			if result == const.ENoError:
+				self.pd("Local path '{}' removed.".format(localpath))
+			else:
+				perr("Failed to remove local path '{}'.".format(localpath))
+			return result
+
 	def info(self):
 		return self.quota()
 
@@ -1635,16 +1660,21 @@ get information of the given path (dir / file) at Baidu Yun.
 
 	def __upload_dir(self, localpath, remotepath, ondup = 'overwrite'):
 		self.pd("Uploading directory '{}' to '{}'".format(localpath, remotepath))
+		result = const.ENoError
 		if Pool and self.processes > 1:
-			return self.__upload_dir_multi(localpath, remotepath, ondup)
+			result = self.__upload_dir_multi(localpath, remotepath, ondup)
 		else:
-			return self.__upload_dir_single(localpath, remotepath, ondup)
+			result =  self.__upload_dir_single(localpath, remotepath, ondup)
+		if result == const.ENoError:
+			self.__remove_local_on_success(localpath)
+		return result
 
 	def __upload_file(self, localpath, remotepath, ondup = 'overwrite'):
 		# TODO: this is a quick patch
 		if not self.__shallinclude(localpath, remotepath, True):
 			# since we are not going to upload it, there is no error
-			return const.ENoError
+			#return const.ENoError
+			return const.ESkipped
 
 		self.__current_file = localpath
 		self.__current_file_size = getfilesize(localpath)
@@ -1677,12 +1707,18 @@ get information of the given path (dir / file) at Baidu Yun.
 							self.__current_file_size))
 				else:
 					self.pv("'{}' can't be rapidly uploaded, so it's skipped since we are in the rapid-upload-only mode.".format(localpath))
-
-			return result
-		elif not self.__rapiduploadonly:
+					result = const.ESkipped
+		elif self.__rapiduploadonly:
+			self.pv("'{}' is too small to be rapidly uploaded, so it's skipped since we are in the rapid-upload-only mode.".format(localpath))
+			result = const.ESkipped
+		else:
 			# very small file, must be uploaded manually and no slicing is needed
 			self.pd("'{}' is small and being non-slicing uploaded.".format(self.__current_file))
-			return self.__upload_one_file(localpath, remotepath, ondup)
+			result = self.__upload_one_file(localpath, remotepath, ondup)
+
+		if result == const.ENoError:
+			self.__remove_local_on_success(localpath)
+		return result
 
 	def upload(self, localpath = '', remotepath = '', ondup = "overwrite"):
 		''' Usage: upload [localpath] [remotepath] [ondup] - \
@@ -1945,12 +1981,12 @@ try to create a file at PCS by combining slices, having MD5s specified
 
 		return result
 
-
 	def __downfile(self, remotefile, localfile):
 		# TODO: this is a quick patch
 		if not self.__shallinclude(localfile, remotefile, False):
 			# since we are not going to download it, there is no error
-			return const.ENoError
+			#return const.ENoError
+			return const.ESkipped
 
 		result = const.ENoError
 		rfile = remotefile
@@ -1972,12 +2008,14 @@ try to create a file at PCS by combining slices, having MD5s specified
 			if const.ENoError == self.__verify_current_file(self.__remote_json, False) \
 				and not (self.__downloader[:5] == const.DownloaderAria2 and os.path.exists(localfile + '.aria2')):
 				self.pd("Same local file '{}' already exists, skip downloading".format(localfile))
+				self.__remove_remote_on_success(remotefile)
 				return const.ENoError
 			else:
 				if not self.shalloverwrite("Same-name locale file '{}' exists but is different, "
 						"do you want to overwrite it? [y/N]".format(localfile)):
 					pinfo("Same-name local file '{}' exists but is different, skip downloading".format(localfile))
-					return const.ENoError
+					#return const.ENoError
+					return const.ESkipped
 
 			if self.__resumedownload and \
 				self.__compare_size(self.__current_file_size, self.__remote_json) == 2:
@@ -1993,7 +2031,8 @@ try to create a file at PCS by combining slices, having MD5s specified
 			if not self.shalloverwrite("Same-name directory '{}' exists, "
 				"do you want to remove it? [y/N]".format(localfile)):
 				pinfo("Same-name directory '{}' exists, skip downloading".format(localfile))
-				return const.ENoError
+				#return const.ENoError
+				return const.ESkipped
 
 			self.pv("Directory with the same name '{}' exists, removing ...".format(localfile))
 			result = removedir(localfile, self.verbose)
@@ -2011,9 +2050,14 @@ try to create a file at PCS by combining slices, having MD5s specified
 				return result
 
 		if self.__downloader[:5] == const.DownloaderAria2:
-			return self.__down_aria2c(rfile, localfile)
+			result = self.__down_aria2c(rfile, localfile)
 		else:
-			return self.__downchunks(rfile, offset)
+			result = self.__downchunks(rfile, offset)
+
+		if result == const.ENoError:
+			self.__remove_remote_on_success(remotefile)
+
+		return result
 
 	def downfile(self, remotefile, localpath = ''):
 		''' Usage: downfile <remotefile> [localpath] - \
@@ -2185,10 +2229,14 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 			"Directory Download")
 
 	def __downdir(self, rpath, lpath):
+		result = const.ENoError
 		if Pool and self.processes > 1:
-			return self.__downdir_multi(rpath, lpath)
+			result = self.__downdir_multi(rpath, lpath)
 		else:
-			return self.__downdir_single(rpath, lpath)
+			result = self.__downdir_single(rpath, lpath)
+		if result == const.ENoError:
+			self.__remove_remote_on_success(rpath)
+		return result
 
 	def downdir(self, remotepath = None, localpath = None):
 		''' Usage: downdir [remotedir] [localdir] - \
@@ -2240,7 +2288,8 @@ download a remote directory (recursively) / file
 		# the code still works because Baidu Yun doesn't require
 		# parent directory to exist remotely to upload / create a file
 		if not self.__shallinclude('.', rpath, True):
-			return const.ENoError
+			#return const.ENoError
+			return const.ESkipped
 
 		self.pd("Making remote directory '{}'".format(rpath))
 
@@ -2711,6 +2760,8 @@ if not specified, it defaults to the root directory
 			if subresult != const.ENoError:
 				result = subresult
 
+		if result == const.ENoError:
+			self.__remove_remote_on_success(rpath)
 		return result
 
 	def __syncup_diff_one(self, rpath, localdir, d):
@@ -2832,6 +2883,8 @@ if not specified, it defaults to the root directory
 			subresult = self.__syncup_delete_remote(rpath, remote)
 			if subresult != const.ENoError:
 				result = subresult
+		if result == const.ENoError:
+			self.__remove_local_on_success(localdir)
 		return result
 
 	def dumpcache(self):
@@ -3422,6 +3475,9 @@ def getparser():
 		dest="resumedl_revertcount", default=const.DefaultResumeDlRevertCount,
 		type=int, metavar='RCOUNT',
 		help="Revert back at least %(metavar)s download chunk(s) and align to chunk boundary when resuming the download. A negative value means NO reverts. [default: %(default)s]")
+	parser.add_argument("--move",
+		dest="deletesource", action="store_true",
+		help="Delete source files/directories after download/upload/syncdown/syncup is successful (This will force verification of the files). [default: %(default)s]")
 	if Pool:
 		parser.add_argument(const.MultiprocessOption,
 			dest="processes", default=const.DefaultProcessCount, type=int,
@@ -3580,6 +3636,7 @@ def main(argv=None): # IGNORE:C0111
 				'selectmirror': args.selectmirror,
 				'configdir': args.configdir,
 				'resumedl_revertcount': args.resumedl_revertcount,
+				'deletesource': args.deletesource,
 				'downloader': args.downloader,
 				'downloader_args': dl_args,
 				'verbose': args.verbose,

@@ -1,6 +1,8 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.5.8: Add ``--move`` flag to delete source files/directories on
+   successfull transfers
 -  1.5.7: Reduce multiprocess timeout to 49 days, to accommodate Python
    3 on Windows
 -  1.5.6: Downloading using downloader also retries
