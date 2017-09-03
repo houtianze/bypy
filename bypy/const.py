@@ -12,7 +12,7 @@ import os
 
 # https://packaging.python.org/single_source_version/
 __title__ = 'bypy'
-__version__ = '1.5.8'
+__version__ = '1.5.9'
 __author__ = 'Hou Tianze'
 __license__ = 'MIT'
 __desc__ = 'Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网盘 Python 客户端'
@@ -127,7 +127,8 @@ MaxSlicePieces = 1024
 
 ### Auth servers
 GaeUrl = 'https://bypyoauth.appspot.com'
-OpenShiftUrl = 'https://bypy-tianze.rhcloud.com'
+#OpenShiftUrl = 'https://bypy-tianze.rhcloud.com'
+OpenShiftUrl = 'https://bypyoauth-route-bypy.a3c1.starter-us-west-1.openshiftapps.com'
 HerokuUrl = 'https://bypyoauth.herokuapp.com'
 GaeRedirectUrl = GaeUrl + '/auth'
 GaeRefreshUrl = GaeUrl + '/refresh'
