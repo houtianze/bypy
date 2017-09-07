@@ -12,7 +12,7 @@ import os
 
 # https://packaging.python.org/single_source_version/
 __title__ = 'bypy'
-__version__ = '1.5.9'
+__version__ = '1.5.10',
 __author__ = 'Hou Tianze'
 __license__ = 'MIT'
 __desc__ = 'Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网盘 Python 客户端'
@@ -54,6 +54,41 @@ IESuperfileCreationFailed = 31081 # superfile create failed (HTTP 404)
 IEBlockMissInSuperFile2 = 31363 # block miss in superfile2 (HTTP 403)
 IETaskNotFound = 36016 # Task was not found
 IEFileAlreadyExists = 31061 # {"error_code":31061,"error_msg":"file already exists","request_id":2939656146461714799}
+
+# TODO: Should have use an enum or some sort of data structure for this,
+# but now changing this is too time consuming and error-prone
+ErrorExplanations = {
+	ENoError: "Everything went fine.",
+	EIncorrectPythonVersion: "Incorrect Python version",
+	EArgument: "Invalid program argument passed in",
+	EAbort: "Abort due to unrecovrable errors",
+	EException: "Unhandled exception occurred",
+	EParameter: "Some or all the parameters passed to the function are invalid",
+	EInvalidJson: "Invalid JSON received",
+	EHashMismatch: "MD5 hashes of the local file and remote file don't match each other",
+	EFileWrite: "Error writing file",
+	EFileTooBig: "File too big to upload",
+	EFailToCreateLocalDir: "Unable to create some directory(ies)",
+	EFailToCreateLocalFile: "Unable to create some local file(s)",
+	EFailToDeleteDir:" Unable to delete some directory(ies)",
+	EFailToDeleteFile: "Unable to delete some file(s)",
+	EFileNotFound: "File not found",
+	EMaxRetry: "Maximum retries reached",
+	ERequestFailed: "Request failed",
+	ECacheNotLoaded: "Failed to load file caches",
+	EMigrationFailed: "Failed to migrate from the old cache format",
+	EDownloadCerts: "Failed to download certificats", # no long in use
+	EUserRejected: "User chose to not to proceed",
+	EUpdateNeeded: "Need to update bypy",
+	ESkipped: "Some files/directores are skipped",
+	EFatal: "Fatal error, unable to continue",
+	IEMD5NotFound: "File md5 not found, you should use upload API to upload the whole file.",
+	IESuperfileCreationFailed: "superfile create failed (HTTP 404)",
+	# Undocumented, see #308 , https://paste.ubuntu.com/23672323/
+	IEBlockMissInSuperFile2: "Block miss in superfile2 (HTTP 403)",
+	IETaskNotFound: "Task was not found",
+	IEFileAlreadyExists: "File already exists"
+}
 
 DownloaderAria2 = 'aria2'
 Downloaders = [DownloaderAria2]

@@ -1,7 +1,8 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
--  1.5.8: Migrate the OpenShift auth server
+-  1.5.10: Print the error code if the action failed
+-  1.5.9: Migrate the OpenShift auth server
 -  1.5.8: Add ``--move`` flag to delete source files/directories on
    successfull transfers
 -  1.5.7: Reduce multiprocess timeout to 49 days, to accommodate Python

@@ -3584,7 +3584,7 @@ def main(argv=None): # IGNORE:C0111
 		if os.path.exists(const.HashCachePath):
 			cachesize = getfilesize(const.HashCachePath)
 			if cachesize > 10 * const.OneM or cachesize == -1:
-				pr((
+				pwarn((
 				   "*** WARNING ***\n"
 				   "Hash Cache file '{0}' is very large ({1}).\n"
 				   "This may affect program's performance (high memory consumption).\n"
@@ -3601,13 +3601,13 @@ def main(argv=None): # IGNORE:C0111
 		try:
 			slice_size = interpret_size(args.slice)
 		except (ValueError, KeyError):
-			pr("Error: Invalid slice size specified '{}'".format(args.slice))
+			perr("Error: Invalid slice size specified '{}'".format(args.slice))
 			return const.EArgument
 
 		try:
 			chunk_size = interpret_size(args.chunk)
 		except (ValueError, KeyError):
-			pr("Error: Invalid slice size specified '{}'".format(args.slice))
+			perr("Error: Invalid slice size specified '{}'".format(args.slice))
 			return const.EArgument
 
 		if len(args.command) <= 0 or \
@@ -3655,8 +3655,11 @@ def main(argv=None): # IGNORE:C0111
 				else:
 					uargs.append(arg)
 			result = getattr(by, args.command[0])(*uargs)
+			if result != const.ENoError:
+				errmsg = '-' * 64 + "\nError {}{}".format(result, ': ' + const.ErrorExplanations[result] if result in const.ErrorExplanations else '')
+				perr(errmsg)
 		else:
-			pr("Error: Command '{}' not available.".format(args.command[0]))
+			perr("Error: Command '{}' not available.".format(args.command[0]))
 			parser.print_help()
 			return const.EParameter
 
