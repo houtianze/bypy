@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.5.11: Fix typo near version string
 - 1.5.10: Print the error code if the action failed
 - 1.5.9: Migrate the OpenShift auth server
 - 1.5.8: Add `--move` flag to delete source files/directories on successfull transfers
