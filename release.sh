@@ -91,7 +91,7 @@ main() {
 
 	if [ "$tagit" -eq 1 ]
 	then
-		bypyversion=`grep __version__ bypy/const.py | sed -e "s/__version__ = '//g" -e "s/',//g"`
+		bypyversion=`grep __version__ bypy/const.py | sed -e "s/__version__ *= *'//g" -e "s/'//g"`
 		git tag
 		git tag "$bypyversion"
 		git push
