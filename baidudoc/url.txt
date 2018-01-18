@@ -3,3 +3,5 @@ http://developer.baidu.com/wiki/index.php?title=docs/pcs/rest/file_data_apis_lis
 
 OAuth:
 http://developer.baidu.com/wiki/index.php?title=docs/oauth
+http://developer.baidu.com/wiki/index.php?title=docs/oauth/overview
+
