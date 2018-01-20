@@ -12,7 +12,7 @@ import os
 
 # https://packaging.python.org/single_source_version/
 __title__ = 'bypy'
-__version__ = '1.5.11'
+__version__ = '1.5.12'
 __author__ = 'Hou Tianze'
 __license__ = 'MIT'
 __desc__ = 'Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网盘 Python 客户端'
@@ -165,23 +165,28 @@ GaeUrl = 'https://bypyoauth.appspot.com'
 #OpenShiftUrl = 'https://bypy-tianze.rhcloud.com'
 OpenShiftUrl = 'https://bypyoauth-route-bypy.a3c1.starter-us-west-1.openshiftapps.com'
 HerokuUrl = 'https://bypyoauth.herokuapp.com'
+Heroku1Url = 'https://bypyoauth1.herokuapp.com'
 GaeRedirectUrl = GaeUrl + '/auth'
 GaeRefreshUrl = GaeUrl + '/refresh'
 OpenShiftRedirectUrl = OpenShiftUrl + '/auth'
 OpenShiftRefreshUrl = OpenShiftUrl + '/refresh'
 HerokuRedirectUrl = HerokuUrl + '/auth'
 HerokuRefreshUrl = HerokuUrl + '/refresh'
+Heroku1RedirectUrl = Heroku1Url + '/auth'
+Heroku1RefreshUrl = Heroku1Url + '/refresh'
 AuthServerList = [
 	# url, rety?, message
 	(OpenShiftRedirectUrl, False, "Authorizing/refreshing with the OpenShift server ..."),
-	(HerokuRedirectUrl, True, "OpenShift server failed, authorizing/refreshing with the Heroku server ..."),
-	(GaeRedirectUrl, False, "Heroku server failed. Last resort: authorizing/refreshing with the GAE server ..."),
+	(HerokuRedirectUrl, False, "OpenShift server failed, authorizing/refreshing with the Heroku server ..."),
+	(Heroku1RedirectUrl, False, "Heroku server failed, authorizing/refreshing with the Heroku1 server ..."),
+	(GaeRedirectUrl, False, "Heroku1 server failed. Last resort: authorizing/refreshing with the GAE server ..."),
 ]
 RefreshServerList = [
 	# url, rety?, message
 	(OpenShiftRefreshUrl, False, "Authorizing/refreshing with the OpenShift server ..."),
-	(HerokuRefreshUrl, True, "OpenShift server failed, authorizing/refreshing with the Heroku server ..."),
-	(GaeRefreshUrl, False, "Heroku server failed. Last resort: authorizing/refreshing with the GAE server ..."),
+	(HerokuRefreshUrl, False, "OpenShift server failed, authorizing/refreshing with the Heroku server ..."),
+	(Heroku1RefreshUrl, False, "Heroku server failed, authorizing/refreshing with the Heroku1 server ..."),
+	(GaeRefreshUrl, False, "Heroku1 server failed. Last resort: authorizing/refreshing with the GAE server ..."),
 ]
 
 ### public static properties

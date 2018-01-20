@@ -1,6 +1,8 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.5.12: Add one more heroku server; Workaround "ValueError: unknown
+   locale: UTF-8" on macOs (by xslidian)
 -  1.5.11: Fix typo near version string
 -  1.5.10: Print the error code if the action failed
 -  1.5.9: Migrate the OpenShift auth server
