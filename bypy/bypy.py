@@ -960,6 +960,9 @@ Possible fixes:
 	def __server_auth_act(self, r, args):
 		return self.__store_json(r)
 
+	def __repr_timeout(self):
+		return self.__timeout if self.__timeout else 'infinite'
+
 	def __server_auth(self):
 		params = {
 			'client_id' : self.__apikey,
@@ -971,7 +974,7 @@ Possible fixes:
 			'\nPaste the Authorization Code here within 10 minutes.'
 		auth_code = ask(msg).strip()
 		self.pd("auth_code: {}".format(auth_code))
-		pr('Authorizing, please be patient, it may take upto {} seconds...'.format(self.__timeout))
+		pr('Authorizing, please be patient, it may take upto {} seconds...'.format(self.__repr_timeout()))
 
 		pars = {
 			'code' : auth_code,
@@ -1050,7 +1053,7 @@ Possible fixes:
 
 	def __refresh_token(self):
 		if self.__use_server_auth:
-			pr('Refreshing, please be patient, it may take upto {} seconds...'.format(self.__timeout))
+			pr('Refreshing, please be patient, it may take upto {} seconds...'.format(self.__repr_timeout()))
 
 			pars = {
 				'bypy_version' : const.__version__,
@@ -1103,7 +1106,8 @@ Possible fixes:
 		pr('Used: ' + human_size(j['used']))
 		return const.ENoError
 
-	def help(self, command): # this comes first to make it easy to spot
+	@staticmethod
+	def help(command): # this comes first to make it easy to spot
 		''' Usage: help <command> - provide some information for the command '''
 		for i, v in ByPy.__dict__.items():
 			if callable(v) and v.__doc__ and v.__name__ == command :
@@ -3613,6 +3617,9 @@ def main(argv=None): # IGNORE:C0111
 		if len(args.command) <= 0 or \
 			(len(args.command) == 1 and args.command[0].lower() == 'help'):
 			parser.print_help()
+			return const.EArgument
+		elif len(args.command) == 2 and args.command[0].lower() == 'help':
+			ByPy.help(args.command[1])
 			return const.EArgument
 		elif args.command[0] in ByPy.__dict__: # dir(ByPy), dir(by)
 			#timeout = args.timeout or None
