@@ -689,7 +689,7 @@ class ByPy(object):
 					self.pd("206 Partial Content (this is OK), processing action")
 				result = act(r, actargs)
 				if result == const.ENoError:
-					self.pd("Request all goes fine")
+					self.pd("Request OK.")
 			else:
 				ec = self.__get_json_errorcode(r, act)
 				#   6 (sc: 403): No permission to access user data
@@ -717,7 +717,7 @@ class ByPy(object):
 					result = ec
 				# errors that make retrying meaningless
 				elif (
-					ec == 31061 or # sc == 400 file already exists
+					#ec == 31061 or # sc == 400 file already exists
 					ec == 31062 or # sc == 400 file name is invalid
 					ec == 31063 or # sc == 400 file parent path does not exist
 					ec == 31064 or # sc == 403 file is not authorized
