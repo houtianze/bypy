@@ -285,17 +285,16 @@ def createmanyfiles(dir, numFiles):
 			f.write(fname)
 
 def testmanyfiles(by):
-	pass
-
-# def testmanyfiles(by):
-# 	numFiles = const.MaxListEntries * 2 + 10
-# 	banner("Test uploading of many ({}) files".format(numFiles))
-# 	with tempfile.TemporaryDirectory(prefix = 'bypytest_') as tmpdir:
-# 		print("Testing temp dir: ", tmpdir)
-# 		createmanyfiles(tmpdir, numFiles)
-# 		by.upload(tmpdir, tmpdir)
-# 		compare(by, tmpdir, tmpdir)
-# 	mpr.empty()
+	if sys.version_info[0] == 3:
+		return
+	numFiles = const.MaxListEntries * 2 + 10
+	banner("Test uploading of many ({}) files".format(numFiles))
+	with tempfile.TemporaryDirectory(prefix = 'bypytest_') as tmpdir:
+		print("Testing temp dir: ", tmpdir)
+		createmanyfiles(tmpdir, numFiles)
+		by.upload(tmpdir, tmpdir)
+		compare(by, tmpdir, tmpdir)
+	mpr.empty()
 
 def cleanup():
 	os.remove(zerofilename)
