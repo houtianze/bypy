@@ -152,7 +152,7 @@ This is a Python client for Baidu Yun (a.k.a PCS - Personal Cloud Storage), an o
 
 **Due to Baidu PC permission restrictions, this program can only access your `/apps/bypy` directoy at Baidu PCS**
 
-**(Fixed) ~~It's said the Baidu PCS API won't return more than 1000 items inside a directory ( #306 )，if this is true，you won't be able to see / download some files if you have a directory with more than 1000 files on Baidu Cloud~~**
+**(Fixed) ~~It's said the Baidu PCS API won't return more than 1000 items inside a directory ( #285 )，if this is true，you won't be able to see / download some files if you have a directory with more than 1000 files on Baidu Cloud~~**
 
 **Features: Unicode / Chinese support; Retry on failures; Recursive down/up-load; Directory comparison; Hash caching.**
 
