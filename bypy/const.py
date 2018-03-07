@@ -159,6 +159,7 @@ DPcsUrl = 'https://d.pcs.baidu.com/rest/2.0/pcs/'
 MinRapidUploadFileSize = 256 * OneK
 MaxSliceSize = 2 * OneG
 MaxSlicePieces = 1024
+MaxListEntries = 1000 # https://github.com/houtianze/bypy/issues/285
 
 ### Auth servers
 GaeUrl = 'https://bypyoauth.appspot.com'

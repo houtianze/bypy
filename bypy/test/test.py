@@ -15,6 +15,7 @@ from __future__ import division
 import sys
 import os
 import shutil
+import tempfile
 import re
 import pprint
 import copy
@@ -197,10 +198,10 @@ def assertsame(by):
 	assert len(by.result['remote']) == 0
 	assert len(by.result['same']) >= 5
 
-def compare(by):
+def compare(by, left = TestDir, right = TestDir):
 	# comparison
 	banner("Comparing")
-	assert by.compare(TestDir, TestDir) == const.ENoError
+	assert by.compare(left, right) == const.ENoError
 	assertsame(by)
 	mpr.empty()
 
@@ -274,6 +275,28 @@ def testshare(by):
 	assertsingle(by, filterregex(mpr.getq(), r"bypy accept /{}/subdir/1M2.bin".format(ShareDir)))
 	mpr.empty()
 
+def createmanyfiles(dir, numFiles):
+	shutil.rmtree(dir, ignore_errors=True)
+	os.makedirs(dir)
+	for i in range(0, numFiles):
+		fname = str(i).zfill(4)
+		ffname = os.path.join(dir, fname)
+		with open(ffname, 'w') as f:
+			f.write(fname)
+
+def testmanyfiles(by):
+	pass
+
+# def testmanyfiles(by):
+# 	numFiles = const.MaxListEntries * 2 + 10
+# 	banner("Test uploading of many ({}) files".format(numFiles))
+# 	with tempfile.TemporaryDirectory(prefix = 'bypytest_') as tmpdir:
+# 		print("Testing temp dir: ", tmpdir)
+# 		createmanyfiles(tmpdir, numFiles)
+# 		by.upload(tmpdir, tmpdir)
+# 		compare(by, tmpdir, tmpdir)
+# 	mpr.empty()
+
 def cleanup():
 	os.remove(zerofilename)
 	#shutil.rmtree(ConfigDir, ignore_errors=True)
@@ -309,6 +332,11 @@ def main():
 		by = bypy.ByPy(configdir=ConfigDir, debug=1, verbose=1)
 		if 'refresh' in sys.argv:
 			by.refreshtoken()
+
+		if 'many' in sys.argv:
+			testmanyfiles(by)
+			return
+
 		runTests(by)
 		if '1' in sys.argv:
 			return

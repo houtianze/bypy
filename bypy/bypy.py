@@ -689,7 +689,7 @@ class ByPy(object):
 					self.pd("206 Partial Content (this is OK), processing action")
 				result = act(r, actargs)
 				if result == const.ENoError:
-					self.pd("Request OK.")
+					self.pd("Request OK")
 			else:
 				ec = self.__get_json_errorcode(r, act)
 				#   6 (sc: 403): No permission to access user data
@@ -2144,16 +2144,22 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 		return const.ENoError
 
 	def __walk_remote_dir(self, remotepath, remoterootpath, args = None, skip_remote_only_dirs = False):
-		pars = {
-			'method' : 'list',
-			'path' : remotepath,
-			'by' : 'name',
-			'order' : 'asc' }
-
-		# Python parameters are by-reference and mutable, so they are 'out' by default
 		dirjs = []
 		filejs = []
-		result = self.__get(pcsurl + 'file', pars, self.__walk_proceed_remote_dir_act, (dirjs, filejs))
+		listStart = 0
+		# https://github.com/houtianze/bypy/issues/285
+		while True:
+			pars = {
+				'method' : 'list',
+				'path' : remotepath,
+				'by' : 'name',
+				'order' : 'asc',
+				'limit' : '{}-{}'.format(listStart, listStart + const.MaxListEntries)}
+			# Python parameters are by-reference and mutable, so they are 'out' by default
+			result = self.__get(pcsurl + 'file', pars, self.__walk_proceed_remote_dir_act, (dirjs, filejs))
+			if len(dirjs) + len(filejs) - listStart < const.MaxListEntries:
+				break
+			listStart += const.MaxListEntries
 		yield [result, remotepath, dirjs, filejs, args]
 		if result == const.ENoError:
 			self.pd("Remote dirs: {}".format(dirjs))
