@@ -285,7 +285,7 @@ def createmanyfiles(dir, numFiles):
 			f.write(fname)
 
 def testmanyfiles(by):
-	if sys.version_info[0] == 3:
+	if sys.version_info[0] != 3:
 		return
 	numFiles = const.MaxListEntries * 2 + 10
 	banner("Test uploading of many ({}) files".format(numFiles))
