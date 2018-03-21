@@ -121,10 +121,10 @@ class cached(object):
 		# periodically save to prevent loss in case of system crash
 		now = time.time()
 		if now - gvar.last_cache_save >= const.CacheSavePeriodInSec:
+			if cached.debug:
+				pdbg("Periodically saving Hash Cash")
 			cached.savecache()
 			gvar.last_cache_save = now
-		if cached.debug:
-			pdbg("Periodically saving Hash Cash")
 
 	# merge the from 'fromc' cache into the 'to' cache.
 	# 'keepto':
@@ -197,7 +197,8 @@ class cached(object):
 					cached.cacheloaded = True
 					if cached.verbose:
 						pr("Hash Cache File loaded.")
-				except (EOFError, TypeError, ValueError) as ex:
+				#except (EOFError, TypeError, ValueError, UnicodeDecodeError) as ex:
+				except Exception as ex:
 					perr("Fail to load the Hash Cache, no caching.\n{}".format(formatex(ex)))
 					cached.cache = existingcache
 			else:

@@ -381,6 +381,8 @@ class ByPy(object):
 		# so if any code using this class can check the current verbose / debug level
 		cached.verbose = self.verbose = verbose
 		cached.debug = self.debug = debug
+		if not cached.usecache:
+			pinfo("Forced hash recaculation, hash cache won't be used")
 
 		#TODO: SSL verification causes some much trouble for different Python version
 		# I give up and disable it for good, or for bad
@@ -491,7 +493,7 @@ class ByPy(object):
 								"minimum required version is {}.\n"
 								"Please run 'pip install -U bypy' to update and try again.".format(
 									const.__version__, minver))
-							quit(const.EUpdateNeeded)
+							self.quit(const.EUpdateNeeded)
 						else:
 							self.__setting[const.SettingKey_LastUpdateCheckTime] = nowsec
 							self.savesetting()
@@ -3561,6 +3563,7 @@ def clean_prog_files(cleanlevel, verbose, configdir = const.ConfigDir):
 def main(argv=None): # IGNORE:C0111
 	''' Main Entry '''
 
+	by = None
 	reqres = check_requirements()
 	if reqres == CheckResult.Error:
 		perr("Requirement checking failed")
@@ -3687,8 +3690,9 @@ def main(argv=None): # IGNORE:C0111
 		perr("Exception occurred:\n{}".format(formatex(ex)))
 		pr("Abort")
 		raise
-
-	quit(result)
+	finally:
+		if by:
+			by.quit(result)
 
 if __name__ == "__main__":
 	main()

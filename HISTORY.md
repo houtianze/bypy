@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.6.1: Ensure cache loading/saving failures won't affect normal operations; Fix the bug that clean up code not called on exit
 - 1.6.0: Fix 1000 items limit for remote directory listing
 - 1.5.13: Fix multiprocess upload/syncup missing some files
 - 1.5.12: Add one more heroku server; Workaround "ValueError: unknown locale: UTF-8" on macOs (by xslidian)
