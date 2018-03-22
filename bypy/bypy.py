@@ -717,9 +717,20 @@ class ByPy(object):
 					or ec == const.IEBlockMissInSuperFile2:
 					self.pd("Failed to combine files from MD5 slices")
 					result = ec
+				elif ec == const.IEFileAlreadyExists: # ec == 31061, sc == 400, file already exists
+					# explanations:
+					# this error occurs when we try to create a directory at Baidu PCS when it already exists,
+					# this almost only happens when we upload using multi-process (double/multiple-directory creation).
+					# this error is innocuous, we can safely ignore it
+					# (actually, we don't need to do anything further and should just continue as usual).
+					# so to avoid confusions to the user and potential logic errors (more importantly) in the future,
+					# we just "lie" and force it to "no error".
+					# though this is not 100% accurate technically, i feel it's accurate enough for the users
+					self.pd("Faking error_code {} to {}, this is safe to ignore.".format(
+						const.IEFileAlreadyExists, const.ENoError))
+					result = const.ENoError
 				# errors that make retrying meaningless
 				elif (
-					#ec == 31061 or # sc == 400 file already exists
 					ec == 31062 or # sc == 400 file name is invalid
 					ec == 31063 or # sc == 400 file parent path does not exist
 					ec == 31064 or # sc == 403 file is not authorized

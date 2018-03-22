@@ -1,6 +1,8 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.6.2: Properly handle (treat it as no error) error\_code 31061 (file
+   already exists) from PCS
 -  1.6.1: Ensure cache loading/saving failures won't affect normal
    operations; Fix the bug that clean up code not called on exit
 -  1.6.0: Fix 1000 items limit for remote directory listing
