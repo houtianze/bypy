@@ -12,7 +12,7 @@ import os
 
 # https://packaging.python.org/single_source_version/
 __title__ = 'bypy'
-__version__ = '1.6.2'
+__version__ = '1.6.3'
 __author__ = 'Hou Tianze'
 __license__ = 'MIT'
 __desc__ = 'Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网盘 Python 客户端'
@@ -235,6 +235,7 @@ DefaultSliceSize = 20 * OneM
 DefaultDlChunkSize = 20 * OneM
 RetryDelayInSec = 10
 CacheSavePeriodInSec = 10 * 60.0
+DefaultTimeOutInSeconds=300
 # share retries
 ShareRapidUploadRetries = 3
 DefaultResumeDlRevertCount = 1

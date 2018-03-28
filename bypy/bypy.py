@@ -288,7 +288,7 @@ class ByPy(object):
 		slice_size = const.DefaultSliceSize,
 		dl_chunk_size = const.DefaultDlChunkSize,
 		verify = True,
-		retry = 5, timeout = None,
+		retry = 5, timeout = const.DefaultTimeOutInSeconds,
 		quit_when_fail = False,
 		resumedownload = True,
 		extraupdate = lambda: (),
@@ -3453,7 +3453,7 @@ def getparser():
 		dest="quit", action="store_true",
 		help="quit when maximum number of retry failed [default: %(default)s]")
 	parser.add_argument("-t", "--timeout",
-		dest="timeout", default=None, type=float,
+		dest="timeout", default=const.DefaultTimeOutInSeconds, type=float,
 		help="network timeout in seconds [default: %(default)s]")
 	parser.add_argument("-s", "--slice",
 		dest="slice", default=const.DefaultSliceSize,
