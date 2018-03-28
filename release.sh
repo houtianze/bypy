@@ -16,12 +16,12 @@ tagit=0
 createvenv() {
 	if [ ! -d "$py2venv" ]
 	then
-	  python2 -m virtualenv "$py2venv"
+		python2 -m virtualenv "$py2venv"
 	fi
 
 	if [ ! -d "$py3venv" ]
 	then
-	  python3 -m virtualenv "$py3venv"
+		python3 -m virtualenv "$py3venv"
 	fi
 }
 
