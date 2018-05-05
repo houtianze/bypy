@@ -12,7 +12,7 @@ import os
 
 # https://packaging.python.org/single_source_version/
 __title__ = 'bypy'
-__version__ = '1.6.3'
+__version__ = '1.6.4'
 __author__ = 'Hou Tianze'
 __license__ = 'MIT'
 __desc__ = 'Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网盘 Python 客户端'
@@ -176,14 +176,14 @@ HerokuRefreshUrl = HerokuUrl + '/refresh'
 Heroku1RedirectUrl = Heroku1Url + '/auth'
 Heroku1RefreshUrl = Heroku1Url + '/refresh'
 AuthServerList = [
-	# url, rety?, message
+	# url, retry?, message
 	(OpenShiftRedirectUrl, False, "Authorizing/refreshing with the OpenShift server ..."),
 	(HerokuRedirectUrl, False, "OpenShift server failed, authorizing/refreshing with the Heroku server ..."),
 	(Heroku1RedirectUrl, False, "Heroku server failed, authorizing/refreshing with the Heroku1 server ..."),
 	(GaeRedirectUrl, False, "Heroku1 server failed. Last resort: authorizing/refreshing with the GAE server ..."),
 ]
 RefreshServerList = [
-	# url, rety?, message
+	# url, retry?, message
 	(OpenShiftRefreshUrl, False, "Authorizing/refreshing with the OpenShift server ..."),
 	(HerokuRefreshUrl, False, "OpenShift server failed, authorizing/refreshing with the Heroku server ..."),
 	(Heroku1RefreshUrl, False, "Heroku server failed, authorizing/refreshing with the Heroku1 server ..."),

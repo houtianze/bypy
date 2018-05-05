@@ -1,6 +1,7 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.6.4: Fix ``--move`` argument causing exception
 -  1.6.3: Change default timeout to 5 minutes
 -  1.6.2: Properly handle (treat it as no error) error_code 31061 (file
    already exists) from PCS

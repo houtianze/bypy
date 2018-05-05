@@ -310,9 +310,15 @@ class ByPy(object):
 		downloader_args = "",
 		processes = const.DefaultProcessCount,
 		secretkey = const.SecretKey):
-
 		super(ByPy, self).__init__()
 		self.jsonq = deque(maxlen = 64)
+
+		# these two variables are without leading double underscore "__" as to export the as public,
+		# so if any code using this class can check the current verbose / debug level
+		cached.verbose = self.verbose = verbose
+		cached.debug = self.debug = debug
+		if not cached.usecache:
+			pinfo("Forced hash recalculation, hash cache won't be used")
 
 		# declaration of myself
 		global gbypyinst
@@ -376,13 +382,6 @@ class ByPy(object):
 			self.pd("Forcing verification since we will delete source for successful transfers.")
 			self.__verify = True
 		self.processes = processes
-
-		# these two variables are without leadning double underscaore "__" as to export the as public,
-		# so if any code using this class can check the current verbose / debug level
-		cached.verbose = self.verbose = verbose
-		cached.debug = self.debug = debug
-		if not cached.usecache:
-			pinfo("Forced hash recaculation, hash cache won't be used")
 
 		#TODO: SSL verification causes some much trouble for different Python version
 		# I give up and disable it for good, or for bad
@@ -514,7 +513,7 @@ class ByPy(object):
 			pr(msg)
 
 	def pd(self, msg, level = 1, **kwargs):
-		if self.debug >= level:
+		if self.debug and self.debug >= level:
 			pdbg(msg, kwargs)
 
 	def shalloverwrite(self, prompt):
@@ -1146,7 +1145,7 @@ Possible fixes:
 	def __remove_local_on_success(self, localpath):
 		if self.__deletesource:
 			self.pd("Removing local path '{}' after successful upload.".format(localpath))
-			result = cachedm.remove_path_and_cache(localpath)
+			result = cached.remove_path_and_cache(localpath)
 			if result == const.ENoError:
 				self.pd("Local path '{}' removed.".format(localpath))
 			else:
