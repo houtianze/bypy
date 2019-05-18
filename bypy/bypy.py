@@ -2564,7 +2564,7 @@ restore a file from the recycle bin
 		dlen = len(remotepath) + 1
 		for d in dirjs:
 			self.__remote_dir_contents.get(remotepath[rootlen:]).add(
-				d['path'][dlen:], PathDictTree('D', size = d['size'], md5 = d['md5']))
+				d['path'][dlen:], PathDictTree('D', size = d['size'], md5 = d['md5'] if 'md5' in d else ''))
 
 		for f in filejs:
 			self.__remote_dir_contents.get(remotepath[rootlen:]).add(

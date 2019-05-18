@@ -17,12 +17,11 @@ bypy - Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网�
 - 安装: `pip install bypy`
 - 运行: `bypy`
 
-TL;DR:
-------
+TL;DR
+-----
 
 - To install: `pip install bypy`
 - To use: `bypy`
-
 
 **此项目已经进入维护状态：不会再有新的功能加入，只有在发现重大bug情况下才会有 _可能_ 更新。**
 
@@ -71,42 +70,52 @@ TL;DR:
 ------
 
 显示使用帮助和所有命令（英文）:
-```
+
+```bash
 bypy
 ```
 
 第一次运行时需要授权，只需跑任何一个命令（比如 `bypy info`）然后跟着说明（登陆等）来授权即可。授权只需一次，一旦成功，以后不会再出现授权提示.
 
 更详细的了解某一个命令：
-```
+
+```bash
 bypy help <command>
 ```
 
 显示在云盘（程序的）根目录下文件列表：
-```
+
+```bash
 bypy list
 ```
 
 把当前目录同步到云盘：
-```
+
+```bash
 bypy syncup
 ```
+
 or
-```
+
+```bash
 bypy upload
 ```
 
 把云盘内容同步到本地来：
-```
+
+```bash
 bypy syncdown
 ```
+
 or
-```
+
+```bash
 bypy downdir /
 ```
 
 **比较本地当前目录和云盘（程序的）根目录（个人认为非常有用）：**
-```
+
+```bash
 bypy compare
 ```
 
@@ -119,11 +128,10 @@ bypy compare
 - 运行时添加`-d`，会显示一些调试信息。
 - 运行时添加`-ddd`，还会会显示HTTP通讯信息（**警告：非常多**）
 
+整合测试（15 - 30分钟）
+-------------------
 
-经验分享
--------
-
-请移步至[wiki](../../wiki)，方便分享/交流。
+- 在主目录下跑：`python -m bypy.test`
 
 直接在Python程序中调用
 -------------------
@@ -133,6 +141,11 @@ from bypy import ByPy
 bp=ByPy()
 bp.list() # or whatever instance methods of ByPy class
 ```
+
+经验分享
+-------
+
+请移步至[wiki](../../wiki)，方便分享/交流。
 
 授权许可
 -------
@@ -186,42 +199,52 @@ Getting started
 ---------------
 
 To get help and a list of available commands:
-```
+
+```bash
 bypy
 ```
 
 To authorize for first time use, run any commands e.g. `bypy info` and follow the instructions (login etc). This is a one-time requirement only.
 
 To get more details about certain command:
-```
+
+```bash
 bypy help <command>
 ```
 
 List files at (App's) root directory at Baidu PCS:
-```
+
+```bash
 bypy list
 ```
 
 To sync up to the cloud (from the current directory):
-```
+
+```bash
 bypy syncup
 ```
+
 or
-```
+
+```bash
 bypy upload
 ```
 
 To sync down from the cloud (to the current directory):
-```
+
+```bash
 bypy syncdown
 ```
+
 or
-```
+
+```bash
 bypy downdir /
 ```
 
 **To compare the current directory to (App's) root directory at Baidu PCS (which I think is very useful):**
-```
+
+```bash
 bypy compare
 ```
 
@@ -234,10 +257,10 @@ Debug
 - Add in `-d` parameter, it will print some debug messages.
 - Add in `-ddd`, it will display HTTP messages as well (**Warning: A lot**）
 
-Tips / Sharing
---------------
+Integration Test (15-30min)
+--------------------------
 
-Please go to [wiki](../../wiki)
+- (In the project root directory) run: `python -m bypy.test`
 
 To call from Python code
 ------------------------
@@ -247,6 +270,11 @@ from bypy import ByPy
 bp=ByPy()
 bp.list() # or whatever instance methods of ByPy class
 ```
+
+Tips / Sharing
+--------------
+
+Please go to [wiki](../../wiki)
 
 License
 ---
