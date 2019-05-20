@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.6.6: Let it cry when dies, so we can have some trace
 - 1.6.5: Fix `KeyError: u'md5'` in remote directory walking
 - 1.6.4: Fix `--move` argument causing exception
 - 1.6.3: Change default timeout to 5 minutes
