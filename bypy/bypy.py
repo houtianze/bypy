@@ -1156,6 +1156,47 @@ Possible fixes:
 	def info(self):
 		return self.quota()
 
+	def get_auth_link(self):
+		params = {
+			'client_id' : self.__apikey,
+			'response_type' : 'code',
+			'redirect_uri' : 'oob',
+			'scope' : 'basic netdisk' }
+		pars = ulp.urlencode(params)
+		url = const.ServerAuthUrl + '?' + pars
+		return url
+
+	def set_auth_code(self, auth_code):
+		pr('Authorizing, please be patient, it may take upto {} seconds...'.format(self.__repr_timeout()))
+		pars = {
+			'code' : auth_code,
+			'bypy_version' : const.__version__,
+			'redirect_uri' : 'oob' }
+
+		result = None
+		# TODO: hacky
+		global perr
+		savedperr = perr
+		if not self.debug:
+			perr = nop
+		for auth in const.AuthServerList:
+			(url, retry, msg) = auth
+			pr(msg)
+			result = self.__get(url, pars, self.__server_auth_act, retry = retry, addtoken = False)
+			if result == const.ENoError:
+				break
+		if not self.debug:
+			perr = savedperr
+
+		if result == const.ENoError:
+			pr("Successfully authorized")
+		else:
+			perr("Fatal: All server authorizations failed.")
+			self.__prompt_clean()
+			sys.exit(result)
+
+		return result
+
 	def quota(self):
 		''' Usage: quota/info - displays the quota information '''
 		pars = {
