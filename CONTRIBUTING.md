@@ -1,3 +1,5 @@
+# Contributing Guideline
+
 First of all, thank you very much for submitting codes / pull requests to this little project. :smile:
 
 I want the whole project to be licensed under the permissive **MIT license**, so that anybody can use it pretty much anyway they want. So by submitting codes / changes to this project, you agree to license all of them under the **MIT license** to this project.

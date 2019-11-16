@@ -11,8 +11,8 @@ bypy - Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网�
 [![Code Climate](https://codeclimate.com/github/houtianze/bypy/badges/gpa.svg)](https://codeclimate.com/github/houtianze/bypy)
 [![Join the chat at https://gitter.im/houtianze/bypy](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/houtianze/bypy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-极简说明：
---------
+极简说明
+-------
 
 - 安装: `pip install bypy`
 - 运行: `bypy`
@@ -154,7 +154,7 @@ bp.list() # or whatever instance methods of ByPy class
 
 ---
 
-PCS API文档（已失效）: http://developer.baidu.com/wiki/index.php?title=docs/pcs/rest/file_data_apis_list (以前保存的离线版： [baidudoc](baidudoc) directory)
+PCS API文档（已失效）: <http://developer.baidu.com/wiki/index.php?title=docs/pcs/rest/file_data_apis_list> (以前保存的离线版： [baidudoc](baidudoc) directory)
 
 ---
 
@@ -164,9 +164,9 @@ Introduction
 - Latest feature: Multiprocessing added to directory upload / download / sync（`--processes`）
 
 ---
-This is a Python client for Baidu Yun (a.k.a PCS - Personal Cloud Storage), an online storage website offering 2 TB (fast) free personal storage. This main purpose is to be able to utilize this stoarge service under Linux environment (console), e.g. Raspberry Pi.
+This is a Python client for Baidu Yun (a.k.a PCS - Personal Cloud Storage), an online storage website offering 2 TB (fast) free personal storage. This main purpose is to be able to utilize this storage service under Linux environment (console), e.g. Raspberry Pi.
 
-**Due to Baidu PC permission restrictions, this program can only access your `/apps/bypy` directoy at Baidu PCS**
+**Due to Baidu PC permission restrictions, this program can only access your `/apps/bypy` directory at Baidu PCS**
 
 **(Fixed) ~~It's said the Baidu PCS API won't return more than 1000 items inside a directory ( #285 )，if this is true，you won't be able to see / download some files if you have a directory with more than 1000 files on Baidu Cloud~~**
 
@@ -175,7 +175,7 @@ This is a Python client for Baidu Yun (a.k.a PCS - Personal Cloud Storage), an o
 Prerequisite
 ------------
 
-**Important: You need to set you system locale encoding to UTF-8 for this to work (You can refere here: http://perlgeek.de/en/article/set-up-a-clean-utf8-environment)**
+**Important: You need to set you system locale encoding to UTF-8 for this to work (You can refer here: <http://perlgeek.de/en/article/set-up-a-clean-utf8-environment)>**
 
 Installation
 ------------
@@ -283,4 +283,4 @@ Please refer to [LICENSE](LICENSE)
 
 ---
 
-PCS API Document (link dead 404): http://developer.baidu.com/wiki/index.php?title=docs/pcs/rest/file_data_apis_list (Offline pdf retrieved before: [baidudoc](baidudoc) directory)
+PCS API Document (link dead 404): <http://developer.baidu.com/wiki/index.php?title=docs/pcs/rest/file_data_apis_list> (Offline pdf retrieved before: [baidudoc](baidudoc) directory)
