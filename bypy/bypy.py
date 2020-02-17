@@ -478,33 +478,38 @@ class ByPy(object):
 				check_update = True
 
 		if check_update:
-			r = requests.get('https://raw.githubusercontent.com/houtianze/bypy/master/update/update.json')
-			if r.status_code == 200:
-				try:
-					j = r.json()
-					min_ver_key = 'minimumRequiredVersion'
-					if min_ver_key in j:
-						minver = j[min_ver_key]
-						if comp_semver(const.__version__, minver) < 0:
-							perr("Your current version ({}) is too low, "
-								"minimum required version is {}.\n"
-								"Please run 'pip install -U bypy' to update and try again.".format(
-									const.__version__, minver))
-							sys.exit(const.EUpdateNeeded)
-						else:
-							self.__setting[const.SettingKey_LastUpdateCheckTime] = nowsec
-							self.savesetting()
+			try:
+				r = requests.get('https://raw.githubusercontent.com/houtianze/bypy/master/update/update.json')
+				if r.status_code == 200:
+					try:
+						j = r.json()
+						min_ver_key = 'minimumRequiredVersion'
+						if min_ver_key in j:
+							minver = j[min_ver_key]
+							if comp_semver(const.__version__, minver) < 0:
+								perr("Your current version ({}) is too low, "
+									"minimum required version is {}.\n"
+									"Please run 'pip install -U bypy' to update and try again.".format(
+										const.__version__, minver))
+								sys.exit(const.EUpdateNeeded)
+							else:
+								self.__setting[const.SettingKey_LastUpdateCheckTime] = nowsec
+								self.savesetting()
 
-					recommended_ver_key = 'recommendedVersion'
-					if recommended_ver_key in j:
-						recver = j[recommended_ver_key]
-						if comp_semver(const.__version__, recver) < 0:
-							pr("Your current version ({}) is low, "
-								"It's recommended to update to version {}.\n"
-								"Please run 'pip install -U bypy' to update.".format(
-									const.__version__, recver))
-				except ValueError:
-					self.pd("Invalid response for update check, skipping.")
+						recommended_ver_key = 'recommendedVersion'
+						if recommended_ver_key in j:
+							recver = j[recommended_ver_key]
+							if comp_semver(const.__version__, recver) < 0:
+								pr("Your current version ({}) is low, "
+									"It's recommended to update to version {}.\n"
+									"Please run 'pip install -U bypy' to update.".format(
+										const.__version__, recver))
+					except ValueError:
+						self.pd("Invalid response for update check, skipping.")
+				else:
+					self.pd("HTTP Status {} while checking update, skipping.".format(r.status_code))
+			except:
+				self.pd("Error occurred while checking update, skipping.")
 
 	def pv(self, msg, **kwargs):
 		if self.verbose:
