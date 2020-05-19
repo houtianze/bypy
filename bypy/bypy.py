@@ -1250,7 +1250,7 @@ Possible fixes:
 					self.pd("File info json: {}".format(self.__remote_json))
 					return const.ENoError
 
-			return const.EFileNotFound
+			return const.EFileNotFound if len(l) == 0 else None
 		except KeyError as ex:
 			perr(formatex(ex))
 			return const.ERequestFailed
@@ -1277,13 +1277,19 @@ Possible fixes:
 		rdir, rfile = posixpath.split(remotefile)
 		self.pd("__get_file_info(): rdir : {} | rfile: {}".format(rdir, rfile))
 		if rdir and rfile:
-			pars = {
-				'method' : 'list',
-				'path' : rdir,
-				'by' : 'name', # sort in case we can use binary-search, etc in the futrue.
-				'order' : 'asc' }
-
-			return self.__get(pcsurl + 'file', pars, self.__get_file_info_act, remotefile, **kwargs)
+			listStart = 0
+			while True:
+				pars = {
+					'method' : 'list',
+					'path' : rdir,
+					'by' : 'name', # sort in case we can use binary-search, etc in the futrue.
+					'order' : 'asc',
+					'limit': '{}-{}'.format(listStart, listStart + const.MaxListEntries)}
+				result = self.__get(pcsurl + 'file', pars, self.__get_file_info_act, remotefile, **kwargs)
+				if result is not None:
+					break
+				listStart += const.MaxListEntries
+			return result
 		else:
 			perr("Invalid remotefile '{}' specified.".format(remotefile))
 			return const.EArgument
