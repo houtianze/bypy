@@ -1239,18 +1239,18 @@ Possible fixes:
 
 	def __get_file_info_act(self, r, args):
 		try:
-			remotefile = args
+			(remotefile, rjlist) = args
 			j = r.json()
 			self.jsonq.append(j)
 			self.pd("List json: {}".format(j))
-			l = j['list']
-			for f in l:
+			rjlist = j['list']
+			for f in rjlist:
 				if f['path'] == remotefile: # case-sensitive
 					self.__remote_json = f
 					self.pd("File info json: {}".format(self.__remote_json))
 					return const.ENoError
 
-			return const.EFileNotFound if len(l) == 0 else None
+			return const.EFileNotFound
 		except KeyError as ex:
 			perr(formatex(ex))
 			return const.ERequestFailed
@@ -1285,8 +1285,9 @@ Possible fixes:
 					'by' : 'name', # sort in case we can use binary-search, etc in the futrue.
 					'order' : 'asc',
 					'limit': '{}-{}'.format(listStart, listStart + const.MaxListEntries)}
-				result = self.__get(pcsurl + 'file', pars, self.__get_file_info_act, remotefile, **kwargs)
-				if result is not None:
+				rjlist = []
+				result = self.__get(pcsurl + 'file', pars, self.__get_file_info_act, (remotefile, rjlist), **kwargs)
+				if result == const.ENoError or (not rjlist or len(rjlist) < const.MaxListEntries):
 					break
 				listStart += const.MaxListEntries
 			return result
