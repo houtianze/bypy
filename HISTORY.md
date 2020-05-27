@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.6.9: Make auth server list dynamic
 - 1.6.8: Fix 1000 items limit for downloading
 - 1.6.7: Handle update check network exceptions
 - 1.6.6: Let it cry when dies, so we can have some trace

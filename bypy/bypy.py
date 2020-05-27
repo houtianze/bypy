@@ -981,6 +981,21 @@ Possible fixes:
 	def __repr_timeout(self):
 		return self.__timeout if self.__timeout else 'infinite'
 
+	def __update_auth_server_list(self):
+		try:
+			r = requests.get('https://raw.githubusercontent.com/houtianze/bypy/master/update/auth.json')
+			if r.status_code == 200:
+				try:
+					j = r.json()
+					const.AuthServerList = j['AuthServerList']
+					const.RefreshServerList = j['RefreshServerList']
+				except ValueError:
+					self.pd("Invalid response for auth servers update, skipping.")
+			else:
+				self.pd("HTTP Status {} while updating auth servers, skipping.".format(r.status_code))
+		except:
+			self.pd("Error occurred while updating auth servers, skipping.")
+
 	def __server_auth(self):
 		params = {
 			'client_id' : self.__apikey,
@@ -1005,6 +1020,8 @@ Possible fixes:
 		savedperr = perr
 		if not self.debug:
 			perr = nop
+
+		self.__update_auth_server_list()
 		for auth in const.AuthServerList:
 			(url, retry, msg) = auth
 			pr(msg)
@@ -1083,6 +1100,7 @@ Possible fixes:
 			savedperr = perr
 			if not self.debug:
 				perr = nop
+			self.__update_auth_server_list()
 			for refresh in const.RefreshServerList:
 				(url, retry, msg) = refresh
 				pr(msg)

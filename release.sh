@@ -1,5 +1,6 @@
 #!/bin/sh
 
+# !!! RUN THIS SCRIPT UNDER VIRTUALENV !!!
 # need to run the following commands before running this release script
 # (This is for macOS, and for python virtualenv is recommended)
 # --------
@@ -10,6 +11,17 @@
 #set -x
 
 trap "echo '=== Release script interrupted ==='; exit -1" SIGINT
+
+check() {
+	command -v "$1" || { echo "'$1' doesn't exist, aborting."; exit -1; }
+}
+
+check git
+check python
+check pandoc
+check pyflakes
+check twine
+check jq
 
 pycmd=python
 
@@ -68,6 +80,7 @@ installtest() {
 }
 
 main() {
+	./syncver.sh
 	eval $pycmd genrst.py
 	parsearg $*
 

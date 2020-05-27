@@ -12,7 +12,7 @@ import os
 
 # https://packaging.python.org/single_source_version/
 __title__ = 'bypy'
-__version__ = '1.6.8'
+__version__ = '1.6.9'
 __author__ = 'Hou Tianze'
 __license__ = 'MIT'
 __desc__ = 'Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网盘 Python 客户端'
@@ -180,19 +180,19 @@ VercelRedirectUrl = VercelUrl + '/auth'
 VercelRefreshUrl = VercelUrl + '/refresh'
 AuthServerList = [
 	# url, retry?, message
-	(OpenShiftRedirectUrl, False, "Authorizing/refreshing with the OpenShift server ..."),
-	(HerokuRedirectUrl, False, "OpenShift server failed, authorizing/refreshing with the Heroku server ..."),
-	(Heroku1RedirectUrl, False, "Heroku server failed, authorizing/refreshing with the Heroku1 server ..."),
-	(VercelRedirectUrl, False, "Heroku1 server failed, authorizing/refreshing with the Vercel server ..."),
-	(GaeRedirectUrl, False, "Vercel server failed. Last resort: authorizing/refreshing with the GAE server ..."),
+	#(OpenShiftRedirectUrl, False, "Authorizing/refreshing with the OpenShift server ..."),
+	(HerokuRedirectUrl, False, "Authorizing with the Heroku server ..."),
+	(Heroku1RedirectUrl, False, "Heroku server failed, authorizing with the Heroku1 server ..."),
+	(VercelRedirectUrl, False, "Heroku1 server failed, authorizing with the Vercel server ..."),
+	(GaeRedirectUrl, False, "Vercel server failed. Last resort: authorizing with the GAE server ..."),
 ]
 RefreshServerList = [
 	# url, retry?, message
-	(OpenShiftRefreshUrl, False, "Authorizing/refreshing with the OpenShift server ..."),
-	(HerokuRefreshUrl, False, "OpenShift server failed, authorizing/refreshing with the Heroku server ..."),
-	(Heroku1RefreshUrl, False, "Heroku server failed, authorizing/refreshing with the Heroku1 server ..."),
-	(VercelRefreshUrl, False, "Heroku1 server failed, authorizing/refreshing with the Vercel server ..."),
-	(GaeRefreshUrl, False, "Vercel server failed. Last resort: authorizing/refreshing with the GAE server ..."),
+	#(OpenShiftRefreshUrl, False, "Authorizing/refreshing with the OpenShift server ..."),
+	(HerokuRefreshUrl, False, "Refreshing with the Heroku server ..."),
+	(Heroku1RefreshUrl, False, "Heroku server failed, refreshing with the Heroku1 server ..."),
+	(VercelRefreshUrl, False, "Heroku1 server failed, refreshing with the Vercel server ..."),
+	(GaeRefreshUrl, False, "Vercel server failed. Last resort: refreshing with the GAE server ..."),
 ]
 
 ### public static properties
