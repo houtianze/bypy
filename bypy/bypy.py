@@ -2598,8 +2598,12 @@ restore a file from the recycle bin
 				d['path'][dlen:], PathDictTree('D', size = d['size'], md5 = d['md5'] if 'md5' in d else ''))
 
 		for f in filejs:
+			fmd5 = f['md5']
+			bl = 'block_list'
+			if bl in f and f[bl]:
+				fmd5 = f[bl][0]
 			self.__remote_dir_contents.get(remotepath[rootlen:]).add(
-				f['path'][dlen:], PathDictTree('F', size = f['size'], md5 = f['block_list'][0]))
+				f['path'][dlen:], PathDictTree('F', size = f['size'], md5 = fmd5))
                 # 网盘和本地文件相同，但本地文件md5与网盘获取到的md5值却不一致
                 # 与之对应的是在block_list列表中的值
                 # 此处修改后可实现增量上传，compare函数运行结果才是正确的
