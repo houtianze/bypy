@@ -2599,7 +2599,11 @@ restore a file from the recycle bin
 
 		for f in filejs:
 			self.__remote_dir_contents.get(remotepath[rootlen:]).add(
-				f['path'][dlen:], PathDictTree('F', size = f['size'], md5 = f['md5']))
+				f['path'][dlen:], PathDictTree('F', size = f['size'], md5 = f['block_list'][0]))
+                # 网盘和本地文件相同，但本地文件md5与网盘获取到的md5值却不一致
+                # 与之对应的是在block_list列表中的值
+                # 此处修改后可实现增量上传，compare函数运行结果才是正确的
+				# f['path'][dlen:], PathDictTree('F', size = f['size'], md5 = f['md5']))
 
 		return walkresult
 
