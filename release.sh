@@ -7,6 +7,10 @@
 # brew install pandoc
 # pip3 install pandoc pypandoc twine pyflakes
 
+### Usage ###
+# - Testing: ./release.sh -buti
+# - Actual: ./release.sh -abigtu
+
 #set -o errexit
 #set -x
 

@@ -2597,17 +2597,18 @@ restore a file from the recycle bin
 			self.__remote_dir_contents.get(remotepath[rootlen:]).add(
 				d['path'][dlen:], PathDictTree('D', size = d['size'], md5 = d['md5'] if 'md5' in d else ''))
 
+		# Baidu made another fuck up here:
+		# f['md5'] doesn't have the correct MD5 value, but f['block_list'][0] has
+		# This makes no sense, and I'm not going to change the correct code to adapt its wrong behaviors
+		# --- Code below for reference ---
+		# fmd5 = f['md5']
+		# bl = 'block_list'
+		# if bl in f and f[bl]:
+		# 	fmd5 = f[bl][0]
+		# f['path'][dlen:], PathDictTree('F', size = f['size'], md5 = fmd5))
 		for f in filejs:
-			fmd5 = f['md5']
-			bl = 'block_list'
-			if bl in f and f[bl]:
-				fmd5 = f[bl][0]
 			self.__remote_dir_contents.get(remotepath[rootlen:]).add(
-				f['path'][dlen:], PathDictTree('F', size = f['size'], md5 = fmd5))
-                # 网盘和本地文件相同，但本地文件md5与网盘获取到的md5值却不一致
-                # 与之对应的是在block_list列表中的值
-                # 此处修改后可实现增量上传，compare函数运行结果才是正确的
-				# f['path'][dlen:], PathDictTree('F', size = f['size'], md5 = f['md5']))
+				f['path'][dlen:], PathDictTree('F', size = f['size'], md5 = f['md5']))
 
 		return walkresult
 
@@ -3608,8 +3609,29 @@ def clean_prog_files(cleanlevel, verbose, configdir = const.ConfigDir):
 
 	return result
 
+def printBaiduBanner():
+	banner ='''
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+Baidu PCS currently gives totally WRONG MD5 hash for remote files, and I AM NOT GOING TO ADAPT TO IT!
+So it if doesn't work, install version '1.6.10' using the following command:
+pip install bypy==1.6.10
+Version 1.6.10 has a workaround for this.
+### Seeking maintainer fo this `bypy` project, if you are interested, please create an issue at github, thanks. ###
+----------------------------------------------------------------
+百度云盘返回的MD5全错了，鬼知道他们什么时候会改回来！现在代码是按照MD5值是正确的前提来写的，不会改。
+所以你发现比较功能等不能正确工作时，请安装 1.6.10 版本：
+pip install bypy==1.6.10
+1.6.10版有个临时解决方案。
+### 寻求这个`bypy`项目维护者，有意的话请去github上建issue，谢谢。###
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+'''
+	print(banner)
+
 def main(argv=None): # IGNORE:C0111
 	''' Main Entry '''
+	printBaiduBanner()
 
 	by = None
 	reqres = check_requirements()
