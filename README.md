@@ -1,7 +1,7 @@
 bypy - Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网盘Python客户端
 ====================================================================================
 
-**Say NO to "996 ICU"**:
+**Say No to "996 ICU"**:
 [![alt text](https://img.shields.io/badge/link-996.icu-red.svg "996.icu")](https://996.icu)
 
 [![alt text](https://img.shields.io/pypi/v/bypy.svg "PyPi Version")](https://pypi.python.org/pypi/bypy)
