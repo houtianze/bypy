@@ -1968,7 +1968,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 					sys.exit(const.EMaxRetry)
 				return const.EMaxRetry
 
-	# requirment: self.__remote_json is already gotten
+	# requirement: self.__remote_json is already gotten
 	def __downchunks(self, rfile, start):
 		rsize = self.__remote_json['size']
 
