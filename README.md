@@ -175,7 +175,7 @@ This is a Python client for Baidu Yun (a.k.a PCS - Personal Cloud Storage), an o
 Prerequisite
 ------------
 
-**Important: You need to set you system locale encoding to UTF-8 for this to work (You can refer here: <http://perlgeek.de/en/article/set-up-a-clean-utf8-environment)>**
+**Important: You need to set you system locale encoding to UTF-8 for this to work (You can refer here: <http://perlgeek.de/en/article/set-up-a-clean-utf8-environment>)**
 
 Installation
 ------------
