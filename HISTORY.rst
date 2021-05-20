@@ -1,6 +1,8 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.7.0: Follow Baidu’s encrypted MD5 algorithm
+
 -  1.6.11: Revert the previous change - Baidu PCS’s behavior is wrong
    and makes no sense
 
