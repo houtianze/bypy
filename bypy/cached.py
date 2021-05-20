@@ -299,15 +299,14 @@ def md5(filename, slice = const.OneM):
 
 	return encrypt_md5(m.hexdigest())
 
-def __validate_md5(md5str):
-	if len(md5str) != 32:
-		return md5str
-	for i in range(32):
-		v = int(md5str[i], 16)
-		if v < 0 or v > 16:
-			return md5str
-
 def encrypt_md5(md5str):
+	def alidate_md5():
+		if len(md5str) != 32:
+			return md5str
+		for i in range(32):
+			v = int(md5str[i], 16)
+			if v < 0 or v > 16:
+				return md5str
 	md5str = md5str[8:16] + md5str[0:8] + md5str[24:32] + md5str[16:24]
 	encryptstr = ''
 	for e in range(len(md5str)):
