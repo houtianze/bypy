@@ -168,7 +168,9 @@ class cached(object):
 				info = entry[file]
 				if 'md5' in info:
 					md5 = info['md5']
-					for c in md5:
+					# due to encrypt_md5()
+					# for c in md5:
+					for c in md5[:9] + md5[10:]:
 						if not cached.ishexchar(c):
 							return True
 		return False
@@ -300,7 +302,7 @@ def md5(filename, slice = const.OneM):
 	return encrypt_md5(m.hexdigest())
 
 def encrypt_md5(md5str):
-	def alidate_md5():
+	def validate_md5():
 		if len(md5str) != 32:
 			return md5str
 		for i in range(32):

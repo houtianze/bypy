@@ -1180,10 +1180,22 @@ Possible fixes:
 		return self.quota()
 
 	def quota(self):
-		''' Usage: quota/info - displays the quota information '''
+		''' Usage: quota/info - display the quota information '''
 		pars = {
 			'method' : 'info' }
 		return self.__get(pcsurl + 'quota', pars, self.__quota_act)
+
+	def __whoami_act(self, r, args):
+		j = r.json()
+		self.jsonq.append(j)
+		pr('User id: ' + j['userid'])
+		pr('Username: ' + j['username'])
+		return const.ENoError
+
+	def whoami(self):
+		''' Usage: whoeami - display the user information '''
+		pars = {}
+		return self.__get(const.OpenApiUrl + '/rest/2.0/passport/users/getInfo', pars, self.__whoami_act)
 
 	# return:
 	#   0: local and remote files are of same size
