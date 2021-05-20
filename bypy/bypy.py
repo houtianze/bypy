@@ -3614,7 +3614,7 @@ def printBaiduBanner():
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 Baidu PCS currently gives totally WRONG MD5 hash for remote files, and I AM NOT GOING TO ADAPT TO IT!
-So it if doesn't work, install version '1.6.10' using the following command:
+So if it doesn't work, install version '1.6.10' using the following command:
 pip install bypy==1.6.10
 Version 1.6.10 has a workaround for this.
 ### Seeking maintainer for this `bypy` project, if you are interested, please create an issue at github, thanks. ###
