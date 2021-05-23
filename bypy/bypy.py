@@ -3643,7 +3643,7 @@ pip install bypy==1.6.10
 
 def main(argv=None): # IGNORE:C0111
 	''' Main Entry '''
-	printBaiduBanner()
+	# printBaiduBanner()
 
 	by = None
 	reqres = check_requirements()
