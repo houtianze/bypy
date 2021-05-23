@@ -20,14 +20,14 @@ check() {
 	command -v "$1" || { echo "'$1' doesn't exist, aborting."; exit -1; }
 }
 
+pycmd=python3
+
 check git
-check python
+check $pycmd
 check pandoc
 check pyflakes
 check twine
 check jq
-
-pycmd=python
 
 actual=0
 build=0
@@ -114,7 +114,7 @@ main() {
 
 	if [ "$build" -eq 1 ]
 	then
-		rm -Rf dist/*
+		eval $pycmd setup.py clean --all
 		eval $pycmd setup.py bdist_wheel #sdist
 	fi
 

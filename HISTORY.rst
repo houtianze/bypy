@@ -1,6 +1,8 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.7.2: Fix release.sh
+
 -  1.7.1: Fix upgrading in Python2 (unicode file name support seems to
    be broken)
 
