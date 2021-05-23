@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.7.1: Fix upgrading in Python2 (unicode file name support seems to be broken)
 - 1.7.0: Follow Baidu's encrypted MD5 algorithm
 - 1.6.11: Revert the previous change - Baidu PCS's behavior is wrong and makes no sense
 - 1.6.10: Fix MD5 comparision (thanks to @shenchucheng)
