@@ -978,6 +978,9 @@ Possible fixes:
 	def __server_auth_act(self, r, args):
 		return self.__store_json(r)
 
+	def __local_auth_act(self, r, args):
+		return self.__store_json(r)
+
 	def __repr_timeout(self):
 		return self.__timeout if self.__timeout else 'infinite'
 
@@ -996,7 +999,7 @@ Possible fixes:
 		except:
 			self.pd("Error occurred while updating auth servers, skipping.")
 
-	def __server_auth(self):
+	def __auth(self):
 		params = {
 			'client_id' : self.__apikey,
 			'response_type' : 'code',
@@ -1009,34 +1012,44 @@ Possible fixes:
 		self.pd("auth_code: {}".format(auth_code))
 		pr('Authorizing, please be patient, it may take upto {} seconds...'.format(self.__repr_timeout()))
 
-		pars = {
-			'code' : auth_code,
-			'bypy_version' : const.__version__,
-			'redirect_uri' : 'oob' }
+		if self.__use_server_auth:
+			pars = {
+				'code' : auth_code,
+				'bypy_version' : const.__version__,
+				'redirect_uri' : 'oob' }
 
-		result = None
-		# TODO: hacky
-		global perr
-		savedperr = perr
-		if not self.debug:
-			perr = nop
+			result = None
+			# TODO: hacky
+			global perr
+			savedperr = perr
+			if not self.debug:
+				perr = nop
 
-		self.__update_auth_server_list()
-		for auth in const.AuthServerList:
-			(url, retry, msg) = auth
-			pr(msg)
-			result = self.__get(url, pars, self.__server_auth_act, retry = retry, addtoken = False)
+			self.__update_auth_server_list()
+			for auth in const.AuthServerList:
+				(url, retry, msg) = auth
+				pr(msg)
+				result = self.__get(url, pars, self.__server_auth_act, retry = retry, addtoken = False)
+				if result == const.ENoError:
+					break
+			if not self.debug:
+				perr = savedperr
+
 			if result == const.ENoError:
-				break
-		if not self.debug:
-			perr = savedperr
-
-		if result == const.ENoError:
-			pr("Successfully authorized")
+				pr("Successfully authorized")
+			else:
+				perr("Fatal: All server authorizations failed.")
+				self.__prompt_clean()
+				sys.exit(result)
 		else:
-			perr("Fatal: All server authorizations failed.")
-			self.__prompt_clean()
-			sys.exit(result)
+			pars = {
+				'grant_type' : 'authorization_code',
+				'code' : auth_code,
+				'client_id' : self.__apikey,
+				'client_secret' : self.__secretkey,
+				'redirect_uri' : 'oob'
+			}
+			result = self.__post(const.TokenUrl, pars, self.__local_auth_act, addtoken = False)
 
 		return result
 
@@ -1051,12 +1064,6 @@ Possible fixes:
 			'response_type' : 'device_code',
 			'scope' : 'basic netdisk'}
 		return self.__get(const.DeviceAuthUrl, pars, self.__device_auth_act, addtoken = False)
-
-	def __auth(self):
-		if self.__use_server_auth:
-			return self.__server_auth()
-		else:
-			return self.__device_auth()
 
 	def __get_token_act(self, r, args):
 		return self.__store_json(r)
@@ -1086,9 +1093,10 @@ Possible fixes:
 		return self.__store_json(r)
 
 	def __refresh_token(self):
-		if self.__use_server_auth:
-			pr('Refreshing, please be patient, it may take upto {} seconds...'.format(self.__repr_timeout()))
-
+		pr('Refreshing, please be patient, it may take upto {} seconds...'.format(self.__repr_timeout()))
+		# How silly am I to have written this for the token refresh -
+		# We DON'T need any server for refreshing token, we have refresh_token already after auth.
+		if False and self.__use_server_auth:
 			pars = {
 				'bypy_version' : const.__version__,
 				'refresh_token' : self.__json['refresh_token'] }
@@ -1187,6 +1195,7 @@ Possible fixes:
 	def __whoami_act(self, r, args):
 		j = r.json()
 		self.jsonq.append(j)
+		self.pd("Response: {}".format(j))
 		pr('User id: ' + j['userid'])
 		pr('Username: ' + j['username'])
 		return const.ENoError

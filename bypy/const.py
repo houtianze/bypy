@@ -12,7 +12,7 @@ import os
 
 # https://packaging.python.org/single_source_version/
 __title__ = 'bypy'
-__version__ = '1.8.0'
+__version__ = '1.7.4'
 __author__ = 'Hou Tianze'
 __license__ = 'MIT'
 __desc__ = 'Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网盘 Python 客户端'
@@ -21,13 +21,13 @@ __url__ = 'https://github.com/houtianze/bypy'
 ### return (error) codes
 # they are put at the top because:
 # 1. they have zero dependencies
-# 2. can be referred in any abort later, e.g. return error on import faliures
+# 2. can be referred in any abort later, e.g. return error on import failures
 ENoError = 0 # plain old OK, fine, no error.
 EIncorrectPythonVersion = 1
 #EApiNotConfigured = 10 # Deprecated: ApiKey, SecretKey and AppPcsPath not properly configured
 EArgument = 10 # invalid program command argument
 EAbort = 20 # aborted
-EException = 30 # unhandled exception occured
+EException = 30 # unhandled exception occurred
 EParameter = 40 # invalid parameter passed to ByPy
 EInvalidJson = 50
 EHashMismatch = 60 # MD5 hashes of the local file and remote file don't match each other

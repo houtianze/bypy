@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.7.4: Local auth, NO more auth/relay server needed
 - 1.7.3: Make `list` able to handle more than 1000 items
 - 1.7.2: Fix release.sh
 - 1.7.1: Fix upgrading in Python2 (unicode file name support seems to be broken)
