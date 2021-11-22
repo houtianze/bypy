@@ -66,7 +66,7 @@ runtest() {
 	eval $pycmd setup.py test
 	#eval $pycmd -m doctest -v bypy.py
 	eval $pycmd -m bypy -V
-	eval $pycmd -m bypy --config-dir bypy/test/configdir quota
+	# eval $pycmd -m bypy --config-dir bypy/test/configdir quota
 }
 
 installtest() {
@@ -80,7 +80,7 @@ installtest() {
 	pip uninstall -y bypy
 	pip install -U bypy $indexopt
 	bypy -V
-	bypy --config-dir bypy/test/configdir quota
+	# bypy --config-dir bypy/test/configdir quota
 }
 
 main() {

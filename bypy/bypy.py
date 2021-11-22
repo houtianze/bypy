@@ -81,7 +81,7 @@ from .util import (
 	nop,
 	perr, pwarn, pinfo, pdbg,
 	jsondump, jsonload, formatex, rb,
-	joinpath, get_pcs_path, print_pcs_list, print_pcs_list_bare, str2bool, str2int,
+	joinpath, get_pcs_path, print_pcs_list, str2bool, str2int,
 	human_size, interpret_size, ls_time, ls_type,
 	makedir, removedir, movefile, removefile, getfilesize,
 	comp_semver,
