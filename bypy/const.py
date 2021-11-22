@@ -162,37 +162,14 @@ MaxSlicePieces = 1024
 MaxListEntries = 1000 # https://github.com/houtianze/bypy/issues/285
 
 ### Auth servers
-GaeUrl = 'https://bypyoauth.appspot.com'
-#OpenShiftUrl = 'https://bypy-tianze.rhcloud.com'
-OpenShiftUrl = 'https://bypyoauth-route-bypy.a3c1.starter-us-west-1.openshiftapps.com'
-HerokuUrl = 'https://bypyoauth.herokuapp.com'
-Heroku1Url = 'https://bypyoauth1.herokuapp.com'
-VercelUrl = 'https://bypyoauthsanic.now.sh/api'
-GaeRedirectUrl = GaeUrl + '/auth'
-GaeRefreshUrl = GaeUrl + '/refresh'
-OpenShiftRedirectUrl = OpenShiftUrl + '/auth'
-OpenShiftRefreshUrl = OpenShiftUrl + '/refresh'
-HerokuRedirectUrl = HerokuUrl + '/auth'
-HerokuRefreshUrl = HerokuUrl + '/refresh'
-Heroku1RedirectUrl = Heroku1Url + '/auth'
-Heroku1RefreshUrl = Heroku1Url + '/refresh'
+VercelUrl = 'https://bypyoauthsanic.vercel.app/api'
 VercelRedirectUrl = VercelUrl + '/auth'
-VercelRefreshUrl = VercelUrl + '/refresh'
+AliyunUrl = 'https://8.142.131.121'
+AliyunRedirectUrl = AliyunUrl + '/auth'
 AuthServerList = [
 	# url, retry?, message
-	#(OpenShiftRedirectUrl, False, "Authorizing/refreshing with the OpenShift server ..."),
-	(HerokuRedirectUrl, False, "Authorizing with the Heroku server ..."),
-	(Heroku1RedirectUrl, False, "Heroku server failed, authorizing with the Heroku1 server ..."),
-	(VercelRedirectUrl, False, "Heroku1 server failed, authorizing with the Vercel server ..."),
-	(GaeRedirectUrl, False, "Vercel server failed. Last resort: authorizing with the GAE server ..."),
-]
-RefreshServerList = [
-	# url, retry?, message
-	#(OpenShiftRefreshUrl, False, "Authorizing/refreshing with the OpenShift server ..."),
-	(HerokuRefreshUrl, False, "Refreshing with the Heroku server ..."),
-	(Heroku1RefreshUrl, False, "Heroku server failed, refreshing with the Heroku1 server ..."),
-	(VercelRefreshUrl, False, "Heroku1 server failed, refreshing with the Vercel server ..."),
-	(GaeRefreshUrl, False, "Vercel server failed. Last resort: refreshing with the GAE server ..."),
+	(VercelRedirectUrl, False, "Authorizing with the Vercel server ..."),
+	(AliyunRedirectUrl, False, "Vercel server failed. Last resort: authorizing with the Aliyun server ..."),
 ]
 
 ### public static properties

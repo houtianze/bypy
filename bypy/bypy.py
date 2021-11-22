@@ -984,20 +984,20 @@ Possible fixes:
 	def __repr_timeout(self):
 		return self.__timeout if self.__timeout else 'infinite'
 
-	def __update_auth_server_list(self):
-		try:
-			r = requests.get('https://raw.githubusercontent.com/houtianze/bypy/master/update/auth.json')
-			if r.status_code == 200:
-				try:
-					j = r.json()
-					const.AuthServerList = j['AuthServerList']
-					const.RefreshServerList = j['RefreshServerList']
-				except ValueError:
-					self.pd("Invalid response for auth servers update, skipping.")
-			else:
-				self.pd("HTTP Status {} while updating auth servers, skipping.".format(r.status_code))
-		except:
-			self.pd("Error occurred while updating auth servers, skipping.")
+	# NO longer in use
+	# def __update_auth_server_list(self):
+	# 	try:
+	# 		r = requests.get('https://raw.githubusercontent.com/houtianze/bypy/master/update/auth.json')
+	# 		if r.status_code == 200:
+	# 			try:
+	# 				j = r.json()
+	# 				const.AuthServerList = j['AuthServerList']
+	# 			except ValueError:
+	# 				self.pd("Invalid response for auth servers update, skipping.")
+	# 		else:
+	# 			self.pd("HTTP Status {} while updating auth servers, skipping.".format(r.status_code))
+	# 	except:
+	# 		self.pd("Error occurred while updating auth servers, skipping.")
 
 	def __auth(self):
 		params = {
@@ -1025,7 +1025,7 @@ Possible fixes:
 			if not self.debug:
 				perr = nop
 
-			self.__update_auth_server_list()
+			# self.__update_auth_server_list()
 			for auth in const.AuthServerList:
 				(url, retry, msg) = auth
 				pr(msg)
@@ -1094,44 +1094,14 @@ Possible fixes:
 
 	def __refresh_token(self):
 		pr('Refreshing, please be patient, it may take upto {} seconds...'.format(self.__repr_timeout()))
-		# How silly am I to have written this for the token refresh -
+		# How silly am I to have used server for token refresh -
 		# We DON'T need any server for refreshing token, we have refresh_token already after auth.
-		if False and self.__use_server_auth:
-			pars = {
-				'bypy_version' : const.__version__,
-				'refresh_token' : self.__json['refresh_token'] }
-
-			result = None
-			# TODO: hacky
-			global perr
-			savedperr = perr
-			if not self.debug:
-				perr = nop
-			self.__update_auth_server_list()
-			for refresh in const.RefreshServerList:
-				(url, retry, msg) = refresh
-				pr(msg)
-				result = self.__get(url, pars, self.__refresh_token_act, retry = retry, addtoken = False)
-				if result == const.ENoError:
-					break
-			if not self.debug:
-				perr = savedperr
-
-			if result == const.ENoError:
-				pr("Token successfully refreshed")
-			else:
-				perr("Token-refreshing on all the servers failed")
-				self.__prompt_clean()
-				sys.exit(result)
-
-			return result
-		else:
-			pars = {
-				'grant_type' : 'refresh_token',
-				'refresh_token' : self.__json['refresh_token'],
-				'client_secret' : self.__secretkey,
-				'client_id' : self.__apikey}
-			return self.__post(const.TokenUrl, pars, self.__refresh_token_act)
+		pars = {
+			'grant_type' : 'refresh_token',
+			'refresh_token' : self.__json['refresh_token'],
+			'client_secret' : self.__secretkey,
+			'client_id' : self.__apikey}
+		return self.__post(const.TokenUrl, pars, self.__refresh_token_act)
 
 	def __walk_normal_file(self, dir):
 		#dirb = dir.encode(FileSystemEncoding)
