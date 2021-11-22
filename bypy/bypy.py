@@ -53,6 +53,7 @@ from collections import deque
 from functools import partial
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
+from copy import deepcopy
 # unify Python 2 and 3
 if sys.version_info[0] == 2:
 	import urllib as ulp
@@ -80,7 +81,7 @@ from .util import (
 	nop,
 	perr, pwarn, pinfo, pdbg,
 	jsondump, jsonload, formatex, rb,
-	joinpath, get_pcs_path, print_pcs_list, str2bool, str2int,
+	joinpath, get_pcs_path, print_pcs_list, print_pcs_list_bare, str2bool, str2int,
 	human_size, interpret_size, ls_time, ls_type,
 	makedir, removedir, movefile, removefile, getfilesize,
 	comp_semver,
@@ -913,7 +914,6 @@ class ByPy(object):
 		'$i' : (lambda json: str(json['fs_id'])),
 		'$b' : (lambda json: str(json['block_list'] if 'block_list' in json else '')),
 		'$u' : (lambda json: 'HasSubDir' if 'ifhassubdir' in json and json['ifhassubdir'] else 'NoSubDir'),
-		'$$' : (lambda json: '$')
 	}
 
 	def __replace_list_format(self, fmt, j):
@@ -1042,6 +1042,7 @@ Possible fixes:
 
 	def __device_auth_act(self, r, args):
 		dj = r.json()
+		self.pd('device response: {}'.format(dj))
 		return self.__get_token(dj)
 
 	def __device_auth(self):
@@ -1065,11 +1066,9 @@ Possible fixes:
 		# 	  "\nwithin " + str(deviceJson['expires_in']) + " seconds\n"
 		# "Input the CODE: {}\n".format(deviceJson['user_code'])" + \
 		# 	"and Authorize this little app.\n"
-		# "Press [Enter] when you've finished\n"
 		msg = "Please visit:\n{}\nwithin {} seconds\n" \
 			"Input the CODE: {}\n" \
-			"and Authorize this little app.\n" \
-			"Press [Enter] when you've finished\n".format(
+			"and Authorize this little app.\n".format(
 				deviceJson['verification_url'],
 				str(deviceJson['expires_in']),
 				deviceJson['user_code'])
@@ -1332,12 +1331,27 @@ Possible fixes:
 	def __list_act(self, r, args):
 		(remotedir, fmt) = args
 		j = r.json()
+		self.pd("Response: {}".format(j))
 		self.jsonq.append(j)
 		pr("{} ({}):".format(remotedir, fmt))
 		for f in j['list']:
 			pr(self.__replace_list_format(fmt, f))
 
 		return const.ENoError
+
+	def __proceed_list(self, walkresult, remotepath, dirjs, filejs, args):
+		result = walkresult
+		fmt = args
+		# cutfront = const.AppPcsPathLen
+		cutfront = len(remotepath) + 1
+		pathlol = [deepcopy(dirjs), deepcopy(filejs)]
+		self.pd("Files listl: {}".format(pathlol))
+		for path in pathlol:
+			for p in path:
+				if 'path' in p:
+					p['path'] = p['path'][cutfront:]
+					pr(self.__replace_list_format(fmt, p))
+		return result
 
 	def ls(self, remotepath = '',
 		fmt = '$t $f $s $m $d',
@@ -1348,7 +1362,7 @@ Possible fixes:
 		fmt = '$t $f $s $m $d',
 		sort = 'name', order = 'asc'):
 		''' Usage: list/ls [remotepath] [format] [sort] [order] - list the 'remotepath' directory at Baidu PCS
-    remotepath - the remote path at Baidu PCS. default: root directory '/'
+	remotepath - the remote path at Baidu PCS. default: root directory '/'
 	format - specifies how the list are displayed
 	  $t - Type: Directory ('D') or File ('F')
 	  $f - File name
@@ -1356,21 +1370,22 @@ Possible fixes:
 	  $m - Modification time
 	  $d - MD5 hash
 	  $s - Size
-	  $$ - The '$' sign
-	  So '$t - $f - $s - $$' will display "Type - File - Size - $'
+	  Because of the interpolation, you need to escape the $ sign,
+	  so '\$t - \$f - \$s - \$' will display "Type - File - Size - $'
 	  Default format: '$t $f $s $m $d'
-    sort - sorting by [name, time, size]. default: 'name'
-    order - sorting order [asc, desc]. default: 'asc'
 		'''
+    # sort - sorting by [name, time, size]. default: 'name'
+    # order - sorting order [asc, desc]. default: 'asc'
 		rpath = get_pcs_path(remotepath)
+		return self.__walk_proceed_remote_dir(rpath, self.__proceed_list, args = fmt, recursive = False)
 
-		pars = {
-			'method' : 'list',
-			'path' : rpath,
-			'by' : sort,
-			'order' : order }
+		# pars = {
+		# 	'method' : 'list',
+		# 	'path' : rpath,
+		# 	'by' : sort,
+		# 	'order' : order }
 
-		return self.__get(pcsurl + 'file', pars, self.__list_act, (rpath, fmt))
+		# return self.__get(pcsurl + 'file', pars, self.__list_act, (rpath, fmt))
 
 	def __meta_act(self, r, args):
 		return self.__list_act(r, args)
@@ -2198,7 +2213,7 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 
 		return const.ENoError
 
-	def __walk_remote_dir(self, remotepath, remoterootpath, args = None, skip_remote_only_dirs = False):
+	def __walk_remote_dir(self, remotepath, remoterootpath, args = None, skip_remote_only_dirs = False, recursive = True):
 		dirjs = []
 		filejs = []
 		listStart = 0
@@ -2219,21 +2234,22 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 		if result == const.ENoError:
 			self.pd("Remote dirs: {}".format(dirjs))
 			self.pd("Remote files: {}".format(filejs))
-			for dirj in dirjs:
-				crpath = dirj['path'] # crpath - current remote path
-				if skip_remote_only_dirs and remoterootpath != None and \
-					self.__local_dir_contents.get(posixpath.relpath(crpath, remoterootpath)) == None:
-					self.pd("Skipping remote-only sub-directory '{}'.".format(crpath))
-					continue
+			if recursive:
+				for dirj in dirjs:
+					crpath = dirj['path'] # crpath - current remote path
+					if skip_remote_only_dirs and remoterootpath != None and \
+						self.__local_dir_contents.get(posixpath.relpath(crpath, remoterootpath)) == None:
+						self.pd("Skipping remote-only sub-directory '{}'.".format(crpath))
+						continue
 
-				# http://stackoverflow.com/a/8991864/404271
-				# for Python 3.3+, "yield from" reads better
-				for y in self.__walk_remote_dir(crpath, remoterootpath, args, skip_remote_only_dirs):
-					yield y
+					# http://stackoverflow.com/a/8991864/404271
+					# for Python 3.3+, "yield from" reads better
+					for y in self.__walk_remote_dir(crpath, remoterootpath, args, skip_remote_only_dirs):
+						yield y
 
-	def __walk_proceed_remote_dir(self, remotepath, proceed, args = None, skip_remote_only_dirs = False):
+	def __walk_proceed_remote_dir(self, remotepath, proceed, args = None, skip_remote_only_dirs = False, recursive = True):
 		result = const.ENoError
-		for walk in self.__walk_remote_dir(remotepath, remotepath, args, skip_remote_only_dirs):
+		for walk in self.__walk_remote_dir(remotepath, remotepath, args, skip_remote_only_dirs, recursive = False):
 			subresult = proceed(*walk)
 			if subresult != const.ENoError:
 				result = subresult

@@ -12,7 +12,7 @@ import os
 
 # https://packaging.python.org/single_source_version/
 __title__ = 'bypy'
-__version__ = '1.7.2'
+__version__ = '1.8.0'
 __author__ = 'Hou Tianze'
 __license__ = 'MIT'
 __desc__ = 'Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网盘 Python 客户端'
@@ -131,9 +131,9 @@ FortyNineDaysInSeconds = 60 * 60 * 24 * 49
 
 #### Baidu PCS constants
 # ==== NOTE ====
-# I use server auth, because it's the only possible method to protect the SecretKey.
+# I use server auth, because it's the only method I know that can conceal the SecretKey.
 # If you want to perform local authorization using 'Device' method instead, you just need:
-# - Paste your own ApiKey and SecretKey. (An non-NONE or non-empty SecretKey means using local auth
+# - Paste your own ApiKey and SecretKey. (A non-empty SecretKey will change auth mode to device)
 # - Change the AppPcsPath to your own App's directory at Baidu PCS
 # Then you are good to go
 ApiKey = 'q8WE4EpCsau1oS0MplgMKNBn' # replace with your own ApiKey if you use your own appid

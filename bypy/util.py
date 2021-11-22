@@ -266,10 +266,8 @@ def get_pcs_path(path):
 def is_pcs_root_path(path):
 	return path == const.AppPcsPath or path == const.AppPcsPath + '/'
 
-def print_pcs_list(json, foundmsg = "Found:", notfoundmsg = "Nothing found."):
-	list = json['list']
+def print_pcs_list_bare(list):
 	if list:
-		pr(foundmsg)
 		for f in list:
 			pr("{} {} {} {} {} {}".format(
 				ls_type(f['isdir']),
@@ -277,7 +275,13 @@ def print_pcs_list(json, foundmsg = "Found:", notfoundmsg = "Nothing found."):
 				f['size'],
 				ls_time(f['ctime']),
 				ls_time(f['mtime']),
-				f['md5']))
+				f['md5'] if 'md5' in f else ''))
+
+def print_pcs_list(json, foundmsg = "Found:", notfoundmsg = "Nothing found."):
+	list = json['list']
+	if list:
+		pr(foundmsg)
+		print_pcs_list_bare(list)
 	else:
 		pr(notfoundmsg)
 

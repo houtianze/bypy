@@ -47,6 +47,9 @@ nosetests.xml
 #.idea/workspace.xml
 #*.rst
 #
+
+.metals/
+
 **/.DS_Store
 bypy/test/**/*.bin
 bypy/test/downdir/
