@@ -1,9 +1,6 @@
 bypy - Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网盘Python客户端
 ====================================================================================
 
-**Say NO to "996 ICU"**:
-[![alt text](https://img.shields.io/badge/link-996.icu-red.svg "996.icu")](https://996.icu)
-
 [![alt text](https://img.shields.io/pypi/v/bypy.svg "PyPi Version")](https://pypi.python.org/pypi/bypy)
 [![alt text](https://img.shields.io/pypi/dm/bypy.svg "PyPi Downloads")](https://pypi.python.org/pypi/bypy)
 [![alt text](https://travis-ci.org/houtianze/bypy.svg "Build status")](https://travis-ci.org/houtianze/bypy)
@@ -26,6 +23,17 @@ TL;DR
 **此项目已经进入维护状态：不会再有新的功能加入，只有在发现重大bug情况下才会有 _可能_ 更新。**
 
 **This is project is now in "maintenance" mode: NO new features will be added, and _may_ be updated only if critical bugs are found.**
+
+---
+
+**如果有人想帮助搭国内建授权服务器的话，请按以下步骤进行:**
+
+1. Clone <https://github.com/houtianze/bypyoauth> 并用任意值配置好环境变量后成功运行服务
+2. Fork 此repo，并把你的新服务器地址加到这里 <https://github.com/houtianze/bypy/blob/master/bypy/const.py#L164-L173>
+3. 创建拉取请求，然后通过 [![Join the chat at https://gitter.im/houtianze/bypy](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/houtianze/bypy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 或者在拉取请求里留下你的联系方式
+4. 我测试新服务器可以使用后，通过Gitter/邮件把Secret Key发给你，你用正确的配置启动授权服务器
+5. 新的授权服务器配置好后我合并拉取请求
+6. 谢谢。
 
 ---
 
