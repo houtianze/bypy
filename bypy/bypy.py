@@ -1356,6 +1356,7 @@ Possible fixes:
     # sort - sorting by [name, time, size]. default: 'name'
     # order - sorting order [asc, desc]. default: 'asc'
 		rpath = get_pcs_path(remotepath)
+		pr("{} ({}):".format(rpath, fmt))
 		return self.__walk_proceed_remote_dir(rpath, self.__proceed_list, args = fmt, recursive = False)
 
 		# pars = {
@@ -2228,7 +2229,7 @@ To stream a file, you can use the 'mkfifo' trick with omxplayer etc.:
 
 	def __walk_proceed_remote_dir(self, remotepath, proceed, args = None, skip_remote_only_dirs = False, recursive = True):
 		result = const.ENoError
-		for walk in self.__walk_remote_dir(remotepath, remotepath, args, skip_remote_only_dirs, recursive = False):
+		for walk in self.__walk_remote_dir(remotepath, remotepath, args, skip_remote_only_dirs, recursive):
 			subresult = proceed(*walk)
 			if subresult != const.ENoError:
 				result = subresult
