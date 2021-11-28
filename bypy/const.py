@@ -166,10 +166,13 @@ VercelUrl = 'https://bypyoauthsanic.vercel.app/api'
 VercelRedirectUrl = VercelUrl + '/auth'
 AliyunUrl = 'https://8.142.131.121'
 AliyunRedirectUrl = AliyunUrl + '/auth'
+AliyunUrl2 = 'http://47.97.60.222:8008'
+AliyunRedirectUrl2 = AliyunUrl2 + '/auth'
 AuthServerList = [
 	# url, retry?, message
 	(VercelRedirectUrl, False, "Authorizing with the Vercel server ..."),
 	(AliyunRedirectUrl, False, "Vercel server failed. Last resort: authorizing with the Aliyun server ..."),
+	(AliyunRedirectUrl2, False, "Vercel server failed. Last resort: authorizing with the Aliyun server ..."),
 ]
 
 ### public static properties
