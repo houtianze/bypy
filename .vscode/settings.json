@@ -4,5 +4,10 @@
         "**/.project": true,
         "**/.settings": true,
         "**/.factorypath": true
+    },
+    "java.completion.enabled": false,
+
+   "files.watcherExclude": {
+        "**/target": true
     }
 }

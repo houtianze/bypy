@@ -29,7 +29,7 @@ TL;DR
 **如果有人想帮助搭国内建授权服务器的话，请按以下步骤进行:**
 
 1. Clone <https://github.com/houtianze/bypyoauth> 并用任意值配置好环境变量后成功运行服务
-2. Fork 此repo，并把你的新服务器地址加到这里 <https://github.com/houtianze/bypy/blob/master/bypy/const.py#L164-L173>
+2. Fork 此repo，并把你的新服务器地址加到这里 <https://github.com/houtianze/bypy/blob/master/bypy/res/auth.json>
 3. 创建拉取请求，然后通过 [![Join the chat at https://gitter.im/houtianze/bypy](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/houtianze/bypy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge) 或者在拉取请求里留下你的联系方式
 4. 我测试新服务器可以使用后，通过Gitter/邮件把Secret Key发给你，你用正确的配置启动授权服务器
 5. 新的授权服务器配置好后我合并拉取请求

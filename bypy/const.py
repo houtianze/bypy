@@ -161,17 +161,6 @@ MaxSliceSize = 2 * OneG
 MaxSlicePieces = 1024
 MaxListEntries = 1000 # https://github.com/houtianze/bypy/issues/285
 
-### Auth servers
-VercelUrl = 'https://bypyoauthsanic.vercel.app/api'
-VercelRedirectUrl = VercelUrl + '/auth'
-AliyunUrl = 'https://8.142.131.121'
-AliyunRedirectUrl = AliyunUrl + '/auth'
-AuthServerList = [
-	# url, retry?, message
-	(VercelRedirectUrl, False, "Authorizing with the Vercel server ..."),
-	(AliyunRedirectUrl, False, "Vercel server failed. Last resort: authorizing with the Aliyun server ..."),
-]
-
 ### public static properties
 HelpMarker = "Usage:"
 

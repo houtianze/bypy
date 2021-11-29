@@ -46,7 +46,7 @@ setup(
 	author_email = 'houtianze@users.noreply.github.com',
 	download_url = 'https://github.com/houtianze/bypy/tarball/' + meta['version'],
 	#packages=find_packages(),
-	packages = ['bypy', 'bypy.test'],
+	packages = ['bypy', 'bypy.res', 'bypy.test'],
 	package_data = {
 		'bypy' : ['*.rst', 'bypy/*.pem']
 	},
@@ -80,7 +80,8 @@ setup(
 	install_requires = [
 		'requests>=2.10.0',
 		'requests-toolbelt>=0.8.0',
-		'multiprocess>=0.70.0'],
+		'multiprocess>=0.70.0',
+		'importlib-resources>=5.4.0'],
 	include_package_data = True,
 	**meta
 )
