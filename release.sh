@@ -1,6 +1,9 @@
 #!/bin/sh
 
-# !!! RUN THIS SCRIPT UNDER VIRTUALENV !!!
+echo !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+echo !!! RUN THIS SCRIPT UNDER VIRTUALENV !!!
+echo !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 # need to run the following commands before running this release script
 # (This is for macOS, and for python virtualenv is recommended)
 # --------
