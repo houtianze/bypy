@@ -1,6 +1,8 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.7.6: Fix package reading; Enable local auth using env vars
+
 -  1.7.6: Fix refresh_token
 
 -  1.7.5: Restore recursive directory walk
