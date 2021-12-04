@@ -136,8 +136,9 @@ FortyNineDaysInSeconds = 60 * 60 * 24 * 49
 # - Paste your own ApiKey and SecretKey. (A non-empty SecretKey will change auth mode to device)
 # - Change the AppPcsPath to your own App's directory at Baidu PCS
 # Then you are good to go
-ApiKey = 'q8WE4EpCsau1oS0MplgMKNBn' # replace with your own ApiKey if you use your own appid
-SecretKey = '' # replace with your own SecretKey if you use your own appid
+# replace with your own API key and secret if you are using your own appid, or set env vars
+ApiKey = os.environ['BAIDU_API_KEY'] if 'BAIDU_API_KEY' in os.environ else 'q8WE4EpCsau1oS0MplgMKNBn'
+SecretKey = os.environ['BAIDU_API_SECRET'] if 'BAIDU_API_SECRET' in os.environ else ''
 # NOTE: no trailing '/'
 AppPcsPath = '/apps/bypy' # change this to the App's directory you specified when creating the app
 AppPcsPathLen = len(AppPcsPath)
