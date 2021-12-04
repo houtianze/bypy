@@ -2,4 +2,3 @@
 requests
 requests-toolbelt
 multiprocess
-importlib-resources

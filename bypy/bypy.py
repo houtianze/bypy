@@ -41,6 +41,7 @@ import tempfile
 import posixpath
 import json
 import hashlib
+import pkgutil
 #import base64
 import re
 import pprint
@@ -67,12 +68,6 @@ elif sys.version_info[0] == 3:
 	long = int
 	raw_input = input
 	pickleload = partial(pickle.load, encoding="bytes")
-
-try:
-	import importlib.resources as pkg_resources
-except ImportError:
-	# Try backported to PY<37 `importlib_resources`.
-	import importlib_resources as pkg_resources
 
 from . import const
 from . import gvar
@@ -994,9 +989,10 @@ Possible fixes:
 		return self.__timeout if self.__timeout else 'infinite'
 
 	def __load_auth_server_list(self):
-		# https://stackoverflow.com/a/20885799/404271
+		# https://stackoverflow.com/a/58941536/404271
+		import pkgutil
 		from . import res
-		j = json.loads(pkg_resources.read_text(res, 'auth.json'))
+		j = json.loads(pkgutil.get_data(__name__, 'res/auth.json'))
 		self.pd('Auth servers loaded: {}'.format(j))
 		self.AuthServerList = j['AuthServerList']
 		self.RefreshServerList = j['RefreshServerList']
@@ -2083,6 +2079,7 @@ try to create a file at PCS by combining slices, having MD5s specified
 		return result
 
 	def __downfile(self, remotefile, localfile):
+		pinfo('{} <- {}'.format(localfile, remotefile))
 		# TODO: this is a quick patch
 		if not self.__shallinclude(localfile, remotefile, False):
 			# since we are not going to download it, there is no error

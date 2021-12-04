@@ -49,6 +49,7 @@ nosetests.xml
 #
 
 .metals/
+.idea/
 
 **/.DS_Store
 bypy/test/**/*.bin
