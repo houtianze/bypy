@@ -331,6 +331,7 @@ class ByPy(object):
 			sys.exit(const.EMigrationFailed)
 
 		self.__configdir = configdir.rstrip("/\\ ")
+		makedir(self.__configdir)
 		# os.path.join() may not handle unicode well on Python 2.7
 		self.__tokenpath = configdir + os.sep + const.TokenFileName
 		self.__settingpath = configdir + os.sep + const.SettingFileName
