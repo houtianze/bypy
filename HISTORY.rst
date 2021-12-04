@@ -1,7 +1,9 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
--  1.7.6: Fix package reading; Enable local auth using env vars
+-  1.7.8: Fix package reading
+
+-  1.7.7: Enable local auth using env vars
 
 -  1.7.6: Fix refresh_token
 
@@ -48,7 +50,7 @@ Version History:
 -  1.5.13: Fix multiprocess upload/syncup missing some files
 
 -  1.5.12: Add one more heroku server; Workaround “ValueError: unknown
-   locale: UTF-8” on macOs (by xslidian)
+   locale: UTF-8” on macOS (by xslidian)
 
 -  1.5.11: Fix typo near version string
 
@@ -117,7 +119,7 @@ Version History:
 
 -  1.2.19: Add in aria2 download support
 
--  1.2.18: Add in upload resuming using slices; Fix Unicode issue with
+-  1.2.18: Add in upload resuming using slices; Fix Unicode issues with
    py2_jsondump(); Fix the pypi setup package
 
 -  1.2.17: Fix UnicodeEncodeError on redirect; Add in retry on urllib3
@@ -144,7 +146,7 @@ Version History:
 -  1.2.8: Fix a Syntax Error; Handle {‘error_code’: 0, ‘error_msg’: ‘no
    error’}
 
--  1.2.7: Fix Hash Cache JSON saving (need to using string for Hashes)
+-  1.2.7: Fix Hash Cache JSON saving (need to use string for Hashes)
 
 -  1.2.6: Fix Hash Cache JSON dumping (``Unicode`` again)
 

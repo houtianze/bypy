@@ -12,7 +12,7 @@ def getmeta(path, encoding = 'utf8'):
 	with io.open(path, encoding = encoding) as fp:
 		content = fp.read()
 	metakeys = ['title', 'version', 'desc', 'author', 'license', 'url']
-	metatrans = { 'title' : 'name', 'desc' : 'description' }
+	metatrans = {'title': 'name', 'desc': 'description'}
 	meta = {}
 	for mk in metakeys:
 		match = re.search(
@@ -37,9 +37,13 @@ See: https://github.com/houtianze/bypy
 
 
 '''
+requirements = []
 
 with open('HISTORY.rst') as f:
 	long_desc += f.read()
+
+with open('requirements.txt') as f:
+	requirements = f.read().splitlines()
 
 setup(
 	long_description=long_desc,
@@ -77,11 +81,7 @@ setup(
 		'Programming Language :: Python',
 		'Topic :: Utilities',
 		'Topic :: Internet :: WWW/HTTP'],
-	install_requires = [
-		'requests>=2.10.0',
-		'requests-toolbelt>=0.8.0',
-		'multiprocess>=0.70.0',
-		'importlib-resources>=5.4.0'],
+	install_requires = requirements,
 	include_package_data = True,
 	**meta
 )

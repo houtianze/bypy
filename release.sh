@@ -14,10 +14,10 @@
 #set -o errexit
 #set -x
 
-trap "echo '=== Release script interrupted ==='; exit -1" SIGINT
+trap "echo '=== Release script interrupted ==='; exit 255" INT
 
 check() {
-	command -v "$1" || { echo "'$1' doesn't exist, aborting."; exit -1; }
+	command -v "$1" || { echo "'$1' doesn't exist, aborting."; exit 255; }
 }
 
 pycmd=python3
@@ -57,6 +57,10 @@ parsearg() {
 		g)
 			tagit=1
 			;;
+		*)
+			echo "Invalid arguments."
+			exit 255
+			;;
 		esac
 	done
 }
@@ -78,7 +82,7 @@ installtest() {
 		pip uninstall -y requests
 	fi
 	pip uninstall -y bypy
-	pip install -U bypy $indexopt
+	pip install -U bypy "$indexopt"
 	bypy -V
 	# bypy --config-dir bypy/test/configdir quota
 }
@@ -86,7 +90,7 @@ installtest() {
 main() {
 	./syncver.sh
 	eval $pycmd genrst.py
-	parsearg $*
+	parsearg "$@"
 
 	if [ "$actual" -eq 0 ]
 	then
@@ -99,6 +103,7 @@ main() {
 
 	if [ "$tagit" -eq 1 ]
 	then
+		# shellcheck disable=SC2006
 		bypyversion=`grep __version__ bypy/const.py | sed -e "s/__version__ *= *'//g" -e "s/'//g"`
 		git tag
 		git tag "$bypyversion"
@@ -114,6 +119,7 @@ main() {
 
 	if [ "$build" -eq 1 ]
 	then
+		rm dist/*
 		eval $pycmd setup.py clean --all
 		eval $pycmd setup.py bdist_wheel #sdist
 	fi
@@ -132,6 +138,6 @@ main() {
 	fi
 }
 
-main $*
+main "$@"
 
 # vim: tabstop=4 noexpandtab shiftwidth=4 softtabstop=4 ff=unix fileencoding=utf-8
