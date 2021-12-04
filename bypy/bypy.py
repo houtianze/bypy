@@ -41,7 +41,6 @@ import tempfile
 import posixpath
 import json
 import hashlib
-import pkgutil
 #import base64
 import re
 import pprint
@@ -991,7 +990,6 @@ Possible fixes:
 	def __load_auth_server_list(self):
 		# https://stackoverflow.com/a/58941536/404271
 		import pkgutil
-		from . import res
 		j = json.loads(pkgutil.get_data(__name__, 'res/auth.json'))
 		self.pd('Auth servers loaded: {}'.format(j))
 		self.AuthServerList = j['AuthServerList']
