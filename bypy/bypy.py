@@ -977,6 +977,9 @@ Possible fixes:
 			perr("Error response:\n{}".format(r.text))
 			return self.__prompt_clean()
 
+		if 'access_token' not in j:
+			perr("Invalid token JSON:\n{}".format(j))
+			return const.EInvalidJson
 		return self.__store_json_only(j)
 
 	def __server_auth_act(self, r, args):
