@@ -43,7 +43,7 @@ with open('HISTORY.rst') as f:
 	long_desc += f.read()
 
 with open('requirements.txt') as f:
-	requirements = f.read().splitlines()
+	requirements = filter(lambda x: x and not x.startswith('#'), map(str.strip, f.read().splitlines()))
 
 setup(
 	long_description=long_desc,
