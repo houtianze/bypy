@@ -228,22 +228,32 @@ def joinpath(first, second, sep = os.sep):
 
 # CAN Python make Unicode right?
 # http://houtianze.github.io/python/unicode/json/2016/01/03/another-python-unicode-fisaco-on-json.html
-def py2_jsondump(data, filename):
-	with io.open(filename, 'w', encoding = 'utf-8') as f:
+def jsondump_actual(data, f):
+	if sys.version_info[0] == 2:
 		f.write(unicode(json.dumps(data, ensure_ascii = False, sort_keys = True, indent = 2)))
+	elif sys.version_info[0] == 3:
+		json.dump(data, f, ensure_ascii = False, sort_keys = True, indent = 2)
 
-def py3_jsondump(data, filename):
-	with io.open(filename, 'w', encoding = 'utf-8') as f:
-		return json.dump(data, f, ensure_ascii = False, sort_keys = True, indent = 2)
+def jsondump(data, filename, semaphore):
+	try:
+		if semaphore:
+			with semaphore:
+				with io.open(filename, 'w', encoding = 'utf-8') as f:
+					jsondump_actual(data, f)
+		else:
+			with io.open(filename, 'w', encoding = 'utf-8') as f:
+				jsondump_actual(data, f)
+	except Exception as ex:
+		perr("Fail to dump json '{}' to file '{}'.\nException:\n{}".format(
+			data, filename, formatex(ex)))
 
 def jsonload(filename):
-	with io.open(filename, 'r', encoding = 'utf-8') as f:
-		return json.load(f)
-
-if sys.version_info[0] == 2:
-	jsondump = py2_jsondump
-elif sys.version_info[0] == 3:
-	jsondump = py3_jsondump
+	try:
+		with io.open(filename, 'r', encoding = 'utf-8') as f:
+			return json.load(f)
+	except json.JSONDecodeError as ex:
+		perr("Fail to load '{}' as json, exception:\n{}".format(filename, formatex(ex)))
+		return {}
 
 def ls_type(isdir):
 	return 'D' if isdir else 'F'

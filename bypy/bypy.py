@@ -54,6 +54,7 @@ from functools import partial
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 from copy import deepcopy
+
 # unify Python 2 and 3
 if sys.version_info[0] == 2:
 	import urllib as ulp
@@ -125,6 +126,9 @@ except ImportError:
 	mp = None
 	Pool = None
 	perr("'multiprocess' library is not available, no parallel dl/ul.")
+
+mpsemaphore = mp.Semaphore(1) if mp else None
+cached.semaphore = mpsemaphore
 
 UPool = None
 if Pool != None:
@@ -223,7 +227,7 @@ class ByPy(object):
 					oldcache = pickleload(f)
 				stringifypickle(oldcache)
 				cached.loadcache(oldcache)
-				cached.savecache(True)
+				cached.savecache(force_saving=True)
 				pinfo("Contents of Pickle (old format hash cache) '{}' "
 				"has been merged to '{}'".format(const.PicklePath, const.HashCachePath))
 				mergedfile = const.PicklePath + '.merged'
@@ -262,7 +266,7 @@ class ByPy(object):
 
 	def savesetting(self):
 		try:
-			jsondump(self.__setting, self.__settingpath)
+			jsondump(self.__setting, self.__settingpath, mpsemaphore)
 		except Exception as ex:
 			perr("Failed to save settings.\n{}".format(formatex(ex)))
 			# complaining is enough, no need more actions as this is non-critical
@@ -945,7 +949,7 @@ class ByPy(object):
 		self.pd(self.__json)
 		tokenmode = 0o600
 		try:
-			jsondump(self.__json, self.__tokenpath)
+			jsondump(self.__json, self.__tokenpath, mpsemaphore)
 			os.chmod(self.__tokenpath, tokenmode)
 			return const.ENoError
 		except Exception as ex:
@@ -1527,7 +1531,7 @@ get information of the given path (dir / file) at Baidu Yun.
 		progress = jsonload(const.ProgressPath)
 		self.pd("Updating slice upload progress for {}".format(fullpath))
 		progress[fullpath] = (self.__slice_size, self.__slice_md5s)
-		jsondump(progress, const.ProgressPath)
+		jsondump(progress, const.ProgressPath, mpsemaphore)
 
 	def __delete_progress_entry(self, fullpath):
 		progress = jsonload(const.ProgressPath)
@@ -1535,7 +1539,7 @@ get information of the given path (dir / file) at Baidu Yun.
 		#del progress[fullpath]
 		self.pd("Removing slice upload progress for {}".format(fullpath))
 		progress.pop(fullpath, None)
-		jsondump(progress, const.ProgressPath)
+		jsondump(progress, const.ProgressPath, mpsemaphore)
 
 	def __upload_file_slices(self, localpath, remotepath, ondup = 'overwrite'):
 		pieces = const.MaxSlicePieces
@@ -1559,7 +1563,7 @@ get information of the given path (dir / file) at Baidu Yun.
 		progress = {}
 		initial_offset = 0
 		if not os.path.exists(const.ProgressPath):
-			jsondump(progress, const.ProgressPath)
+			jsondump(progress, const.ProgressPath, mpsemaphore)
 		progress = jsonload(const.ProgressPath)
 		if fullpath in progress:
 			self.pd("Find the progress entry resume uploading")

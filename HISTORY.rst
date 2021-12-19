@@ -1,6 +1,8 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.7.9: Fix multiprocess file writing
+
 -  1.7.8: Fix package reading
 
 -  1.7.7: Enable local auth using env vars

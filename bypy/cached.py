@@ -58,6 +58,7 @@ class cached(object):
 	cache = {}
 	cacheloaded = False
 	dirty = False
+	semaphore = None
 	# we don't do cache loading / unloading here because it's an decorator,
 	# and probably multiple instances are created for md5, crc32, etc
 	# it's a bit complex, and i thus don't have the confidence to do it in ctor/dtor
@@ -220,7 +221,7 @@ class cached(object):
 			if cached.verbose:
 				pr("Saving Hash Cache...")
 			try:
-				jsondump(cached.cache, cached.hashcachepath)
+				jsondump(cached.cache, cached.hashcachepath, cached.semaphore)
 				if cached.verbose:
 					pr("Hash Cache saved.")
 				saved = True
