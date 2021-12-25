@@ -251,7 +251,8 @@ def jsonload(filename):
 	try:
 		with io.open(filename, 'r', encoding = 'utf-8') as f:
 			return json.load(f)
-	except json.JSONDecodeError as ex:
+	# In `python 3`, the exception is `json.JSONDecodeError`, but in `python 2`, it's just `ValueError`
+	except Exception as ex:
 		perr("Fail to load '{}' as json, exception:\n{}".format(filename, formatex(ex)))
 		return {}
 

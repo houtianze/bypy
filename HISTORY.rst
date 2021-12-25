@@ -1,6 +1,9 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.7.10: Make sure progress json loading error handling works in both
+   Json 2 and 3
+
 -  1.7.9: Fix multiprocess file writing
 
 -  1.7.8: Fix package reading
