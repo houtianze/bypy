@@ -98,7 +98,7 @@ main() {
 	if [ "$actual" -eq 0 ]
 	then
 		repoopt="-r testpypi"
-		indexopt="-i https://testpypi.python.org/simple/"
+		indexopt="-ihttps://testpypi.python.org/simple/"
 	else
 		repoopt=""
 		indexopt=""

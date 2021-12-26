@@ -1,6 +1,8 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.7.12: Fix deps in setup.py
+
 -  1.7.11: Fix jsonload() bug introduced in the previous commit
 
 -  1.7.10: Make sure progress json loading error handling works in both
