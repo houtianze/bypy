@@ -354,7 +354,7 @@ class ByPy(object):
 			try:
 				self.__setting = jsonload(self.__settingpath)
 			except Exception as ex:
-				perr("Error loading settings: {}, using default settings".format(formatex(ex)))
+				perr("Error loading settings, using default settings.{}".format(formatex(ex)))
 		self.__hashcachepath = configdir + os.sep + const.HashCacheFileName
 		cached.hashcachepath = self.__hashcachepath
 		self.__certspath = os.path.join(os.path.dirname(__file__), const.ByPyCertsFileName)
@@ -937,7 +937,7 @@ class ByPy(object):
 			self.pd("Token loaded:")
 			self.pd(self.__json)
 			return True
-		except IOError as ex:
+		except Exception as ex:
 			self.pd("Error while loading baidu pcs token.\n{}".format(formatex(ex)))
 			return False
 
@@ -1528,18 +1528,31 @@ get information of the given path (dir / file) at Baidu Yun.
 				pars, self.__upload_slice_act, remotepath)
 
 	def __update_progress_entry(self, fullpath):
-		progress = jsonload(const.ProgressPath)
+		progress = {}
+
+		try:
+			progress = jsonload(const.ProgressPath)
+		except Exception as ex:
+			perr("Error loading the progress for: '{}'.\n{}.".format(fullpath, formatex(ex)))
+
 		self.pd("Updating slice upload progress for {}".format(fullpath))
 		progress[fullpath] = (self.__slice_size, self.__slice_md5s)
-		jsondump(progress, const.ProgressPath, mpsemaphore)
+
+		try:
+			jsondump(progress, const.ProgressPath, mpsemaphore)
+		except Exception as ex:
+			perr("Error updating the progress for: '{}'.\n{}.".format(fullpath, formatex(ex)))
 
 	def __delete_progress_entry(self, fullpath):
-		progress = jsonload(const.ProgressPath)
-		# http://stackoverflow.com/questions/11277432/how-to-remove-a-key-from-a-python-dictionary
-		#del progress[fullpath]
-		self.pd("Removing slice upload progress for {}".format(fullpath))
-		progress.pop(fullpath, None)
-		jsondump(progress, const.ProgressPath, mpsemaphore)
+		try:
+			progress = jsonload(const.ProgressPath)
+			# http://stackoverflow.com/questions/11277432/how-to-remove-a-key-from-a-python-dictionary
+			#del progress[fullpath]
+			self.pd("Removing slice upload progress for {}".format(fullpath))
+			progress.pop(fullpath, None)
+			jsondump(progress, const.ProgressPath, mpsemaphore)
+		except Exception as ex:
+			perr("Error deleting the progress for: '{}'.\n{}.".format(fullpath, formatex(ex)))
 
 	def __upload_file_slices(self, localpath, remotepath, ondup = 'overwrite'):
 		pieces = const.MaxSlicePieces
@@ -1562,9 +1575,18 @@ get information of the given path (dir / file) at Baidu Yun.
 		fullpath = os.path.abspath(self.__current_file)
 		progress = {}
 		initial_offset = 0
+		# create an empty progress file first
 		if not os.path.exists(const.ProgressPath):
-			jsondump(progress, const.ProgressPath, mpsemaphore)
-		progress = jsonload(const.ProgressPath)
+			try:
+				jsondump(progress, const.ProgressPath, mpsemaphore)
+			except Exception as ex:
+				perr("Error savingprogress, no resumption.\n{}".format(formatex(ex)))
+
+		try:
+			progress = jsonload(const.ProgressPath)
+		except Exception as ex:
+			perr("Error loading progress, no resumption.\n{}".format(formatex(ex)))
+
 		if fullpath in progress:
 			self.pd("Find the progress entry resume uploading")
 			(slice, md5s) = progress[fullpath]

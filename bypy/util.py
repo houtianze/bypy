@@ -234,24 +234,33 @@ def jsondump_actual(data, f):
 	elif sys.version_info[0] == 3:
 		json.dump(data, f, ensure_ascii = False, sort_keys = True, indent = 2)
 
+# no try ... except protection, will throw exceptions
 def jsondump(data, filename, semaphore):
-	try:
-		if semaphore:
-			with semaphore:
-				with io.open(filename, 'w', encoding = 'utf-8') as f:
-					jsondump_actual(data, f)
-		else:
+	if semaphore:
+		with semaphore:
 			with io.open(filename, 'w', encoding = 'utf-8') as f:
 				jsondump_actual(data, f)
+	else:
+		with io.open(filename, 'w', encoding = 'utf-8') as f:
+			jsondump_actual(data, f)
+
+def jsondump_no_exception(data, filename, semaphore):
+	try:
+		jsondump(data, filename, semaphore)
 	except Exception as ex:
 		perr("Fail to dump json '{}' to file '{}'.\nException:\n{}".format(
 			data, filename, formatex(ex)))
 
+# no try ... except protection, will throw exceptions
 def jsonload(filename):
+	with io.open(filename, 'r', encoding = 'utf-8') as f:
+		return json.load(f)
+
+def jsonload_no_exception(filename):
 	try:
-		with io.open(filename, 'r', encoding = 'utf-8') as f:
-			return json.load(f)
-	# In `python 3`, the exception is `json.JSONDecodeError`, but in `python 2`, it's just `ValueError`
+		jsonload(filename)
+	# In `python 3`, the exception when failing to parse is `json.JSONDecodeError` (subclass of `ValueError`)
+	# but in `python 2`, it's just `ValueError`
 	except Exception as ex:
 		perr("Fail to load '{}' as json, exception:\n{}".format(filename, formatex(ex)))
 		return {}
