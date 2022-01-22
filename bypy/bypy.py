@@ -1220,7 +1220,7 @@ Possible fixes:
 		return const.ENoError
 
 	def whoami(self):
-		''' Usage: whoeami - display the user information '''
+		''' Usage: whoami - display the user information '''
 		pars = {}
 		return self.__get(const.OpenApiUrl + '/rest/2.0/passport/users/getInfo', pars, self.__whoami_act)
 
