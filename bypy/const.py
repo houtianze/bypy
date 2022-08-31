@@ -12,7 +12,7 @@ import os
 
 # https://packaging.python.org/single_source_version/
 __title__ = 'bypy'
-__version__ = '1.7.14'
+__version__ = '1.8'
 __author__ = 'Hou Tianze'
 __license__ = 'MIT'
 __desc__ = 'Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网盘 Python 客户端'
@@ -139,7 +139,7 @@ FortyNineDaysInSeconds = 60 * 60 * 24 * 49
 # Then you are good to go
 # replace with your own API key and secret if you are using your own appid, or set env vars
 ApiKey = os.environ['BAIDU_API_KEY'] if 'BAIDU_API_KEY' in os.environ else 'q8WE4EpCsau1oS0MplgMKNBn'
-SecretKey = os.environ['BAIDU_API_SECRET'] if 'BAIDU_API_SECRET' in os.environ else ''
+SecretKey = os.environ['BAIDU_API_SECRET'] if 'BAIDU_API_SECRET' in os.environ else 'PA4MhwB5RE7DacKtoP2i8ikCnNzAqYTD'
 # NOTE: no trailing '/'
 AppPcsPath = '/apps/bypy' # change this to the App's directory you specified when creating the app
 AppPcsPathLen = len(AppPcsPath)

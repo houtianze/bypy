@@ -114,11 +114,11 @@ main() {
 	then
 		# shellcheck disable=SC2006
 		bypyversion=`grep __version__ bypy/const.py | sed -e "s/__version__ *= *'//g" -e "s/'//g"`
-		git tag
+		git --no-pager tag
 		git tag "$bypyversion"
 		git push
 		git push --tags
-		git tag
+		git --no-pager tag
 	fi
 
 	if [ "$testit" -eq 1 ]
