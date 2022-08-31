@@ -84,8 +84,14 @@ installtest() {
 	else
 		pip uninstall -y requests
 	fi
+
 	pip uninstall -y bypy
-	pip install -U bypy "$indexopt"
+	if [ -z "$indexopt" ]
+	then
+		pip install -U bypy
+	else
+		pip install -U bypy "$indexopt"
+	fi
 	bypy -V
 	# bypy --config-dir bypy/test/configdir quota
 }
