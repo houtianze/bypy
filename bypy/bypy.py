@@ -1296,12 +1296,14 @@ Possible fixes:
 
 	def __get_file_info_act(self, r, args):
 		try:
-			(remotefile, rjlist) = args
+			remotefile = args[0]
 			j = r.json()
 			self.jsonq.append(j)
 			self.pd("List json: {}".format(j))
-			rjlist = j['list']
-			for f in rjlist:
+			if not 'list' in j:
+				return const.EFileNotFound
+			args[1] = len(j['list'])
+			for f in j['list']:
 				if f['path'] == remotefile: # case-sensitive
 					self.__remote_json = f
 					self.pd("File info json: {}".format(self.__remote_json))
@@ -1333,6 +1335,8 @@ Possible fixes:
 
 		rdir, rfile = posixpath.split(remotefile)
 		self.pd("__get_file_info(): rdir : {} | rfile: {}".format(rdir, rfile))
+        # while refactoring to use __walk_proceed_remote_dir is more dry, it might be less performant -
+		# we want to stop once we found the file we need
 		if rdir and rfile:
 			listStart = 0
 			while True:
@@ -1342,9 +1346,9 @@ Possible fixes:
 					'by' : 'name', # sort in case we can use binary-search, etc in the futrue.
 					'order' : 'asc',
 					'limit': '{}-{}'.format(listStart, listStart + const.MaxListEntries)}
-				rjlist = []
-				result = self.__get(pcsurl + 'file', pars, self.__get_file_info_act, (remotefile, rjlist), **kwargs)
-				if result == const.ENoError or (not rjlist or len(rjlist) < const.MaxListEntries):
+				reqargs = [remotefile, 0]
+				result = self.__get(pcsurl + 'file', pars, self.__get_file_info_act, reqargs, **kwargs)
+				if result == const.ENoError or reqargs[1] < const.MaxListEntries:
 					break
 				listStart += const.MaxListEntries
 			return result
