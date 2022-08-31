@@ -1,7 +1,10 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
--  1.7.12: Correct the Aliyun auth server address
+-  1.7.14: Fix issue #612: Can’t download file when a directory has more
+   than 1000 items
+
+-  1.7.13: Correct the Aliyun auth server address
 
 -  1.7.12: Fix deps in setup.py
 

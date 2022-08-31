@@ -1,6 +1,7 @@
 ### Version History:
 
-- 1.7.12: Correct the Aliyun auth server address
+- 1.7.14: Fix issue #612: Can't download file when a directory has more than 1000 items
+- 1.7.13: Correct the Aliyun auth server address
 - 1.7.12: Fix deps in setup.py
 - 1.7.11: Fix jsonload() bug introduced in the previous commit
 - 1.7.10: Make sure progress json loading error handling works in both Json 2 and 3
