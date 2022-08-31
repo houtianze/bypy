@@ -54,6 +54,7 @@ IESuperfileCreationFailed = 31081 # superfile create failed (HTTP 404)
 IEBlockMissInSuperFile2 = 31363 # block miss in superfile2 (HTTP 403)
 IETaskNotFound = 36016 # Task was not found
 IEFileAlreadyExists = 31061 # {"error_code":31061,"error_msg":"file already exists","request_id":2939656146461714799}
+IEAppIDIsEmpty = 31024 # {'error_code': 31024, 'error_msg': 'app id is empty', 'request_id': 5638555241104030586} (HTTP 400)
 
 # TODO: Should have use an enum or some sort of data structure for this,
 # but now changing this is too time consuming and error-prone

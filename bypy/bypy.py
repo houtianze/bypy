@@ -708,7 +708,7 @@ class ByPy(object):
 				#   6 (sc: 403): No permission to access user data
 				# 110 (sc: 401): Access token invalid or no longer valid
 				# 111 (sc: 401): Access token expired
-				if ec == 111 or ec == 110 or ec == 6: # and sc == 401:
+				if ec == 111 or ec == 110 or ec == 6 or ec == const.IEAppIDIsEmpty: # and sc == 401:
 					self.pd("ec = {}".format(ec))
 					self.pd("Need to refresh token, refreshing")
 					if const.ENoError == self.__refresh_token(): # refresh the token and re-request
