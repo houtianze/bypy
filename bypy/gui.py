@@ -79,7 +79,7 @@ class RemoteListGui(tk.Toplevel):
 			'by' : 'name',
 			'order' : 'asc' }
 
-		result = self.byp._ByPy__get(
+		result = self.byp._get(
 			const.PcsUrl + 'file', pars, self.GetRemoteAct)
 
 		if result == const.ENoError:
@@ -107,7 +107,7 @@ class RemoteListGui(tk.Toplevel):
 			message = "Are you sure you want to delete '{}' at Baidu?".format(selected),
 			parent = self):
 			rpath = '/'.join([self.rpath, selected])
-			r = self.byp._ByPy__delete(rpath)
+			r = self.byp._delete(rpath)
 			if r == const.ENoError:
 				self.wList.delete(tk.ANCHOR)
 			else:

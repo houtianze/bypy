@@ -27,17 +27,17 @@ class PanAPI(ByPy):
 
 	def __init__(self, **kwargs):
 		super(PanAPI, self).__init__(**kwargs)
-		self.__bdusspath= self.__configdir + os.sep + 'bypy.bduss'
-		self.__bduss = ''
-		if not self.__load_local_bduss():
-			self.pv("BDUSS not found at '{}'.".format(self.__bdusspath))
+		self._bdusspath= self._configdir + os.sep + 'bypy.bduss'
+		self._bduss = ''
+		if not self._load_local_bduss():
+			self.pv("BDUSS not found at '{}'.".format(self._bdusspath))
 
-	def __load_local_bduss(self):
+	def _load_local_bduss(self):
 		try:
-			with io.open(self.__bdusspath, 'rb') as infile:
-				self.__bduss = infile.readline().strip()
-				self.pd("BDUSS loaded: {}".format(self.__bduss))
-				self.__cookies = {'BDUSS': self.__bduss}
+			with io.open(self._bdusspath, 'rb') as infile:
+				self._bduss = infile.readline().strip()
+				self.pd("BDUSS loaded: {}".format(self._bduss))
+				self._cookies = {'BDUSS': self._bduss}
 				return True
 		except IOError as ex:
 			self.pd("Error loading BDUSS:")
@@ -45,7 +45,7 @@ class PanAPI(ByPy):
 			return False
 
 	# overriding
-	def __handle_more_response_error(self, r, sc, ec, act, actargs):
+	def _handle_more_response_error(self, r, sc, ec, act, actargs):
 		result = const.ERequestFailed
 
 		# user not exists
@@ -69,9 +69,9 @@ class PanAPI(ByPy):
 	def unzip(self, remotepath, subpath = '/', start = 0, limit = 1000):
 		''' Usage: unzip <remotepath> [<subpath> [<start> [<limit>]]]'''
 		rpath = get_pcs_path(remotepath)
-		return self.__panapi_unzip_file(rpath, subpath, start, limit);
+		return self._panapi_unzip_file(rpath, subpath, start, limit);
 
-	def __panapi_unzip_file_act(self, r, args):
+	def _panapi_unzip_file_act(self, r, args):
 		j = r.json()
 		self.pd("Unzip response: {}".format(j))
 		if j['errno'] == 0:
@@ -83,7 +83,7 @@ class PanAPI(ByPy):
 					pr("{}\t{}\t{}".format(ls_type(e['isdir'] == 1), e['file_name'], e['size']))
 		return const.ENoError
 
-	def __panapi_unzip_file(self, rpath, subpath, start, limit):
+	def _panapi_unzip_file(self, rpath, subpath, start, limit):
 		pars = {
 			'path' : rpath,
 			'start' : start,
@@ -91,8 +91,8 @@ class PanAPI(ByPy):
 			'subpath' : '/' + subpath.strip('/') }
 
 		self.pd("Unzip request: {}".format(pars))
-		return self.__get(PanAPI.PanAPIUrl + 'unzip?app_id=250528',
-						  pars, self.__panapi_unzip_file_act, cookies = self.__cookies, actargs = pars )
+		return self._get(PanAPI.PanAPIUrl + 'unzip?app_id=250528',
+						  pars, self._panapi_unzip_file_act, cookies = self._cookies, actargs = pars )
 
 	def extract(self, remotepath, subpath, saveaspath = None):
 		''' Usage: extract <remotepath> <subpath> [<saveaspath>]'''
@@ -100,9 +100,9 @@ class PanAPI(ByPy):
 		topath = get_pcs_path(saveaspath)
 		if not saveaspath:
 			topath = os.path.dirname(rpath) + '/' + subpath
-		return self.__panapi_unzipcopy_file(rpath, subpath, topath)
+		return self._panapi_unzipcopy_file(rpath, subpath, topath)
 
-	def __panapi_unzipcopy_file_act(self, r, args):
+	def _panapi_unzipcopy_file_act(self, r, args):
 		j = r.json()
 		self.pd("UnzipCopy response: {}".format(j))
 		if 'path' in j:
@@ -111,9 +111,9 @@ class PanAPI(ByPy):
 		elif 'error_code' in j:
 			if j['error_code'] == 31196:
 				perr("Remote extract: '{}#{}' =xx=> '{}' FAILED. File already exists.".format(args['path'], args['subpath'], args['topath']))
-				subresult = self.__delete(args['topath'])
+				subresult = self._delete(args['topath'])
 				if subresult == const.ENoError:
-					return self.__panapi_unzipcopy_file(args['path'], args['subpath'], args['topath'])
+					return self._panapi_unzipcopy_file(args['path'], args['subpath'], args['topath'])
 				else:
 					return const.ERequestFailed
 			elif j['error_code'] == 31199:
@@ -123,7 +123,7 @@ class PanAPI(ByPy):
 				perr("Remote extract: '{}#{}' =xx=> '{}' FAILED. Unknown error {}: {}.".format(args['path'], args['subpath'], args['topath'], j['error_code'], j['error_msg']))
 		return const.EMaxRetry
 
-	def __panapi_unzipcopy_file(self, rpath, subpath, topath):
+	def _panapi_unzipcopy_file(self, rpath, subpath, topath):
 		pars = {
 			'app_id' : 250528,
 			'method' : 'unzipcopy',
@@ -132,19 +132,19 @@ class PanAPI(ByPy):
 			'topath' : topath }
 
 		self.pd("UnzipCopy request: {}".format(pars))
-		return self.__get(gvar.pcsurl + 'file',
-						  pars, self.__panapi_unzipcopy_file_act, addtoken = False, cookies = self.__cookies, actargs = pars )
+		return self._get(gvar.pcsurl + 'file',
+						  pars, self._panapi_unzipcopy_file_act, addtoken = False, cookies = self._cookies, actargs = pars )
 
 	def revision(self, remotepath):
 		''' Usage: revision <remotepath> '''
 		rpath = get_pcs_path(remotepath)
-		return self.__panapi_revision_list(rpath)
+		return self._panapi_revision_list(rpath)
 
 	def history(self, remotepath):
 		''' Usage: history <remotepath> '''
 		return self.revision(remotepath)
 
-	def __panapi_revision_list_act(self, r, args):
+	def _panapi_revision_list_act(self, r, args):
 		j = r.json()
 		self.pd("RevisionList response: {}".format(j))
 		if j['errno'] == 0:
@@ -160,14 +160,14 @@ class PanAPI(ByPy):
 			return const.EFileNotFound
 		return const.ENoError
 
-	def __panapi_revision_list(self, rpath):
+	def _panapi_revision_list(self, rpath):
 		pars = {
 			'path' : rpath,
 			'desc' : 1 }
 
 		self.pd("RevisionList request: {}".format(pars))
-		return self.__post(PanAPI.PanAPIUrl + 'revision/list?app_id=250528',
-						   {}, self.__panapi_revision_list_act, pars, data = pars, cookies = self.__cookies )
+		return self._post(PanAPI.PanAPIUrl + 'revision/list?app_id=250528',
+						   {}, self._panapi_revision_list_act, pars, data = pars, cookies = self._cookies )
 
 	def revert(self, remotepath, revision, dir = None):
 		''' Usage: revert <remotepath> revisionid [dir]'''
@@ -175,9 +175,9 @@ class PanAPI(ByPy):
 		dir = get_pcs_path(dir)
 		if not dir:
 			dir = os.path.dirname(rpath)
-		return self.__panapi_revision_revert(rpath, revision, dir)
+		return self._panapi_revision_revert(rpath, revision, dir)
 
-	def __panapi_revision_revert_act(self, r, args):
+	def _panapi_revision_revert_act(self, r, args):
 		j = r.json()
 		self.pd("RevisionRevert response: {}".format(j))
 		if j['errno'] == 0:
@@ -194,7 +194,7 @@ class PanAPI(ByPy):
 			return const.ERequestFailed
 		return const.ENoError
 
-	def __panapi_revision_revert(self, rpath, revision, dir = None):
+	def _panapi_revision_revert(self, rpath, revision, dir = None):
 		if not dir:
 			dir = os.path.dirname(rpath)
 		pars = {
@@ -204,7 +204,7 @@ class PanAPI(ByPy):
 			'dir' : dir }
 
 		self.pd("RevisionRevert request: {}".format(pars))
-		return self.__post(PanAPI.PanAPIUrl + 'revision/revert?app_id=250528',
-						   {}, self.__panapi_revision_revert_act, pars, data = pars, cookies = self.__cookies )
+		return self._post(PanAPI.PanAPIUrl + 'revision/revert?app_id=250528',
+						   {}, self._panapi_revision_revert_act, pars, data = pars, cookies = self._cookies )
 
 # vim: tabstop=4 noexpandtab shiftwidth=4 softtabstop=4 ff=unix fileencoding=utf-8

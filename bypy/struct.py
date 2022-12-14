@@ -12,7 +12,7 @@ from .util import iswindows
 # tree represented using dictionary, (Obsolete: OrderedDict no longer required)
 # NOTE: No own-name is kept, so the caller needs to keep track of that
 # NOTE: Case-sensitive, as I don't want to waste time wrapping up a case-insensitive one
-# single-linked-list, no backwards travelling capability
+# single-linked-list, no backwards traveling capability
 class PathDictTree(dict):
 	def __init__(self, type = 'D', **kwargs):
 		super(PathDictTree, self).__init__()
@@ -22,19 +22,19 @@ class PathDictTree(dict):
 			self.extra[k] = v
 
 	def __str__(self):
-		return self.__str('')
+		return self._str('')
 
-	def __str(self, prefix):
+	def _str(self, prefix):
 		result = ''
 		for k, v in self.items():
-			result += "{} - {}/{} - size: {} - md5: {} \n".format(
+			result += "{} - {}/{} - size: {} - md5: {}\n".format(
 				v.type, prefix, k,
 				v.extra['size'] if 'size' in v.extra else '',
 				v.extra['md5'] if 'md5' in v.extra else '')
 
 		for k, v in self.items():
 			if v.type == 'D':
-				result += v.__str(prefix + '/' + k)
+				result += v._str(prefix + '/' + k)
 
 		return result
 

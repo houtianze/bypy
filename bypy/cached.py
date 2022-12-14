@@ -89,23 +89,23 @@ class cached(object):
 							info['size'], info['mtime']))
 				else:
 					result = self.f(*args)
-					self.__store(info, path, result)
+					self._store(info, path, result)
 			else:
 				result = self.f(*args)
 				entry[file] = {}
 				info = entry[file]
-				self.__store(info, path, result)
+				self._store(info, path, result)
 		else:
 			result = self.f(*args)
 			cached.cache[absdir] = {}
 			entry = cached.cache[absdir]
 			entry[file] = {}
 			info = entry[file]
-			self.__store(info, path, result)
+			self._store(info, path, result)
 
 		return result
 
-	def __store(self, info, path, value):
+	def _store(self, info, path, value):
 		cached.dirty = True
 		info['size'] = getfilesize(path)
 		info['mtime'] = getfilemtime_int(path)
