@@ -1,6 +1,8 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.8.2: Remove invalid GPL text
+
 -  1.8.1: Fix multiprocess (by changing all ``__foo()`` to ``_foo()``)
 
 -  1.8: No longer server auth

@@ -1,11 +1,6 @@
 #!/usr/bin/env python
 # coding=utf-8
 
-# A simple GUI for bypy, using Tkinter
-# Copyright 2013 Hou Tianze (GitHub: houtianze, Twitter: @ibic, G+: +TianzeHou)
-# Licensed under the GPLv3
-# https://www.gnu.org/licenses/gpl-3.0.txt
-
 # from __future__ imports must occur at the beginning of the file
 from __future__ import unicode_literals
 from __future__ import print_function
