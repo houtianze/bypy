@@ -2702,7 +2702,7 @@ restore a file from the recycle bin
 		self.pd("---- Remote Dir Contents ---")
 		self.pd(self._remote_dir_contents)
 
-	def _compare(self, remotedir = None, localdir = None, skip_remote_only_dirs = False):
+	def _compare(self, remotedir = None, localdir = None, skip_remote_only_dirs = False, ignore_list = []):
 		if not localdir:
 			localdir = '.'
 
@@ -2724,37 +2724,38 @@ restore a file from the recycle bin
 		dps = set(rps) - set(lps)
 		allpath = lps + list(dps)
 		for p in allpath:
-			local = self._local_dir_contents.get(p)
-			remote = self._remote_dir_contents.get(p)
-			if local is None: # must be in the remote dir, since p is from allpath
-				remoteonly.append((remote.type, p))
-			elif remote is None:
-				localonly.append((local.type, p))
-			else: # all here
-				same = False
-				if local.type == 'D' and remote.type == 'D':
-					type = 'D'
-					same = True
-				elif local.type == 'F' and remote.type == 'F':
-					type = 'F'
-					if local.extra['size'] == remote.extra['size'] and \
-						local.extra['md5'] == remote.extra['md5']:
-						same = True
-					else:
-						same = False
-				else:
-					type = local.type + remote.type
+			if not p in ignore_list:
+				local = self._local_dir_contents.get(p)
+				remote = self._remote_dir_contents.get(p)
+				if local is None: # must be in the remote dir, since p is from allpath
+					remoteonly.append((remote.type, p))
+				elif remote is None:
+					localonly.append((local.type, p))
+				else: # all here
 					same = False
+					if local.type == 'D' and remote.type == 'D':
+						type = 'D'
+						same = True
+					elif local.type == 'F' and remote.type == 'F':
+						type = 'F'
+						if local.extra['size'] == remote.extra['size'] and \
+							local.extra['md5'] == remote.extra['md5']:
+							same = True
+						else:
+							same = False
+					else:
+						type = local.type + remote.type
+						same = False
 
-				if same:
-					commonsame.append((type, p))
-				else:
-					commondiff.append((type, p))
+					if same:
+						commonsame.append((type, p))
+					else:
+						commondiff.append((type, p))
 
 		self.pv("Done")
 		return commonsame, commondiff, localonly, remoteonly
 
-	def compare(self, remotedir = None, localdir = None, skip_remote_only_dirs = False):
+	def compare(self, remotedir = None, localdir = None, skip_remote_only_dirs = False, ignore_list = []):
 		''' Usage: compare [remotedir] [localdir] - \
 compare the remote directory with the local directory
   remotedir - the remote directory at Baidu Yun (after app's directory). \
@@ -2763,7 +2764,7 @@ if not specified, it defaults to the root directory.
   skip_remote_only_dirs - skip remote-only sub-directories (faster if the remote \
 directory is much larger than the local one). it defaults to False.
 		'''
-		same, diff, local, remote = self._compare(get_pcs_path(remotedir), localdir, str2bool(skip_remote_only_dirs))
+		same, diff, local, remote = self._compare(get_pcs_path(remotedir), localdir, str2bool(skip_remote_only_dirs), ignore_list=ignore_list)
 
 		pr("==== Same files ===")
 		for c in same:
@@ -3004,7 +3005,7 @@ if not specified, it defaults to the root directory
 			result = subresult
 		return result
 
-	def syncup(self, localdir = '', remotedir = '', deleteremote = False):
+	def syncup(self, localdir = '', remotedir = '', deleteremote = False, ignore_list = []):
 		''' Usage: syncup [localdir] [remotedir] [deleteremote] - \
 sync up from the local directory to the remote directory
   localdir - the local directory to sync from if not specified, it defaults to the current directory.
@@ -3015,7 +3016,7 @@ if not specified, it defaults to the root directory
 		result = const.ENoError
 		rpath = get_pcs_path(remotedir)
 		#rpartialdir = remotedir.rstrip('/ ')
-		compare_result = self._compare(rpath, localdir, True)
+		compare_result = self._compare(rpath, localdir, True, ignore_list=ignore_list)
 		same, diff, local, remote = compare_result
 		if Pool and self.processes > 1:
 			subresult = self._syncup_multi(localdir, rpath, compare_result)
