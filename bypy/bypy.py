@@ -475,6 +475,8 @@ class ByPy(object):
 		for proxy in ['HTTP_PROXY', 'HTTPS_PROXY']:
 			if proxy in os.environ:
 				pr("{} used: {}".format(proxy, os.environ[proxy]))
+		
+		self.ignore_list = []
 
 		# update check
 		check_update = False
@@ -1155,6 +1157,15 @@ Possible fixes:
 	def _walk_normal_file(self, dir):
 		#dirb = dir.encode(FileSystemEncoding)
 		for walk in os.walk(dir, followlinks=self._followlink):
+			ignore = False
+			for i in self.ignore_list:
+				if walk[0].startswith(os.path.normpath(i)):
+					ignore = True
+					self.pv(f'ignore {walk[0]}')
+					print(f'ignore {walk[0]}')
+					break
+			if ignore:
+				continue
 			normalfiles = [t for t in walk[-1]
 								if os.path.isfile(os.path.join(walk[0], t))]
 			normalfiles.sort()
@@ -2706,6 +2717,8 @@ restore a file from the recycle bin
 		if not localdir:
 			localdir = '.'
 
+		self.ignore_list = ignore_list
+
 		self.pv("Gathering local directory ...")
 		self._gather_local_dir(localdir)
 		self.pv("Done")
@@ -2724,34 +2737,43 @@ restore a file from the recycle bin
 		dps = set(rps) - set(lps)
 		allpath = lps + list(dps)
 		for p in allpath:
-			if not p in ignore_list:
-				local = self._local_dir_contents.get(p)
-				remote = self._remote_dir_contents.get(p)
-				if local is None: # must be in the remote dir, since p is from allpath
-					remoteonly.append((remote.type, p))
-				elif remote is None:
-					localonly.append((local.type, p))
-				else: # all here
-					same = False
-					if local.type == 'D' and remote.type == 'D':
-						type = 'D'
+			# ignore = False
+			# for i in ignore_list:
+			# 	if p.startswith(os.path.normpath(i)):
+			# 		ignore = True
+			# 		print('ignore {p}')
+			# 		break
+			# if ignore:
+			# 	continue
+			# print(p)
+			local = self._local_dir_contents.get(p)
+			remote = self._remote_dir_contents.get(p)
+			if local is None: # must be in the remote dir, since p is from allpath
+				remoteonly.append((remote.type, p))
+			elif remote is None:
+				localonly.append((local.type, p))
+			else: # all here
+				same = False
+				if local.type == 'D' and remote.type == 'D':
+					type = 'D'
+					same = True
+				elif local.type == 'F' and remote.type == 'F':
+					type = 'F'
+					if local.extra['size'] == remote.extra['size'] and \
+						local.extra['md5'] == remote.extra['md5']:
 						same = True
-					elif local.type == 'F' and remote.type == 'F':
-						type = 'F'
-						if local.extra['size'] == remote.extra['size'] and \
-							local.extra['md5'] == remote.extra['md5']:
-							same = True
-						else:
-							same = False
 					else:
-						type = local.type + remote.type
 						same = False
+				else:
+					type = local.type + remote.type
+					same = False
 
-					if same:
-						commonsame.append((type, p))
-					else:
-						commondiff.append((type, p))
+				if same:
+					commonsame.append((type, p))
+				else:
+					commondiff.append((type, p))
 
+		self.ignore_list = []
 		self.pv("Done")
 		return commonsame, commondiff, localonly, remoteonly
 
@@ -3016,7 +3038,7 @@ if not specified, it defaults to the root directory
 		result = const.ENoError
 		rpath = get_pcs_path(remotedir)
 		#rpartialdir = remotedir.rstrip('/ ')
-		compare_result = self._compare(rpath, localdir, True, ignore_list=ignore_list)
+		compare_result = self._compare(rpath, localdir, True, ignore_list = ignore_list)
 		same, diff, local, remote = compare_result
 		if Pool and self.processes > 1:
 			subresult = self._syncup_multi(localdir, rpath, compare_result)
