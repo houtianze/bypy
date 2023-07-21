@@ -1160,10 +1160,10 @@ Possible fixes:
 		for walk in os.walk(dir, followlinks=self._followlink):
 			ignore = False
 			for i in self.ignore_list:
-				if (walk[0].startswith(os.path.abspath(os.path.normpath(i)))) or not (re.match(i, walk[0]) is None):
+				if (walk[0].startswith(os.path.abspath(os.path.normpath(i)))) or (not (re.match(i, walk[0]) is None)):
 					ignore = True
 					self.pv(f'ignore {walk[0]}')
-					print(f'ignore {walk[0]}')
+					# print(f'ignore {walk[0]}')
 					break
 			if ignore:
 				continue
