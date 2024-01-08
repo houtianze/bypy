@@ -1,6 +1,8 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.8.4: Fix packing error (missing ‘auth.json’)
+
 -  1.8.3: Fix upload getting 31023 - ‘Param Error’
 
 -  1.8.2: Remove invalid GPL text
