@@ -52,7 +52,8 @@ setup(
 	#packages=find_packages(),
 	packages = ['bypy', 'bypy.res', 'bypy.test'],
 	package_data = {
-		'bypy' : ['*.rst', 'bypy/*.pem']
+		'bypy': ['*.rst', 'bypy/*.pem'],
+		'bypy.res': ['bypy/res/*.json']
 	},
 	entry_points = {
 		'console_scripts': [
