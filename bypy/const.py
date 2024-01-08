@@ -12,7 +12,7 @@ import os
 
 # https://packaging.python.org/single_source_version/
 __title__ = 'bypy'
-__version__ = '1.8.2'
+__version__ = '1.8.3'
 __author__ = 'Hou Tianze'
 __license__ = 'MIT'
 __desc__ = 'Python client for Baidu Yun (Personal Cloud Storage) 百度云/百度网盘 Python 客户端'
@@ -49,6 +49,7 @@ ESkipped = 210
 EFatal = -1 # No way to continue
 # internal errors
 IEMD5NotFound = 31079 # File md5 not found, you should use upload API to upload the whole file.
+IEParameterError = 31023 # {'error_code': 31023, 'error_msg': 'param error', 'request_id': 174129658197460631}
 IESuperfileCreationFailed = 31081 # superfile create failed (HTTP 404)
 # Undocumented, see #308 , https://paste.ubuntu.com/23672323/
 IEBlockMissInSuperFile2 = 31363 # block miss in superfile2 (HTTP 403)

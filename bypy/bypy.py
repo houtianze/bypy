@@ -748,6 +748,7 @@ class ByPy(object):
 					ec == 31065 or # sc == 400 directory is full
 					ec == 31066 or # sc == 403 (indeed 404) file does not exist
 					ec == const.IETaskNotFound or # 36016 or # sc == 404 Task was not found
+					ec == const.IEParameterError or # sc == 400 param error
 					# the following was found by xslidian, but i have never ecountered before
 					ec == 31390):  # sc == 404 # {"error_code":31390,"error_msg":"Illegal File"} # r.url.find('http://bcscdn.baidu.com/bcs-cdn/wenxintishi') == 0
 					result = ec
