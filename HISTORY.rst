@@ -1,6 +1,8 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.8.3: Fix upload getting 31023 - ‘Param Error’
+
 -  1.8.2: Remove invalid GPL text
 
 -  1.8.1: Fix multiprocess (by changing all ``__foo()`` to ``_foo()``)
