@@ -54,6 +54,7 @@ from functools import partial
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 from copy import deepcopy
+import re
 
 # unify Python 2 and 3
 if sys.version_info[0] == 2:
@@ -475,6 +476,8 @@ class ByPy(object):
 		for proxy in ['HTTP_PROXY', 'HTTPS_PROXY']:
 			if proxy in os.environ:
 				pr("{} used: {}".format(proxy, os.environ[proxy]))
+		
+		self.ignore_list = []
 
 		# update check
 		check_update = False
@@ -1156,6 +1159,15 @@ Possible fixes:
 	def _walk_normal_file(self, dir):
 		#dirb = dir.encode(FileSystemEncoding)
 		for walk in os.walk(dir, followlinks=self._followlink):
+			ignore = False
+			for i in self.ignore_list:
+				if (walk[0].startswith(os.path.abspath(os.path.normpath(i)))) or (not (re.match(i, walk[0]) is None)):
+					ignore = True
+					self.pv(f'ignore {walk[0]}')
+					# print(f'ignore {walk[0]}')
+					break
+			if ignore:
+				continue
 			normalfiles = [t for t in walk[-1]
 								if os.path.isfile(os.path.join(walk[0], t))]
 			normalfiles.sort()
@@ -2703,9 +2715,11 @@ restore a file from the recycle bin
 		self.pd("---- Remote Dir Contents ---")
 		self.pd(self._remote_dir_contents)
 
-	def _compare(self, remotedir = None, localdir = None, skip_remote_only_dirs = False):
+	def _compare(self, remotedir = None, localdir = None, skip_remote_only_dirs = False, ignore_list = []):
 		if not localdir:
 			localdir = '.'
+
+		self.ignore_list = ignore_list
 
 		self.pv("Gathering local directory ...")
 		self._gather_local_dir(localdir)
@@ -2725,6 +2739,15 @@ restore a file from the recycle bin
 		dps = set(rps) - set(lps)
 		allpath = lps + list(dps)
 		for p in allpath:
+			# ignore = False
+			# for i in ignore_list:
+			# 	if p.startswith(os.path.normpath(i)):
+			# 		ignore = True
+			# 		print('ignore {p}')
+			# 		break
+			# if ignore:
+			# 	continue
+			# print(p)
 			local = self._local_dir_contents.get(p)
 			remote = self._remote_dir_contents.get(p)
 			if local is None: # must be in the remote dir, since p is from allpath
@@ -2752,10 +2775,11 @@ restore a file from the recycle bin
 				else:
 					commondiff.append((type, p))
 
+		self.ignore_list = []
 		self.pv("Done")
 		return commonsame, commondiff, localonly, remoteonly
 
-	def compare(self, remotedir = None, localdir = None, skip_remote_only_dirs = False):
+	def compare(self, remotedir = None, localdir = None, skip_remote_only_dirs = False, ignore_list = []):
 		''' Usage: compare [remotedir] [localdir] - \
 compare the remote directory with the local directory
   remotedir - the remote directory at Baidu Yun (after app's directory). \
@@ -2764,7 +2788,7 @@ if not specified, it defaults to the root directory.
   skip_remote_only_dirs - skip remote-only sub-directories (faster if the remote \
 directory is much larger than the local one). it defaults to False.
 		'''
-		same, diff, local, remote = self._compare(get_pcs_path(remotedir), localdir, str2bool(skip_remote_only_dirs))
+		same, diff, local, remote = self._compare(get_pcs_path(remotedir), localdir, str2bool(skip_remote_only_dirs), ignore_list=ignore_list)
 
 		pr("==== Same files ===")
 		for c in same:
@@ -3005,7 +3029,7 @@ if not specified, it defaults to the root directory
 			result = subresult
 		return result
 
-	def syncup(self, localdir = '', remotedir = '', deleteremote = False):
+	def syncup(self, localdir = '', remotedir = '', deleteremote = False, ignore_list = []):
 		''' Usage: syncup [localdir] [remotedir] [deleteremote] - \
 sync up from the local directory to the remote directory
   localdir - the local directory to sync from if not specified, it defaults to the current directory.
@@ -3016,7 +3040,7 @@ if not specified, it defaults to the root directory
 		result = const.ENoError
 		rpath = get_pcs_path(remotedir)
 		#rpartialdir = remotedir.rstrip('/ ')
-		compare_result = self._compare(rpath, localdir, True)
+		compare_result = self._compare(rpath, localdir, True, ignore_list = ignore_list)
 		same, diff, local, remote = compare_result
 		if Pool and self.processes > 1:
 			subresult = self._syncup_multi(localdir, rpath, compare_result)
