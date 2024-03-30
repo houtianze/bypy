@@ -632,7 +632,23 @@ class ByPy(object):
 	def _handle_more_response_error(self, r, sc, ec, act, actargs):
 		return const.ERequestFailed
 
-	# TODO: the 'act' param is hacky
+	# Workaround for Baidu returning wrong HTTP status code
+	# Who in one's right mind would send error with an HTTP 200 status?
+	# <D> HTTP Status Code: 200
+	# <D> 200 OK, processing action
+	# <D> Response: {'error_code': 111, 'error_msg': 'Access token expired'}
+	def _is_error_response(self, r):
+		# don't attempt on large contents
+		if len(r.content) > 10 * 1024:
+			return False
+		try:
+			j = r.json()
+			if 'error_code' in j and j['error_code'] != 0:
+				return True
+		except ValueError:
+			return False
+		return False
+
 	def _get_json_errorcode(self, r, act, defaultec = const.ERequestFailed):
 		try:
 			j = r.json()
@@ -682,7 +698,8 @@ class ByPy(object):
 			#self.pd("Request Headers: {}".format(pprint.pformat(r.request.headers)), 2)
 			#self.pd("Response Header: {}".format(pprint.pformat(r.headers)), 2)
 			#self.pd("Response: {}".format(rb(r.text)), 3)
-			if sc == requests.codes.ok or sc == 206: # 206 Partial Content
+			# 206 Partial Content
+			if (sc == requests.codes.ok or sc == 206) and not self._is_error_response(r):
 				if sc == requests.codes.ok:
 					# #162 https://github.com/houtianze/bypy/pull/162
 					# handle response like this:  {"error_code":0,"error_msg":"no error","request_id":70768340515255385}
