@@ -1052,7 +1052,11 @@ Possible fixes:
 		pars = ulp.urlencode(params)
 		msg = 'Please visit:\n{}\nAnd authorize this app'.format(const.ServerAuthUrl + '?' + pars) + \
 			'\nPaste the Authorization Code here within 10 minutes.'
-		auth_code = ask(msg).strip()
+		auth_code = ''
+		while True:
+			auth_code = ask(msg).strip()
+			if auth_code and len(auth_code) >= 16: # 16 is just random lower bound
+				break
 		self.pd("auth_code: {}".format(auth_code))
 		pr('Authorizing, please be patient, it may take upto {} seconds...'.format(self._repr_timeout()))
 
