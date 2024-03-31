@@ -639,7 +639,13 @@ class ByPy(object):
 	# <D> Response: {'error_code': 111, 'error_msg': 'Access token expired'}
 	def _is_error_response(self, r):
 		# don't attempt on large contents
-		if len(r.content) > 10 * 1024:
+		isJson = False
+		ContentTypeKey = 'Content-Type'
+		contentType = r.headers.get(ContentTypeKey)
+		if (contentType and 'json' in contentType):
+			isJson = True
+
+		if len(r.content) > 10 * 1024 or not isJson:
 			return False
 		try:
 			j = r.json()
