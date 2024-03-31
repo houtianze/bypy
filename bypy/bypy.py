@@ -130,7 +130,6 @@ except ImportError:
 mpsemaphore = mp.Semaphore(1) if mp else None
 cached.semaphore = mpsemaphore
 
-UPool = None
 if Pool != None:
 	if sys.version_info[0] == 2:
 		# enable with statement

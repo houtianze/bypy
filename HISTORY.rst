@@ -1,6 +1,9 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.8.5: Workaround Baidu returning 200 for invalid/expired
+   ``access_token`` so that ``refresh_token()`` continues to work
+
 -  1.8.4: Fix packing error (missing ‘auth.json’)
 
 -  1.8.3: Fix upload getting 31023 - ‘Param Error’
