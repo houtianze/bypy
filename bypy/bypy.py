@@ -336,6 +336,7 @@ class ByPy(object):
 		self._configdir = configdir.rstrip("/\\ ")
 		makedir(self._configdir)
 		# os.path.join() may not handle unicode well on Python 2.7
+		self._progresspath = configdir + os.sep + const.ProgressFileName
 		self._tokenpath = configdir + os.sep + const.TokenFileName
 		self._settingpath = configdir + os.sep + const.SettingFileName
 		self._setting = {}
@@ -1562,7 +1563,7 @@ get information of the given path (dir / file) at Baidu Yun.
 		progress = {}
 
 		try:
-			progress = jsonload(const.ProgressPath)
+			progress = jsonload(self._progresspath)
 		except Exception as ex:
 			perr("Error loading the progress for: '{}'.\n{}.".format(fullpath, formatex(ex)))
 
@@ -1570,18 +1571,18 @@ get information of the given path (dir / file) at Baidu Yun.
 		progress[fullpath] = (self._slice_size, self._slice_md5s)
 
 		try:
-			jsondump(progress, const.ProgressPath, mpsemaphore)
+			jsondump(progress, self._progresspath, mpsemaphore)
 		except Exception as ex:
 			perr("Error updating the progress for: '{}'.\n{}.".format(fullpath, formatex(ex)))
 
 	def _delete_progress_entry(self, fullpath):
 		try:
-			progress = jsonload(const.ProgressPath)
+			progress = jsonload(self._progresspath)
 			# http://stackoverflow.com/questions/11277432/how-to-remove-a-key-from-a-python-dictionary
 			#del progress[fullpath]
 			self.pd("Removing slice upload progress for {}".format(fullpath))
 			progress.pop(fullpath, None)
-			jsondump(progress, const.ProgressPath, mpsemaphore)
+			jsondump(progress, self._progresspath, mpsemaphore)
 		except Exception as ex:
 			perr("Error deleting the progress for: '{}'.\n{}.".format(fullpath, formatex(ex)))
 
@@ -1607,14 +1608,14 @@ get information of the given path (dir / file) at Baidu Yun.
 		progress = {}
 		initial_offset = 0
 		# create an empty progress file first
-		if not os.path.exists(const.ProgressPath):
+		if not os.path.exists(self._progresspath):
 			try:
-				jsondump(progress, const.ProgressPath, mpsemaphore)
+				jsondump(progress, self._progresspath, mpsemaphore)
 			except Exception as ex:
 				perr("Error savingprogress, no resumption.\n{}".format(formatex(ex)))
 
 		try:
-			progress = jsonload(const.ProgressPath)
+			progress = jsonload(self._progresspath)
 		except Exception as ex:
 			perr("Error loading progress, no resumption.\n{}".format(formatex(ex)))
 
