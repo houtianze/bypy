@@ -8,7 +8,7 @@ echo !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # (This is for macOS, and for python virtualenv is recommended)
 # --------
 # brew install pandoc
-# pip3 install pandoc pypandoc twine pyflakes
+# pip3 install pandoc pypandoc twine pyflakes wheel
 
 ### Usage ###
 # - Testing: ./release.sh -buti

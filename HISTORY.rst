@@ -1,6 +1,8 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.8.6: Fix progress file path for concurrent runs by @Bluetea577
+
 -  1.8.5: Workaround Baidu returning 200 for invalid/expired
    ``access_token`` so that ``refresh_token()`` continues to work
 
