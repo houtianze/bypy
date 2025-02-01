@@ -38,9 +38,9 @@ def pwarn(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
 	return plog('<W> ', msg, showtime, showdate, prefix, suffix, TermColor.Yellow)
 
 def bannerwarn(msg):
-	pwarn('!' * 160, showtime = False)
+	pwarn('!' * 80, showtime = False)
 	pwarn(msg, showtime = False)
-	pwarn('!' * 160, showtime = False)
+	pwarn('!' * 80, showtime = False)
 
 def pinfo(msg, showtime = True, showdate = False, prefix = '', suffix = ''):
 	return plog('<I> ', msg, showtime, showdate, prefix, suffix, TermColor.Green)

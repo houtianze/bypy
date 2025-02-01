@@ -18,11 +18,11 @@ class CheckResult:
 
 def check_requirements():
 	result = CheckResult.Pass
-	if iswindows():
+	if False and iswindows():
 		bannerwarn("You are running Python on Windows, which doesn't support Unicode so well.\n"
 			"Files with non-ASCII names may not be handled correctly.")
 		result = max(result, CheckResult.Warning)
-	
+
 	if sys.version_info[0] < 2 \
 	or (sys.version_info[0] == 2 and sys.version_info[1] < 7) \
 	or (sys.version_info[0] == 3 and sys.version_info[1] < 3):
@@ -32,7 +32,8 @@ def check_requirements():
 	# we have warned Windows users, so the following is for *nix users only
 	if gvar.SystemEncoding:
 		sysencu = gvar.SystemEncoding.upper()
-		if sysencu != 'UTF-8' and sysencu != 'UTF8':
+		if sysencu != 'UTF-8' and sysencu != 'UTF8' and sysencu != 'UTF_8' \
+			and sysencu != 'CP65001' and sysencu != '65001':
 			msg = "WARNING: System locale is not 'UTF-8'.\n" \
 				  "Files with non-ASCII names may not be handled correctly.\n" \
 				  "You should set your System Locale to 'UTF-8'.\n" \
@@ -46,7 +47,7 @@ def check_requirements():
 		bannerwarn("WARNING: Can't detect the system encoding, assume it's 'UTF-8'.\n"
 			  "Files with non-ASCII names may not be handled correctly." )
 		result = max(result, CheckResult.Warning)
-	
+
 	stdenc = sys.stdout.encoding
 	if stdenc:
 		stdencu = stdenc.upper()
@@ -58,7 +59,7 @@ def check_requirements():
 				fixenc(stdenc)
 	else:
 		fixenc(stdenc)
-	
+
 	return result
 
 if __name__ == "__main__":
