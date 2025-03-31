@@ -58,3 +58,4 @@ bypy/test/sharedir/
 bypy/test/configdir/bypy.setting.json
 bypy/test/configdir/bypy.hashcache.json
 .vscode/tags
+.venv

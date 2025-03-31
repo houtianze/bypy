@@ -1,6 +1,8 @@
 Version History:
 ~~~~~~~~~~~~~~~~
 
+-  1.8.8: Respect the ``verify`` flag in ``syncup``
+
 -  1.8.7: Loosen system encoding check on Windows
 
 -  1.8.6: Fix progress file path for concurrent runs by @Bluetea577
@@ -36,11 +38,11 @@ Version History:
 
 -  1.7.7: Enable local auth using env vars
 
--  1.7.6: Fix refresh_token
+-  1.7.6: Fix ``refresh_token``
 
 -  1.7.5: Restore recursive directory walk
 
--  1.7.4: Screwed up refresh_token
+-  1.7.4: Screwed up ``refresh_token``
 
 -  1.7.3: Make ``list`` able to handle more than 1000 items
 
@@ -151,7 +153,7 @@ Version History:
 -  1.2.19: Add in aria2 download support
 
 -  1.2.18: Add in upload resuming using slices; Fix Unicode issues with
-   py2_jsondump(); Fix the pypi setup package
+   ``py2_jsondump()``; Fix the pypi setup package
 
 -  1.2.17: Fix UnicodeEncodeError on redirect; Add in retry on urllib3
    TimeOutError
@@ -170,12 +172,12 @@ Version History:
 -  1.2.11: Fix Exception in error dump introduced in 1.2.10
 
 -  1.2.10: Handle (32, ‘EPIPE’); Warn LOUDLY on encoding failures;
-   Remove ‘is_revision’
+   Remove ``is_revision``
 
 -  1.2.9: Fix formatex() Syntax Error; Handle (110, ‘ETIMEDOUT’)
 
--  1.2.8: Fix a Syntax Error; Handle {‘error_code’: 0, ‘error_msg’: ‘no
-   error’}
+-  1.2.8: Fix a Syntax Error; Handle
+   ``{'error_code': 0, 'error_msg': 'no error'``}
 
 -  1.2.7: Fix Hash Cache JSON saving (need to use string for Hashes)
 

@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.8.8: Respect the `verify` flag in `syncup`
 - 1.8.7: Loosen system encoding check on Windows
 - 1.8.6: Fix progress file path for concurrent runs by @Bluetea577
 - 1.8.5: Workaround Baidu returning 200 for invalid/expired `access_token` so that `refresh_token()` continues to work
@@ -16,9 +17,9 @@
 - 1.7.9: Fix multiprocess file writing
 - 1.7.8: Fix package reading
 - 1.7.7: Enable local auth using env vars
-- 1.7.6: Fix refresh_token
+- 1.7.6: Fix `refresh_token`
 - 1.7.5: Restore recursive directory walk
-- 1.7.4: Screwed up refresh_token
+- 1.7.4: Screwed up `refresh_token`
 - 1.7.3: Make `list` able to handle more than 1000 items
 - 1.7.2: Fix release.sh
 - 1.7.1: Fix upgrading in Python2 (unicode file name support seems to be broken)
@@ -32,7 +33,7 @@
 - 1.6.5: Fix `KeyError: u'md5'` in remote directory walking
 - 1.6.4: Fix `--move` argument causing exception
 - 1.6.3: Change default timeout to 5 minutes
-- 1.6.2: Properly handle (treat it as no error) error_code 31061 (file already exists) from PCS
+- 1.6.2: Properly handle (treat it as no error) error\_code 31061 (file already exists) from PCS
 - 1.6.1: Ensure cache loading/saving failures won't affect normal operations; Fix the bug that clean up code not called on exit
 - 1.6.0: Fix 1000 items limit for remote directory listing
 - 1.5.13: Fix multiprocess upload/syncup missing some files
@@ -71,7 +72,7 @@
 - 1.2.21: Support aria2 downloading resuming (disable preallocation)
 - 1.2.20: Fix an error in upload resuming; Add in retries for aria2
 - 1.2.19: Add in aria2 download support
-- 1.2.18: Add in upload resuming using slices; Fix Unicode issues with py2_jsondump(); Fix the pypi setup package
+- 1.2.18: Add in upload resuming using slices; Fix Unicode issues with `py2_jsondump()`; Fix the pypi setup package
 - 1.2.17: Fix UnicodeEncodeError on redirect; Add in retry on urllib3 TimeOutError
 - 1.2.16: Add in proxy prompts
 - 1.2.15: Fix a severe bug (accidental directory deletion) in `download` command intoduced in 1.2.14
@@ -79,9 +80,9 @@
 - 1.2.13: Remove argcomplete; Improve encoding handling prompting
 - 1.2.12: Add in (optional) argcomplete
 - 1.2.11: Fix Exception in error dump introduced in 1.2.10
-- 1.2.10: Handle (32, 'EPIPE'); Warn LOUDLY on encoding failures; Remove 'is_revision'
+- 1.2.10: Handle (32, 'EPIPE'); Warn LOUDLY on encoding failures; Remove `is_revision`
 - 1.2.9: Fix formatex() Syntax Error; Handle (110, 'ETIMEDOUT')
-- 1.2.8: Fix a Syntax Error; Handle {'error_code': 0, 'error_msg': 'no error'}
+- 1.2.8: Fix a Syntax Error; Handle `{'error_code': 0, 'error_msg': 'no error'`}
 - 1.2.7: Fix Hash Cache JSON saving (need to use string for Hashes)
 - 1.2.6: Fix Hash Cache JSON dumping (`Unicode` again)
 - 1.2.5: Add in offline (cloud) download; Fix stack printing
