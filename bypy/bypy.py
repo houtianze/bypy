@@ -3508,10 +3508,14 @@ y/N/a (yes/NO/always)?
 		shortest_time = float('inf')
 		for h in hosts:
 			host = h['host']
-			time_taken = self._test_speed('https://' + host + pcspath, 3)
-			if time_taken < shortest_time:
-				selected_host = host
-				shortest_time = time_taken
+			try:
+				time_taken = self._test_speed('https://' + host + pcspath, 3)
+				if time_taken < shortest_time:
+					selected_host = host
+					shortest_time = time_taken
+			except Exception as ex:
+				perr("Error while testing speed of {}: {}, skipping.".format(host, formatex(ex)))
+				continue
 		pr("Selected mirror: " + selected_host)
 		self.setpcsurl(selected_host)
 		return const.ENoError
