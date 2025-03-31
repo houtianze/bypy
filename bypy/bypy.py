@@ -2766,7 +2766,7 @@ restore a file from the recycle bin
 				elif local.type == 'F' and remote.type == 'F':
 					type = 'F'
 					if local.extra['size'] == remote.extra['size'] and \
-						local.extra['md5'] == remote.extra['md5']:
+						(not self._verify or local.extra['md5'] == remote.extra['md5']):
 						same = True
 					else:
 						same = False
