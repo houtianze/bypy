@@ -1,5 +1,6 @@
 ### Version History:
 
+- 1.8.9: Store list/meta command output in self.file_list (Hacky)
 - 1.8.8: Respect the `verify` flag in `syncup`
 - 1.8.7: Loosen system encoding check on Windows
 - 1.8.6: Fix progress file path for concurrent runs by @Bluetea577

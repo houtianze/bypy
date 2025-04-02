@@ -952,6 +952,7 @@ class ByPy(object):
 		output = fmt
 		for k, v in ByPy.ListFormatDict.items():
 			output = output.replace(k, v(j))
+		self.file_list.append(output)
 		return output
 
 	def _load_local_json(self):
@@ -1438,6 +1439,7 @@ Possible fixes:
     # order - sorting order [asc, desc]. default: 'asc'
 		rpath = get_pcs_path(remotepath)
 		pr("{} ({}):".format(rpath, fmt))
+		self.file_list = [] # Hacky, but too lazy to make it proper
 		return self._walk_proceed_remote_dir(rpath, self._proceed_list, args = fmt, recursive = False)
 
 		# pars = {
@@ -1470,6 +1472,7 @@ get information of the given path (dir / file) at Baidu Yun.
 	$u - Has sub directory or not
 '''
 		rpath = get_pcs_path(remotepath)
+		self.file_list = [] # Hacky, but too lazy to make it proper
 		return self._meta(rpath, fmt)
 
 	# this 'is_revision' parameter sometimes gives the following error (e.g. for rapidupload):
